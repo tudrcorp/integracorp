@@ -142,6 +142,7 @@
 
     $val = static fn ($v): string => filled($v) ? (string) $v : '—';
     $contacts = collect($prospect->prospectAgentContacts ?? []);
+    $branches = collect($prospect->prospectAgentBranches ?? []);
     $observations = collect($prospect->prospect_agent_observations ?? [])->take(12);
     $tasks = collect($prospect->prospect_agent_tasks ?? [])->take(12);
 @endphp
@@ -259,6 +260,40 @@
                         <td>{{ $val($contact->phone) }}</td>
                         <td>{{ $val($contact->local_phone) }}</td>
                         <td>{{ $val($contact->extensions) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+</div>
+
+<div class="section-block">
+    <p class="section-title">Sucursales</p>
+    @if ($branches->isEmpty())
+        <p class="muted">Sin sucursales registradas.</p>
+    @else
+        <table class="data-table contacts-table">
+            <thead>
+                <tr>
+                    <th style="width: 11%;">Estado</th>
+                    <th style="width: 11%;">Ciudad</th>
+                    <th style="width: 16%;">Nombre / razón social</th>
+                    <th style="width: 18%;">Correo</th>
+                    <th style="width: 11%;">Celular</th>
+                    <th style="width: 11%;">Teléfono local</th>
+                    <th style="width: 22%;">Dirección</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($branches as $branch)
+                    <tr>
+                        <td>{{ $val($branch->state?->definition) }}</td>
+                        <td>{{ $val($branch->city?->definition) }}</td>
+                        <td>{{ $val($branch->name) }}</td>
+                        <td class="break-word">{{ $val($branch->email) }}</td>
+                        <td>{{ $val($branch->phone) }}</td>
+                        <td>{{ $val($branch->local_phone) }}</td>
+                        <td class="break-word">{{ $val($branch->address) }}</td>
                     </tr>
                 @endforeach
             </tbody>

@@ -52,6 +52,14 @@ class ProspectAgent extends Model
         return $this->hasMany(ProspectAgentContact::class)->orderBy('sort_order');
     }
 
+    /**
+     * @return HasMany<ProspectAgentBranch, $this>
+     */
+    public function prospectAgentBranches(): HasMany
+    {
+        return $this->hasMany(ProspectAgentBranch::class)->orderBy('sort_order');
+    }
+
     public function state()
     {
         return $this->belongsTo(State::class);

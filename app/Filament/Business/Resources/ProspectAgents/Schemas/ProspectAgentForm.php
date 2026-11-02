@@ -18,6 +18,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 
@@ -26,6 +27,9 @@ class ProspectAgentForm
     private const TABS_CONTAINER = 'rounded-[1.75rem] border border-slate-200/85 bg-gradient-to-br from-white via-slate-50/90 to-white p-2 shadow-[0_24px_60px_-26px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/55 dark:border-white/10 dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95 dark:ring-white/10 dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.55)]';
 
     private const IOS_SECTION_CLASS = 'rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
+
+    /** Venezuela: país por defecto de la ubicación del prospecto. */
+    private const DEFAULT_COUNTRY_ID = 189;
 
     private const IOS_INNER_CLASS = 'rounded-[1.25rem] border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5';
 
@@ -197,8 +201,114 @@ class ProspectAgentForm
                                                     ->mutateRelationshipDataBeforeCreateUsing(self::discardEmptyContact(...))
                                                     ->mutateRelationshipDataBeforeSaveUsing(self::discardEmptyContact(...))
                                                     ->collapsible()
-                                                    ->collapsed(fn (?Schema $item): bool => self::isSavedContact($item))
+                                                    ->collapsed(fn (?Schema $item): bool => self::isSavedRepeaterItem($item))
                                                     ->itemLabel(fn (array $state): string => self::contactItemLabel($state))
+                                                    ->columnSpanFull(),
+                                            ]),
+                                    ]),
+                            ]),
+                        Tab::make('Sucursales')
+                            ->icon(Heroicon::OutlinedBuildingStorefront)
+                            ->schema([
+                                Section::make('Sucursales')
+                                    ->icon(Heroicon::OutlinedBuildingStorefront)
+                                    ->description('Sedes, oficinas o puntos de venta adicionales del prospecto.')
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                Repeater::make('prospectAgentBranches')
+                                                    ->relationship()
+                                                    ->hiddenLabel()
+                                                    ->helperText('Registra todas las sucursales que necesites. El nombre o razón social es obligatorio cuando llenas cualquier otro dato de la sucursal.')
+                                                    ->schema([
+                                                        Select::make('state_id')
+                                                            ->label('Estado')
+                                                            ->options(fn (Get $get): array => self::branchStateOptions($get('../../country_id')))
+                                                            ->live()
+                                                            ->afterStateUpdated(fn (Set $set): mixed => $set('city_id', null))
+                                                            ->searchable()
+                                                            ->preload()
+                                                            ->native(false)
+                                                            ->prefixIcon(Heroicon::OutlinedMap)
+                                                            ->placeholder('Selecciona un estado'),
+                                                        Select::make('city_id')
+                                                            ->label('Ciudad')
+                                                            ->options(fn (Get $get): array => self::branchCityOptions($get('state_id')))
+                                                            ->disabled(fn (Get $get): bool => blank($get('state_id')))
+                                                            ->helperText(fn (Get $get): ?string => blank($get('state_id')) ? 'Primero selecciona el estado.' : null)
+                                                            ->searchable()
+                                                            ->preload()
+                                                            ->native(false)
+                                                            ->prefixIcon(Heroicon::OutlinedBuildingOffice2)
+                                                            ->placeholder('Selecciona una ciudad'),
+                                                        TextInput::make('name')
+                                                            ->label('Nombre / razón social')
+                                                            ->required(fn (Get $get): bool => self::branchHasData([
+                                                                'state_id' => $get('state_id'),
+                                                                'city_id' => $get('city_id'),
+                                                                'email' => $get('email'),
+                                                                'phone' => $get('phone'),
+                                                                'local_phone' => $get('local_phone'),
+                                                                'address' => $get('address'),
+                                                            ]))
+                                                            ->validationMessages([
+                                                                'required' => 'Indica el nombre o la razón social de esta sucursal.',
+                                                            ])
+                                                            ->maxLength(255)
+                                                            ->prefixIcon(Heroicon::OutlinedBuildingStorefront)
+                                                            ->placeholder('Ej. Sucursal Valencia'),
+                                                        TextInput::make('email')
+                                                            ->label('Correo')
+                                                            ->email()
+                                                            ->maxLength(255)
+                                                            ->prefixIcon(Heroicon::OutlinedEnvelope)
+                                                            ->placeholder('sucursal@ejemplo.com'),
+                                                        TextInput::make('phone')
+                                                            ->label('Celular')
+                                                            ->tel()
+                                                            ->maxLength(30)
+                                                            ->regex('/^[0-9]*$/')
+                                                            ->validationMessages([
+                                                                'regex' => 'Solo números, sin espacios ni signos.',
+                                                            ])
+                                                            ->prefixIcon(Heroicon::OutlinedDevicePhoneMobile)
+                                                            ->placeholder('04125678909'),
+                                                        TextInput::make('local_phone')
+                                                            ->label('Teléfono local')
+                                                            ->tel()
+                                                            ->maxLength(30)
+                                                            ->regex('/^[0-9]*$/')
+                                                            ->validationMessages([
+                                                                'regex' => 'Solo números, sin espacios ni signos.',
+                                                            ])
+                                                            ->prefixIcon(Heroicon::OutlinedPhone)
+                                                            ->placeholder('02419876543'),
+                                                        Textarea::make('address')
+                                                            ->label('Dirección')
+                                                            ->rows(2)
+                                                            ->maxLength(500)
+                                                            ->placeholder('Calle, edificio, urbanización, punto de referencia...')
+                                                            ->columnSpanFull(),
+                                                    ])
+                                                    ->columns(['default' => 1, 'md' => 2, 'xl' => 3])
+                                                    ->defaultItems(0)
+                                                    ->minItems(0)
+                                                    ->addActionLabel('Agregar sucursal')
+                                                    ->reorderable()
+                                                    ->orderColumn('sort_order')
+                                                    ->mutateRelationshipDataBeforeCreateUsing(self::discardEmptyBranch(...))
+                                                    ->mutateRelationshipDataBeforeSaveUsing(self::discardEmptyBranch(...))
+                                                    ->collapsible()
+                                                    ->collapsed(fn (?Schema $item): bool => self::isSavedRepeaterItem($item))
+                                                    ->itemLabel(fn (array $state): string => filled(trim((string) ($state['name'] ?? '')))
+                                                        ? trim((string) $state['name'])
+                                                        : 'Nueva sucursal')
                                                     ->columnSpanFull(),
                                             ]),
                                     ]),
@@ -269,7 +379,7 @@ class ProspectAgentForm
                                                             ->validationMessages([
                                                                 'required' => 'Selecciona un país.',
                                                             ])
-                                                            ->default(189)
+                                                            ->default(self::DEFAULT_COUNTRY_ID)
                                                             ->preload()
                                                             ->native(false),
                                                         Select::make('state_id')
@@ -424,9 +534,68 @@ class ProspectAgentForm
     }
 
     /**
-     * Al editar, los contactos ya guardados se muestran plegados; uno recién agregado queda abierto para llenarlo.
+     * Estados del país elegido en la ubicación del prospecto; Venezuela si aún no se eligió.
+     *
+     * @return array<int|string, string>
      */
-    public static function isSavedContact(?Schema $item): bool
+    public static function branchStateOptions(mixed $countryId): array
+    {
+        return State::query()
+            ->where('country_id', filled($countryId) ? $countryId : self::DEFAULT_COUNTRY_ID)
+            ->orderBy('definition')
+            ->pluck('definition', 'id')
+            ->all();
+    }
+
+    /**
+     * @return array<int|string, string>
+     */
+    public static function branchCityOptions(mixed $stateId): array
+    {
+        if (blank($stateId)) {
+            return [];
+        }
+
+        return City::query()
+            ->where('state_id', $stateId)
+            ->orderBy('definition')
+            ->pluck('definition', 'id')
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public static function branchHasData(array $data, bool $includeName = false): bool
+    {
+        $fields = ['state_id', 'city_id', 'email', 'phone', 'local_phone', 'address'];
+
+        if ($includeName) {
+            $fields[] = 'name';
+        }
+
+        foreach ($fields as $field) {
+            if (filled($data[$field] ?? null)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>|null
+     */
+    private static function discardEmptyBranch(array $data): ?array
+    {
+        return self::branchHasData($data, includeName: true) ? $data : null;
+    }
+
+    /**
+     * Al editar, los contactos y sucursales ya guardados se muestran plegados; uno recién agregado queda abierto para llenarlo.
+     */
+    public static function isSavedRepeaterItem(?Schema $item): bool
     {
         return $item?->getRecord()?->exists === true;
     }

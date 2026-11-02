@@ -225,6 +225,62 @@ class ProspectAgentInfolist
                                             ]),
                                     ]),
                             ]),
+                        Tab::make('Sucursales')
+                            ->icon(Heroicon::OutlinedBuildingStorefront)
+                            ->badge(fn (ProspectAgent $record): ?int => $record->prospectAgentBranches->count() ?: null)
+                            ->schema([
+                                Section::make('Sucursales')
+                                    ->icon(Heroicon::OutlinedBuildingStorefront)
+                                    ->description('Sedes, oficinas o puntos de venta adicionales del prospecto.')
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                RepeatableEntry::make('prospectAgentBranches')
+                                                    ->hiddenLabel()
+                                                    ->table([
+                                                        TableColumn::make('Estado')->width('11%'),
+                                                        TableColumn::make('Ciudad')->width('11%'),
+                                                        TableColumn::make('Nombre / razón social')->width('16%'),
+                                                        TableColumn::make('Correo')->width('18%'),
+                                                        TableColumn::make('Celular')->width('11%'),
+                                                        TableColumn::make('Teléfono local')->width('11%'),
+                                                        TableColumn::make('Dirección')->width('22%'),
+                                                    ])
+                                                    ->schema([
+                                                        TextEntry::make('state.definition')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('city.definition')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('name')
+                                                            ->weight('medium')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('email')
+                                                            ->copyable()
+                                                            ->copyMessage('Correo copiado')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('phone')
+                                                            ->copyable()
+                                                            ->copyMessage('Teléfono copiado')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('local_phone')
+                                                            ->copyable()
+                                                            ->copyMessage('Teléfono copiado')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('address')
+                                                            ->wrap()
+                                                            ->placeholder('—'),
+                                                    ])
+                                                    ->placeholder('Sin sucursales registradas. Agrégalas desde Editar → Sucursales.')
+                                                    ->columnSpanFull(),
+                                            ]),
+                                    ]),
+                            ]),
                         Tab::make('Ubicación')
                             ->icon(Heroicon::OutlinedMapPin)
                             ->schema([

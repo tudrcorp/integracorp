@@ -15,7 +15,7 @@ class ProspectAgentFichaPdfService
     /**
      * v1: base64 en caché (driver database / UTF-8).
      */
-    private const PDF_CACHE_KEY_PREFIX = 'prospect_agent_ficha_pdf:v2:';
+    private const PDF_CACHE_KEY_PREFIX = 'prospect_agent_ficha_pdf:v3:';
 
     private const PDF_CACHE_TTL_FALLBACK_SECONDS = 900;
 
@@ -27,6 +27,8 @@ class ProspectAgentFichaPdfService
         'city',
         'country',
         'prospectAgentContacts',
+        'prospectAgentBranches.state',
+        'prospectAgentBranches.city',
         'prospect_agent_observations',
         'prospect_agent_tasks.rrhh_colaborador',
     ];
@@ -71,6 +73,9 @@ class ProspectAgentFichaPdfService
             (string) $id,
             (string) ($prospect->updated_at ?? ''),
             (string) DB::table('prospect_agent_contacts')->where('prospect_agent_id', $id)->max('updated_at'),
+            (string) DB::table('prospect_agent_contacts')->where('prospect_agent_id', $id)->count(),
+            (string) DB::table('prospect_agent_branches')->where('prospect_agent_id', $id)->max('updated_at'),
+            (string) DB::table('prospect_agent_branches')->where('prospect_agent_id', $id)->count(),
             (string) DB::table('prospect_agent_observations')->where('prospect_agent_id', $id)->max('updated_at'),
             (string) DB::table('prospect_agent_tasks')->where('prospect_agent_id', $id)->max('updated_at'),
         ];
