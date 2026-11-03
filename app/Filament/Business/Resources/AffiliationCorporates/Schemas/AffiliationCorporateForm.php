@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\AffiliationCorporates\Schemas;
 
 use App\Filament\Resources\CorporateQuotes\CorporateQuoteResource;
+use App\Filament\Shared\Affiliations\DocumentTypeSelect;
 use App\Models\AffiliationCorporate;
 use App\Models\Agency;
 use App\Models\Agent;
@@ -576,6 +577,7 @@ class AffiliationCorporateForm
                                                 'required' => 'Campo requerido',
                                             ])
                                             ->maxLength(255),
+                                        DocumentTypeSelect::companyRif(),
                                         TextInput::make('rif')
                                             ->label('Rif')
                                             ->prefixIcon('heroicon-s-identification')

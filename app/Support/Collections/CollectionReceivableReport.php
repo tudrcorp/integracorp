@@ -7,6 +7,8 @@ namespace App\Support\Collections;
 use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
 use App\Models\Collection;
+use App\Support\Affiliations\AffiliationDocumentPrefix;
+use App\Support\Affiliations\AffiliationDocumentTypeColumns;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
@@ -80,12 +82,16 @@ final class CollectionReceivableReport
      */
     public static function eagerLoads(): array
     {
+        $documentTypes = AffiliationDocumentTypeColumns::available();
+
         return [
             'plan:id,description',
             'agent:id,name',
             'agencyByCode:id,code,name_corporative',
-            'affiliationByCode:id,code,status,fee_anual,activated_at,effective_date,payment_frequency,full_name_payer,nro_identificacion_payer',
-            'affiliationCorporateByCode:id,code,status,fee_anual,activated_at,effective_date,payment_frequency,name_corporate,rif',
+            'affiliationByCode:id,code,status,fee_anual,activated_at,effective_date,payment_frequency,full_name_payer,nro_identificacion_payer'
+                .($documentTypes ? ',document_type_ti,document_type_payer' : ''),
+            'affiliationCorporateByCode:id,code,status,fee_anual,activated_at,effective_date,payment_frequency,name_corporate,rif'
+                .($documentTypes ? ',document_type_rif' : ''),
             'affiliationCorporateByCode.affiliationCorporatePlans:id,affiliation_corporate_id,plan_id',
             'affiliationCorporateByCode.affiliationCorporatePlans.plan:id,description',
         ];
@@ -329,6 +335,39 @@ final class CollectionReceivableReport
         }
 
         return self::clean(self::individualAffiliation($collection)?->nro_identificacion_payer) ?? self::holderDocument($collection);
+    }
+
+    /**
+     * Documento del titular con su letra (V-, E-, J-, G-). En corporativas el titular es la
+     * empresa contratante.
+     */
+    public static function holderDocumentWithPrefix(Collection $collection): string
+    {
+        $number = self::holderDocument($collection);
+
+        if (self::isCorporate($collection)) {
+            return AffiliationDocumentPrefix::format($number, AffiliationDocumentPrefix::forCompany(self::corporateAffiliation($collection)?->getAttribute('document_type_rif')));
+        }
+
+        return AffiliationDocumentPrefix::format($number, AffiliationDocumentPrefix::forPerson(self::individualAffiliation($collection)?->getAttribute('document_type_ti'), $number));
+    }
+
+    /**
+     * Documento del tomador con su letra. En individuales el pagador puede ser una empresa.
+     */
+    public static function payerDocumentWithPrefix(Collection $collection): string
+    {
+        $number = self::payerDocument($collection);
+
+        if (self::isCorporate($collection)) {
+            return AffiliationDocumentPrefix::format($number, AffiliationDocumentPrefix::forCompany(self::corporateAffiliation($collection)?->getAttribute('document_type_rif')));
+        }
+
+        return AffiliationDocumentPrefix::format($number, AffiliationDocumentPrefix::forPayer(
+            self::individualAffiliation($collection)?->getAttribute('document_type_payer'),
+            $number,
+            self::payerName($collection),
+        ));
     }
 
     public static function planLabel(Collection $collection): ?string

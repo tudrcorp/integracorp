@@ -10,6 +10,7 @@ use App\Models\Affiliate;
 use App\Models\DetailIndividualQuote;
 use App\Models\IndividualQuote;
 use App\Models\User;
+use App\Support\Affiliations\AffiliationDocumentTypeColumns;
 use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -50,6 +51,7 @@ class CreateAffiliation extends CreateRecord
         if ($data['feedback_dos']) {
             $data['full_name_payer'] = $data['full_name_ti'];
             $data['nro_identificacion_payer'] = $data['nro_identificacion_ti'];
+            $data = AffiliationDocumentTypeColumns::copyHolderTypeToPayer($data);
             $data['email_payer'] = $data['email_ti'];
             $data['phone_payer'] = $data['phone_ti'];
         }
