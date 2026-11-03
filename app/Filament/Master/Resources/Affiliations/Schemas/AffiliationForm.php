@@ -2,6 +2,7 @@
 
 namespace App\Filament\Master\Resources\Affiliations\Schemas;
 
+use App\Filament\Shared\Affiliations\DocumentTypeSelect;
 use App\Filament\Shared\MedicalQuestionnaires\MedicalQuestionnaireFields;
 use App\Http\Controllers\UtilsController;
 use App\Models\Affiliation;
@@ -335,6 +336,7 @@ class AffiliationForm
                                         'required' => 'Campo requerido',
                                     ])
                                     ->maxLength(255),
+                                DocumentTypeSelect::holder()->hiddenOn('edit'),
                                 TextInput::make('nro_identificacion_ti')
                                     ->label('Nro. de Identificación')
                                     ->prefixIcon('heroicon-s-identification')
@@ -639,6 +641,7 @@ class AffiliationForm
                                             'required' => 'Campo requerido',
                                         ])
                                         ->maxLength(255),
+                                    DocumentTypeSelect::payer()->hiddenOn('edit'),
                                     TextInput::make('nro_identificacion_payer')
                                         ->label('Nro. de Identificación')
                                         ->prefixIcon('heroicon-s-identification')

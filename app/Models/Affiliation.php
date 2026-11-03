@@ -21,6 +21,8 @@ class Affiliation extends Model
     protected $table = 'affiliations';
 
     protected $fillable = [
+        'document_type_ti',
+        'document_type_payer',
         'code',
         'agent_id',
         'code_agency',

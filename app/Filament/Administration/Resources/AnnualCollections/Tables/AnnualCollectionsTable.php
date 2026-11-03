@@ -12,6 +12,7 @@ use App\Support\Collections\CollectionFollowUp;
 use App\Support\Collections\CollectionNotice;
 use App\Support\Collections\CollectionReceivableReport;
 use App\Support\Exports\CollectionReceivableCsvExportService;
+use App\Support\Exports\CollectionReceivableXlsxExportService;
 use App\Support\Filament\SummaryCards;
 use App\Support\SecurityAudit;
 use Carbon\CarbonImmutable;
@@ -29,6 +30,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -45,7 +47,7 @@ class AnnualCollectionsTable
     {
         return $table
             ->heading('Reporte global de cuentas por cobrar · Planes Tu Doctor en Casa')
-            ->description('Fecha actual: '.CarbonImmutable::today()->format('d/m/Y').'. Una fila por afiliación con su próxima cuota pendiente. Use el filtro «Vencimiento» para ver o descargar en CSV por días de atraso.')
+            ->description('Fecha actual: '.CarbonImmutable::today()->format('d/m/Y').'. Una fila por afiliación con su próxima cuota pendiente. Use el filtro «Vencimiento» para ver o descargar en Excel o CSV por días de atraso.')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
                 ->with(CollectionReceivableReport::eagerLoads())
                 ->withCount('receivableObservations'))
@@ -55,6 +57,7 @@ class AnnualCollectionsTable
             ->filters(self::filters(), layout: FiltersLayout::AboveContentCollapsible)
             ->filtersFormColumns(4)
             ->headerActions([
+                self::exportExcelAction(),
                 self::exportAction(),
             ])
             ->recordActions([
@@ -62,6 +65,7 @@ class AnnualCollectionsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    self::exportSelectedExcelAction(),
                     self::exportSelectedAction(),
                 ]),
             ])
@@ -275,6 +279,46 @@ class AnnualCollectionsTable
      * Descarga directa en CSV de las filas de la tabla, con filtros, búsqueda y
      * orden aplicados ({@see CollectionReceivableCsvExportService}). Sin modal ni cola.
      */
+    /**
+     * Excel con el formato del modelo de Administración: montos como número, seguimiento con ✓,
+     * última observación y totales. Respeta filtros, búsqueda y orden de la tabla.
+     */
+    private static function exportExcelAction(): Action
+    {
+        return Action::make('exportReceivablesExcel')
+            ->label('Descargar Excel')
+            ->icon(Heroicon::OutlinedTableCells)
+            ->color('success')
+            ->action(function (HasTable $livewire): BinaryFileResponse {
+                SecurityAudit::log('AUDIT_ADMIN_RECEIVABLES_EXPORT_REQUESTED', 'administration.annual-collections.export', [
+                    'panel' => 'administration',
+                    'format' => 'xlsx',
+                ], Auth::user());
+
+                return app(CollectionReceivableXlsxExportService::class)->download($livewire->getFilteredSortedTableQuery());
+            });
+    }
+
+    private static function exportSelectedExcelAction(): BulkAction
+    {
+        return BulkAction::make('exportSelectedReceivablesExcel')
+            ->label('Exportar Excel')
+            ->icon(Heroicon::OutlinedTableCells)
+            ->color('success')
+            ->fetchSelectedRecords(false)
+            ->action(function (HasTable $livewire): BinaryFileResponse {
+                SecurityAudit::log('AUDIT_ADMIN_RECEIVABLES_EXPORT_REQUESTED', 'administration.annual-collections.export-selected', [
+                    'panel' => 'administration',
+                    'format' => 'xlsx',
+                    'scope' => 'selected',
+                ], Auth::user());
+
+                return app(CollectionReceivableXlsxExportService::class)->download(
+                    $livewire->getSelectedTableRecordsQuery(shouldFetchSelectedRecords: false),
+                );
+            });
+    }
+
     private static function exportAction(): Action
     {
         return Action::make('exportReceivables')

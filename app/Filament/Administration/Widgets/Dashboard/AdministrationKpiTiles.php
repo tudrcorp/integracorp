@@ -11,7 +11,8 @@ use App\Support\Metrics\Corporate\CorporateFinanceMetrics;
 
 /**
  * Indicadores financieros del Escritorio: lo que entra, lo que sale, el
- * resultado y la cobranza (vencida y esperada), con la tasa BCV del día.
+ * resultado y lo vencido, con la tasa BCV del día. «Por cobrar» y «Cobranza
+ * esperada» se retiraron el 03/11/2026 a pedido de Gustavo.
  */
 class AdministrationKpiTiles extends CorporateKpiTiles
 {
@@ -21,16 +22,21 @@ class AdministrationKpiTiles extends CorporateKpiTiles
         $current = $data['current'];
         $previous = $data['previous'];
         $receivables = CorporateFinanceMetrics::receivables();
-        $upcoming = AdministrationFinanceMetrics::upcomingCollections();
 
         return [
             self::moneyTile('income', 'Ingresos', (float) $current['income'], (float) $previous['income'], 'heroicon-o-banknotes', 'Pagos registrados en el período (ventas), en USD.', $data['sparklines']['income']),
             self::moneyTile('outflows', 'Egresos', (float) $current['outflows'], (float) $previous['outflows'], 'heroicon-o-arrow-trending-down', 'Comisiones generadas, costo médico (órdenes finalizadas) y facturas de proveedores registradas en el período. No incluye nómina. Aquí, bajar es mejor.', $data['sparklines']['outflows'], lowerIsBetter: true),
             self::moneyTile('net', 'Resultado', (float) $current['net'], (float) $previous['net'], 'heroicon-o-scale', 'Ingresos menos egresos del período (sin nómina).', note: 'Estimado'),
-            self::snapshotTile('pending', 'Por cobrar', $receivables['pending_amount'], 'heroicon-o-clock', $receivables['pending_count'].' cuotas pendientes de cobro, a hoy.', 'US$ '),
             self::snapshotTile('overdue', 'Vencido', $receivables['overdue_amount'], 'heroicon-o-exclamation-triangle', $receivables['overdue_count'].' cuotas cuya fecha de pago ya pasó, a hoy.', 'US$ '),
-            self::snapshotTile('upcoming', 'Cobranza esperada', $upcoming['total'], 'heroicon-o-calendar-days', $upcoming['count'].' cuotas con fecha de pago en los próximos '.AdministrationFinanceMetrics::HORIZON_DAYS.' días.', 'US$ '),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function getViewData(): array
+    {
+        return [...parent::getViewData(), 'tilesGrid' => 'md:grid-cols-2 2xl:grid-cols-4'];
     }
 
     protected function context(): array

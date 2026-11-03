@@ -193,7 +193,9 @@ it('cada widget del Escritorio se renderiza con datos', function (): void {
 
     Livewire::test(AdministrationKpiTiles::class, ['pageFilters' => $filters])
         ->assertSee('Egresos')
-        ->assertSee('Cobranza esperada')
+        ->assertSee('Vencido')
+        ->assertDontSee('Cobranza esperada')
+        ->assertDontSee('Por cobrar')
         ->assertSee('US$ 850');
     Livewire::test(AdministrationOutflowsChart::class, ['pageFilters' => $filters])->assertSee('Facturas de proveedores');
     Livewire::test(AdministrationPayablesRanking::class, ['pageFilters' => $filters])->assertSee('Facturas de proveedores por pagar');

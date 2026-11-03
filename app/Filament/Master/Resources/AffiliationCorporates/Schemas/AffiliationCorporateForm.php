@@ -2,6 +2,7 @@
 
 namespace App\Filament\Master\Resources\AffiliationCorporates\Schemas;
 
+use App\Filament\Shared\Affiliations\DocumentTypeSelect;
 use App\Filament\Shared\MedicalQuestionnaires\MedicalQuestionnaireFields;
 use App\Models\AffiliationCorporate;
 use App\Models\City;
@@ -138,6 +139,7 @@ class AffiliationCorporateForm
                                 'required' => 'Campo requerido',
                             ])
                             ->maxLength(255),
+                        DocumentTypeSelect::companyRif()->hiddenOn('edit'),
                         TextInput::make('rif')
                             ->label('Rif:')
                             ->prefix('J-')

@@ -15,6 +15,7 @@ class AffiliationCorporate extends Model
     protected $table = 'affiliation_corporates';
 
     protected $fillable = [
+        'document_type_rif',
         'code',
         'corporate_quote_id',
         'code_agency',
