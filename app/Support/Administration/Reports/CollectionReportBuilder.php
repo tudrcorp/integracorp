@@ -91,7 +91,7 @@ final class CollectionReportBuilder
             'AGENCIA',
             'AGENTE',
             'TARIFA ANUAL (US$)',
-            'MONTO SEGUN FRECUENCIA (US$)',
+            'CUOTA TEORICA (US$)',
             'FECHA DE VIGENCIA',
             'FRACCIONAMIENTO DE CUOTAS PARA PAGO',
             'PERIODOS DE PAGO',

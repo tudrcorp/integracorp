@@ -79,7 +79,7 @@ it('Cuentas por cobrar muestra fecha de emisión, tarifa en US$ y monto según f
         ->sortTable('emission_date', 'desc')
         ->assertSuccessful()
         ->assertSee('Fecha de emisión')
-        ->assertSee('Monto según frecuencia')
+        ->assertSee('Cuota teórica')
         ->assertSee('US$ ')
         ->assertDontSee('Fecha de inclusión o emisión');
 });

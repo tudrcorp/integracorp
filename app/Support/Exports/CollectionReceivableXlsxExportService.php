@@ -69,7 +69,7 @@ final class CollectionReceivableXlsxExportService
             'AGENCIA',
             'AGENTE',
             'TARIFA ANUAL (US$)',
-            'MONTO SEGUN FRECUENCIA (US$)',
+            'CUOTA TEORICA (US$)',
             'FECHA DE VIGENCIA',
             'FRACCIONAMIENTO DE CUOTAS PARA PAGO',
             'FECHA DE VENCIMIENTO',
@@ -195,7 +195,7 @@ final class CollectionReceivableXlsxExportService
     public static function rowValues(Collection $record, ?CollectionObservation $latestObservation): array
     {
         $states = CollectionFollowUpStatus::decode($record->follow_up_status ?? null);
-        $population = $record->persons;
+        $population = CollectionReceivableReport::affiliationPopulation($record);
 
         return [
             'emission_date' => CollectionDueDate::parse(CollectionReceivableReport::emissionDate($record)),
@@ -206,7 +206,7 @@ final class CollectionReceivableXlsxExportService
             'phone' => (string) ($record->affiliate_phone ?? ''),
             'email' => (string) ($record->affiliate_email ?? ''),
             'plan' => (string) (CollectionReceivableReport::planLabel($record) ?? ''),
-            'population' => is_numeric($population) ? (int) $population : null,
+            'population' => $population,
             'agency' => (string) (CollectionReceivableReport::agencyLabel($record) ?? ''),
             'agent' => trim((string) ($record->agent?->name ?? '')),
             'annual_fee' => CollectionReceivableReport::annualFee($record),

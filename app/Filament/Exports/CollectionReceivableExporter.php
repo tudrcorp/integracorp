@@ -72,7 +72,7 @@ class CollectionReceivableExporter extends Exporter
                 ->label('TARIFA ANUAL (US$)')
                 ->state(fn (Collection $record): ?float => CollectionReceivableReport::annualFee($record)),
             ExportColumn::make('amount_by_frequency')
-                ->label('MONTO SEGUN FRECUENCIA (US$)')
+                ->label('CUOTA TEORICA (US$)')
                 ->state(fn (Collection $record): ?float => CollectionReceivableReport::amountByFrequency($record)),
             ExportColumn::make('effective_date')
                 ->label('FECHA DE VIGENCIA')
