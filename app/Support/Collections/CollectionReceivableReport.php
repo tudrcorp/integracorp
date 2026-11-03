@@ -89,9 +89,9 @@ final class CollectionReceivableReport
             'plan:id,description',
             'agent:id,name',
             'agencyByCode:id,code,name_corporative',
-            'affiliationByCode:id,code,status,fee_anual,activated_at,effective_date,payment_frequency,full_name_payer,nro_identificacion_payer'
+            'affiliationByCode:id,code,status,fee_anual,activated_at,effective_date,payment_frequency,full_name_payer,nro_identificacion_payer,family_members'
                 .($documentTypes ? ',document_type_ti,document_type_payer' : ''),
-            'affiliationCorporateByCode:id,code,status,fee_anual,activated_at,effective_date,payment_frequency,name_corporate,rif'
+            'affiliationCorporateByCode:id,code,status,fee_anual,activated_at,effective_date,payment_frequency,name_corporate,rif,poblation'
                 .($documentTypes ? ',document_type_rif' : ''),
             'affiliationCorporateByCode.affiliationCorporatePlans:id,affiliation_corporate_id,plan_id',
             'affiliationCorporateByCode.affiliationCorporatePlans.plan:id,description',
@@ -100,14 +100,16 @@ final class CollectionReceivableReport
 
     /**
      * Relaciones para mostrar el plan de una cuota corporativa, que se guarda sin `plan_id`
-     * porque la afiliación puede tener varios planes ({@see self::planLabel()}).
+     * porque la afiliación puede tener varios planes ({@see self::planLabel()}), y la población
+     * de la afiliación ({@see self::affiliationPopulation()}).
      *
      * @return list<string>
      */
     public static function corporatePlanEagerLoads(): array
     {
         return [
-            'affiliationCorporateByCode:id,code',
+            'affiliationByCode:id,code,family_members',
+            'affiliationCorporateByCode:id,code,rif,poblation',
             'affiliationCorporateByCode.affiliationCorporatePlans:id,affiliation_corporate_id,plan_id',
             'affiliationCorporateByCode.affiliationCorporatePlans.plan:id,description',
         ];
@@ -396,6 +398,24 @@ final class CollectionReceivableReport
             $number,
             self::payerName($collection),
         ));
+    }
+
+    /**
+     * Población vigente de la afiliación: `poblation` en corporativas y `family_members` en
+     * individuales. La copia `persons` de la cuota se guarda al crearla y no sigue las altas ni
+     * las bajas, así que solo se usa si la afiliación no trae el dato.
+     */
+    public static function affiliationPopulation(Collection $collection): ?int
+    {
+        $value = self::isCorporate($collection)
+            ? self::corporateAffiliation($collection)?->getAttribute('poblation')
+            : self::individualAffiliation($collection)?->getAttribute('family_members');
+
+        if (! is_numeric($value)) {
+            $value = $collection->persons;
+        }
+
+        return is_numeric($value) ? (int) $value : null;
     }
 
     public static function planLabel(Collection $collection): ?string

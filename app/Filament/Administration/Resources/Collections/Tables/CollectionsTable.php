@@ -112,6 +112,13 @@ class CollectionsTable
                     ->description(fn (Collection $record): ?string => filled($record->payment_frequency) ? 'Pago '.Str::lower((string) $record->payment_frequency) : null)
                     ->placeholder('Sin plan')
                     ->sortable(),
+                TextColumn::make('persons')
+                    ->label('Población')
+                    ->state(fn (Collection $record): ?int => CollectionReceivableReport::affiliationPopulation($record))
+                    ->tooltip('Personas vigentes de la afiliación (incluye altas y bajas posteriores a la cuota).')
+                    ->placeholder('—')
+                    ->alignCenter()
+                    ->toggleable(),
                 TextColumn::make('total_amount')
                     ->label('Monto')
                     ->money('USD')

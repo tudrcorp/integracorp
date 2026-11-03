@@ -536,3 +536,12 @@ it('ofrece los mismos plazos del resumen de Cuentas por cobrar y cuadra con ello
         ->set('data.period', 'next_days_15')
         ->assertSee('Se incluirán');
 });
+
+it('el selector de reportes acepta la lista plana de Administración y los grupos de Operaciones', function (): void {
+    $view = file_get_contents(resource_path('views/filament/operations/pages/partials/report-type-picker.blade.php'));
+
+    expect($view)
+        ->toContain('isset($types) && is_array($types) ? $types : []')
+        ->toContain('isset($groups) && is_array($groups)')
+        ->and(file_get_contents(app_path('Filament/Administration/Pages/CentroDeReportes.php')))->toContain("->view('filament.operations.pages.partials.report-type-picker')");
+});

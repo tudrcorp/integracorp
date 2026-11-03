@@ -121,6 +121,9 @@ class AnnualCollectionsTable
                 ->color('info'),
             TextColumn::make('persons')
                 ->label('Población')
+                ->state(fn (Collection $record): ?int => CollectionReceivableReport::affiliationPopulation($record))
+                ->tooltip('Personas vigentes de la afiliación (incluye altas y bajas posteriores a la cuota).')
+                ->placeholder('—')
                 ->alignCenter(),
             TextColumn::make('agency_label')
                 ->label('Agencia')
@@ -137,8 +140,8 @@ class AnnualCollectionsTable
                 ->placeholder('—')
                 ->alignEnd(),
             TextColumn::make('amount_by_frequency')
-                ->label('Monto según frecuencia')
-                ->tooltip('Tarifa anual dividida entre las cuotas de la frecuencia de pago (anual 1, semestral 2, trimestral 4, mensual 12).')
+                ->label('Cuota teórica')
+                ->tooltip('Tarifa anual dividida entre las cuotas de la frecuencia de pago (anual 1, semestral 2, trimestral 4, mensual 12). Puede diferir del «Monto de la cuota» si hubo pagos adelantados, abonos o ajustes.')
                 ->state(fn (Collection $record): ?float => CollectionReceivableReport::amountByFrequency($record))
                 ->formatStateUsing(fn (?float $state): string => SummaryCards::money((float) $state))
                 ->placeholder('—')

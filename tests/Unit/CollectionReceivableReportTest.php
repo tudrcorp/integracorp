@@ -195,7 +195,7 @@ it('la tabla sigue las columnas del reporte CXC y su única acción por fila es 
 
     $labels = [
         'Fecha de emisión', 'Afiliado o titular', 'C.I./R.I.F.', 'Tomador', 'C.I./R.I.F. tomador',
-        'Teléfono', 'Email', 'Plan', 'Población', 'Agencia', 'Agente', 'Tarifa anual', 'Monto según frecuencia', 'Fecha de vigencia',
+        'Teléfono', 'Email', 'Plan', 'Población', 'Agencia', 'Agente', 'Tarifa anual', 'Cuota teórica', 'Fecha de vigencia',
         'Fraccionamiento de cuotas', 'Periodos de pago', 'Fecha de vencimiento', 'Estatus de cobro', 'Días',
         'Estatus del afiliado o titular',
     ];
@@ -241,7 +241,7 @@ it('el exportador saca las columnas en el orden del Excel con los valores calcul
 
     expect(array_values($columnMap))->toBe([
         'FECHA DE EMISION', 'AFILIADO O TITULAR', 'C.I./R.I.F.', 'TOMADOR', 'C.I./R.I.F. TOMADOR',
-        'TELEFONO', 'EMAIL', 'PLAN', 'POBLACION', 'AGENCIA', 'AGENTE', 'TARIFA ANUAL (US$)', 'MONTO SEGUN FRECUENCIA (US$)', 'FECHA DE VIGENCIA',
+        'TELEFONO', 'EMAIL', 'PLAN', 'POBLACION', 'AGENCIA', 'AGENTE', 'TARIFA ANUAL (US$)', 'CUOTA TEORICA (US$)', 'FECHA DE VIGENCIA',
         'FRACCIONAMIENTO DE CUOTAS PARA PAGO', 'PERIODOS DE PAGO', 'FECHA DE VENCIMIENTO', 'ESTATUS DE COBRO',
         'DIAS', 'ESTATUS DEL AFILIADO O TITULAR',
     ])
@@ -331,4 +331,15 @@ it('ordena por fecha de emisión con el mismo respaldo que muestra', function ()
         ->toContain('collections.include_date')
         ->toEndWith(' desc')
         ->and(CollectionReceivableReport::emissionDateOrderSql('cualquier cosa'))->toEndWith(' asc');
+});
+
+it('Cobranza Por Mes, su CSV, su Excel y el Centro de reportes llaman «cuota teórica» a la tarifa repartida', function (): void {
+    foreach ([
+        App\Support\Exports\CollectionReceivableCsvExportService::headers(),
+        App\Support\Exports\CollectionReceivableXlsxExportService::headers(),
+        App\Support\Administration\Reports\CollectionReportBuilder::headings(),
+    ] as $headers) {
+        expect($headers)->toContain('CUOTA TEORICA (US$)')
+            ->and($headers)->not->toContain('MONTO SEGUN FRECUENCIA (US$)');
+    }
 });

@@ -1,5 +1,13 @@
 @php
-    /** @var list<array{label: string, types: list<\App\Enums\OperationReportType>}> $groups */
+    /**
+     * Operaciones pasa `groups` (servicios e inventario); el Centro de reportes de Administración
+     * pasa una lista plana `types`, que se muestra como un solo grupo sin título.
+     *
+     * @var list<array{label: string, types: list<\BackedEnum>}> $groups
+     */
+    $groups = isset($groups) && is_array($groups)
+        ? $groups
+        : [['label' => 'Reportes', 'types' => isset($types) && is_array($types) ? $types : []]];
     $selected = $getState();
     $statePathValue = $getStatePath();
     $showGroupLabels = count($groups) > 1;
