@@ -52,7 +52,7 @@ it('el listado de prospectos ya no registra el gráfico suelto de cambios de est
     $contents = file_get_contents($path);
 
     expect($contents)->not->toBeFalse()
-        ->and($contents)->toContain('TopRegisterProspect::class')
+        ->and($contents)->not->toContain('TopRegisterProspect::class')
         ->and($contents)->not->toContain('StatusChangesByMonth');
 
     expect(file_exists(dirname(__DIR__, 2).'/app/Filament/Business/Resources/ProspectAgents/Widgets/StatusChangesByMonth.php'))

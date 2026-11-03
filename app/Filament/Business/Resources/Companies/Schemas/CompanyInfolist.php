@@ -273,6 +273,14 @@ class CompanyInfolist
                                     ->formatStateUsing(fn ($state): string => number_format((int) ($state ?? 0), 0, ',', '.'))
                                     ->badge()
                                     ->color(fn (Company $record): string => self::utilizationColor($record)),
+                                TextEntry::make('consumed_days')
+                                    ->label('Días consumidos')
+                                    ->icon(Heroicon::OutlinedUserPlus)
+                                    ->state(fn (Company $record): int => CompanyResponsibleDays::consumedDaysFor($record))
+                                    ->formatStateUsing(fn (int $state): string => number_format($state, 0, ',', '.'))
+                                    ->helperText('Un día por asociado registrado; los anulados no cuentan.')
+                                    ->badge()
+                                    ->color('success'),
                                 TextEntry::make('population_utilization')
                                     ->label('Uso de población')
                                     ->icon(Heroicon::OutlinedChartBar)
@@ -292,7 +300,8 @@ class CompanyInfolist
                                     })
                                     ->badge()
                                     ->color(fn (Company $record): string => self::utilizationColor($record))
-                                    ->columnSpan(['default' => 1, 'lg' => 3]),
+                                    ->helperText('Días contratados por los responsables frente a la población del plan.')
+                                    ->columnSpan(['default' => 1, 'lg' => 2]),
                             ]),
                     ]),
             ]);

@@ -2,18 +2,13 @@
 
 namespace App\Filament\Business\Resources\ProspectAgents\Pages;
 
+use App\Filament\Business\Pages\DashboardCaptacion;
 use App\Filament\Business\Resources\ProspectAgents\ProspectAgentResource;
-use App\Filament\Business\Resources\ProspectAgents\Widgets\ClassificationProspect;
-use App\Filament\Business\Resources\ProspectAgents\Widgets\ProspectAgentTasksByUserChart;
-use App\Filament\Business\Resources\ProspectAgents\Widgets\ReferenceProspect;
-use App\Filament\Business\Resources\ProspectAgents\Widgets\StatsOverviewCapacitacion;
-use App\Filament\Business\Resources\ProspectAgents\Widgets\TopRegisterProspect;
-use App\Filament\Business\Resources\ProspectAgents\Widgets\TopRegisterProspectForState;
-use App\Filament\Business\Resources\ProspectAgents\Widgets\TypeProspect;
 use App\Jobs\NotifyProspectAgentTaskAssigneeJob;
 use App\Models\ProspectAgent;
 use App\Models\ProspectAgentTask;
 use App\Models\RrhhColaborador;
+use App\Support\Filament\FilamentIosButton;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\Hidden;
@@ -42,20 +37,19 @@ class ListProspectAgents extends ListRecords
         );
     }
 
-    /**
-     * @return int|array<string, int|null>
-     */
-    public function getHeaderWidgetsColumns(): int|array
-    {
-        return [
-            'default' => 1,
-            'lg' => 2,
-        ];
-    }
-
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('dashboard')
+                ->label('Ver dashboard')
+                ->icon('heroicon-o-presentation-chart-bar')
+                ->color('primary')
+                ->tooltip('Indicadores y gráficos de Captación')
+                ->extraAttributes([
+                    'class' => FilamentIosButton::extraClassForFilamentColor('primary'),
+                ])
+                ->url(fn (): string => DashboardCaptacion::getUrl())
+                ->visible(fn (): bool => DashboardCaptacion::canAccess()),
             CreateAction::make()
                 ->label('Nuevo prospecto')
                 ->icon('heroicon-o-plus'),
@@ -135,19 +129,6 @@ class ListProspectAgents extends ListRecords
                         ->success()
                         ->send();
                 }),
-        ];
-    }
-
-    protected function getHeaderWidgets(): array
-    {
-        return [
-            StatsOverviewCapacitacion::class,
-            TopRegisterProspect::class,
-            ProspectAgentTasksByUserChart::class,
-            TopRegisterProspectForState::class,
-            TypeProspect::class,
-            ReferenceProspect::class,
-            ClassificationProspect::class,
         ];
     }
 }

@@ -140,7 +140,7 @@ final class ProspectAgentDeletionActions
             $deleted = ProspectAgentDeletion::delete($records, $reason, self::actorName());
         } catch (Throwable $exception) {
             Log::error('Captación: no se pudo eliminar prospectos', [
-                'ids' => $records->modelKeys(),
+                'ids' => $records->map(fn ($model): mixed => $model->getKey())->values()->all(),
                 'error' => $exception->getMessage(),
             ]);
 
@@ -181,7 +181,7 @@ final class ProspectAgentDeletionActions
             $restored = ProspectAgentDeletion::restore($records, self::actorName());
         } catch (Throwable $exception) {
             Log::error('Captación: no se pudo restaurar prospectos', [
-                'ids' => $records->modelKeys(),
+                'ids' => $records->map(fn ($model): mixed => $model->getKey())->values()->all(),
                 'error' => $exception->getMessage(),
             ]);
 

@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\ProspectAgents\Schemas;
 
 use App\Filament\Business\Resources\ProspectAgents\ProspectAgentLabels;
+use App\Models\HelpDesk;
 use App\Models\ProspectAgent;
+use App\Support\HelpdeskTaskStatusOptions;
+use App\Support\ProspectAgents\ProspectHelpdeskTicketCreator;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
@@ -363,6 +366,62 @@ class ProspectAgentInfolist
                         Tab::make('Seguimiento')
                             ->icon(Heroicon::OutlinedClipboardDocumentList)
                             ->schema([
+                                Section::make('Tickets de trabajo')
+                                    ->icon(Heroicon::OutlinedTicket)
+                                    ->description('Tickets del Helpdesk creados sobre este prospecto. Se gestionan en el Helpdesk.')
+                                    ->extraAttributes([
+                                        'class' => self::IOS_SECTION_CLASS,
+                                    ])
+                                    ->schema([
+                                        Grid::make(1)
+                                            ->extraAttributes([
+                                                'class' => self::IOS_INNER_CLASS,
+                                            ])
+                                            ->schema([
+                                                RepeatableEntry::make('helpdeskTickets')
+                                                    ->hiddenLabel()
+                                                    ->table([
+                                                        TableColumn::make('Ticket')->width('10%'),
+                                                        TableColumn::make('Estatus')->width('18%'),
+                                                        TableColumn::make('Prioridad')->width('10%'),
+                                                        TableColumn::make('Asignado a')->width('24%'),
+                                                        TableColumn::make('Creado por')->width('18%'),
+                                                        TableColumn::make('Fecha')->width('20%'),
+                                                    ])
+                                                    ->schema([
+                                                        TextEntry::make('id')
+                                                            ->formatStateUsing(fn (mixed $state): string => 'N.º '.$state)
+                                                            ->weight('bold')
+                                                            ->color('primary')
+                                                            ->url(fn (HelpDesk $record): ?string => ProspectHelpdeskTicketCreator::ticketUrl($record)),
+                                                        TextEntry::make('status')
+                                                            ->badge()
+                                                            ->color(fn (?string $state): string => match ($state) {
+                                                                HelpdeskTaskStatusOptions::STATUS_DONE => 'success',
+                                                                HelpdeskTaskStatusOptions::STATUS_CANCELLED, HelpdeskTaskStatusOptions::STATUS_REVERTED => 'danger',
+                                                                HelpdeskTaskStatusOptions::STATUS_PENDING => 'warning',
+                                                                default => 'info',
+                                                            }),
+                                                        TextEntry::make('priority')
+                                                            ->badge()
+                                                            ->color(fn (?string $state): string => match (strtoupper((string) $state)) {
+                                                                'ALTA' => 'danger',
+                                                                'BAJA' => 'gray',
+                                                                default => 'warning',
+                                                            }),
+                                                        TextEntry::make('rrhhColaboradores.fullName')
+                                                            ->badge()
+                                                            ->color('gray')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('created_by')
+                                                            ->placeholder('—'),
+                                                        TextEntry::make('created_at')
+                                                            ->dateTime('d/m/Y H:i'),
+                                                    ])
+                                                    ->placeholder('Sin tickets de trabajo. Créalo con «Ticket de trabajo» en el menú de acciones; se gestiona en el Helpdesk.')
+                                                    ->columnSpanFull(),
+                                            ]),
+                                    ]),
                                 Section::make('Tareas de gestión')
                                     ->icon(Heroicon::OutlinedClipboardDocumentList)
                                     ->description('Historial de tareas asignadas al prospecto.')
