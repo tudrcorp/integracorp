@@ -184,10 +184,6 @@ class CollectionsTable
                     ->formatStateUsing(fn (?string $state): string => self::isCorporate($state) ? 'Corporativa' : 'Individual')
                     ->color(fn (?string $state): string => self::isCorporate($state) ? 'verdeOpaco' : 'primary')
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('persons')
-                    ->label('Población')
-                    ->alignCenter()
-                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('coverage.price')
                     ->label('Cobertura')
                     ->money('USD')
