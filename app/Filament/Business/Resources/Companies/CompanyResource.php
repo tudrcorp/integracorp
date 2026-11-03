@@ -15,6 +15,7 @@ use App\Filament\Business\Resources\Companies\Tables\CompaniesTable;
 use App\Filament\Business\Resources\Concerns\ConfiguresBusinessGlobalSearch;
 use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Models\Company;
+use App\Support\Companies\CompanyResponsibleDays;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -126,7 +127,10 @@ class CompanyResource extends Resource
             ])
             ->withCount('responsibles')
             ->withSum('responsibles', 'contracted_days')
-            ->withCount('associates');
+            ->withCount([
+                'associates',
+                'associates as '.CompanyResponsibleDays::CONSUMING_ASSOCIATES_COUNT_ATTRIBUTE => fn (Builder $query): Builder => $query->consumesRegistrationDay(),
+            ]);
     }
 
     public static function getRelations(): array

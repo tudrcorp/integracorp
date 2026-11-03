@@ -51,6 +51,26 @@ class CompaniesTable
         return 'info';
     }
 
+    private static function consumptionColor(Company $record): string
+    {
+        $contracted = (int) ($record->responsibles_sum_contracted_days ?? 0);
+        $consumed = CompanyResponsibleDays::consumedDaysFor($record);
+
+        if ($contracted === 0) {
+            return 'gray';
+        }
+
+        if ($consumed > $contracted) {
+            return 'danger';
+        }
+
+        if ($consumed === $contracted) {
+            return 'warning';
+        }
+
+        return 'success';
+    }
+
     public static function configure(Table $table): Table
     {
         return $table
@@ -148,8 +168,21 @@ class CompaniesTable
                         ->formatStateUsing(fn ($state): string => number_format((int) ($state ?? 0), 0, ',', '.'))
                         ->badge()
                         ->color(fn (Company $record): string => self::utilizationColor($record))
+                        ->tooltip('Suma de los días asignados a los responsables en su ficha.')
                         ->alignCenter()
                         ->default(0),
+                    TextColumn::make('consumed_days')
+                        ->label('Días consumidos')
+                        ->state(fn (Company $record): int => CompanyResponsibleDays::consumedDaysFor($record))
+                        ->formatStateUsing(function (int $state, Company $record): string {
+                            $contracted = (int) ($record->responsibles_sum_contracted_days ?? 0);
+
+                            return number_format($state, 0, ',', '.').' / '.number_format($contracted, 0, ',', '.');
+                        })
+                        ->badge()
+                        ->color(fn (Company $record): string => self::consumptionColor($record))
+                        ->tooltip('Asociados registrados que gastan un día cada uno (los anulados no cuentan) frente a los días contratados.')
+                        ->alignCenter(),
                     TextColumn::make('population_utilization')
                         ->label('Uso población')
                         ->state(function (Company $record): string {
@@ -168,7 +201,7 @@ class CompaniesTable
                         })
                         ->badge()
                         ->color(fn (Company $record): string => self::utilizationColor($record))
-                        ->tooltip('Suma de días contratados vs población total del plan asociado.')
+                        ->tooltip('Días contratados por los responsables frente a la población total del plan. No es la población registrada: esa está en «Días consumidos».')
                         ->alignCenter(),
                 ]),
                 ColumnGroup::make('Contacto', [

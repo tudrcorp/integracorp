@@ -5,6 +5,7 @@ namespace App\Filament\Business\Resources\ProspectAgents\Pages;
 use App\Filament\Business\Resources\ProspectAgents\ProspectAgentDeletionActions;
 use App\Filament\Business\Resources\ProspectAgents\ProspectAgentLabels;
 use App\Filament\Business\Resources\ProspectAgents\ProspectAgentResource;
+use App\Filament\Business\Resources\ProspectAgents\ProspectWorkTicketActions;
 use App\Jobs\NotifyProspectAgentTaskAssigneeJob;
 use App\Models\ProspectAgent;
 use App\Models\ProspectAgentObservation;
@@ -24,6 +25,7 @@ use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Support\Enums\Width;
 use Illuminate\Contracts\View\View as ViewContract;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
@@ -41,6 +43,16 @@ class ViewProspectAgent extends ViewRecord
     public function getRelationManagers(): array
     {
         return [];
+    }
+
+    /**
+     * Carga de una vez los tickets del Helpdesk del prospecto para la pestaña Seguimiento (sin N+1).
+     */
+    protected function resolveRecord(int|string $key): Model
+    {
+        $record = parent::resolveRecord($key);
+
+        return $record->load(['helpdeskTickets.rrhhColaboradores:id,fullName']);
     }
 
     protected function getHeaderActions(): array
@@ -135,6 +147,8 @@ class ViewProspectAgent extends ViewRecord
                         }
 
                     }),
+
+                ProspectWorkTicketActions::single(),
 
                 Action::make('tascks')
                     ->hidden(fn (): bool => $this->isTrashedProspect())

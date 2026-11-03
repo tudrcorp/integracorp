@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -69,6 +70,18 @@ class ProspectAgent extends Model
     public function prospectAgentCoverageZones(): HasMany
     {
         return $this->hasMany(ProspectAgentCoverageZone::class)->orderBy('sort_order');
+    }
+
+    /**
+     * Tickets del Helpdesk creados sobre este prospecto («Ticket de trabajo»).
+     *
+     * @return BelongsToMany<HelpDesk, $this>
+     */
+    public function helpdeskTickets(): BelongsToMany
+    {
+        return $this->belongsToMany(HelpDesk::class, 'help_desk_prospect_agent')
+            ->withTimestamps()
+            ->latest('help_desks.id');
     }
 
     public function state()

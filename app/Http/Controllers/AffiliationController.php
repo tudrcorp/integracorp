@@ -9,6 +9,7 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Support\AffiliationCorporates\CorporateCertificateBenefitSections;
 use App\Support\Affiliations\Certificates\CertificatePrintableAffiliates;
+use App\Support\Affiliations\Certificates\IndividualCertificateValidity;
 use App\Support\Affiliations\WelcomeKitAttachments;
 use App\Support\DomPdfBatchRenderOptions;
 use App\Support\SecurityAudit;
@@ -941,15 +942,12 @@ class AffiliationController extends Controller
             }
 
             // 3. Preparación de datos del pagador con valores de respaldo (Fallback)
-            $effectiveDate = $record->effective_date;
-            $finalVigencia = '';
+            $validity = IndividualCertificateValidity::forAffiliation($record);
+            $effectiveDate = $validity['desde'];
+            $finalVigencia = $validity['hasta'];
 
-            if (! empty($effectiveDate)) {
-                try {
-                    $finalVigencia = Carbon::createFromFormat('d/m/Y', $effectiveDate)->addYear()->format('d/m/Y');
-                } catch (Throwable $e) {
-                    Log::warning("Fecha de vigencia con formato inválido para registro ID: {$record->id}");
-                }
+            if ($effectiveDate === '' && filled($record->effective_date)) {
+                Log::warning("Fecha de vigencia con formato inválido para registro ID: {$record->id}");
             }
 
             $pagador = [
@@ -962,7 +960,7 @@ class AffiliationController extends Controller
                 'cobertura' => (float) ($record->coverage?->price ?? 0),
                 'fecha_afiliacion' => $record->activated_at ?? '',
                 'tarifa_periodo' => (float) ($record->total_amount ?? 0),
-                'fecha_vigencia' => $effectiveDate ?? '',
+                'fecha_vigencia' => $effectiveDate,
                 'fecha_vigencia_final' => $finalVigencia,
             ];
 

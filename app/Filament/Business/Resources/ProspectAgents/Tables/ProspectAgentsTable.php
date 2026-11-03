@@ -6,6 +6,7 @@ namespace App\Filament\Business\Resources\ProspectAgents\Tables;
 
 use App\Filament\Business\Resources\ProspectAgents\ProspectAgentDeletionActions;
 use App\Filament\Business\Resources\ProspectAgents\ProspectAgentLabels;
+use App\Filament\Business\Resources\ProspectAgents\ProspectWorkTicketActions;
 use App\Http\Controllers\ProspectAgentExportCsvController;
 use App\Models\ProspectAgent;
 use Filament\Actions\BulkAction;
@@ -269,6 +270,7 @@ class ProspectAgentsTable
 
                             return redirect()->route('business.prospect-agents.export-csv', ['token' => $token]);
                         }),
+                    ProspectWorkTicketActions::bulk(),
                     ProspectAgentDeletionActions::bulkDelete(),
                     ProspectAgentDeletionActions::bulkRestore(),
                 ]),

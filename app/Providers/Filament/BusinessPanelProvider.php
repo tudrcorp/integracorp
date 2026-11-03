@@ -177,6 +177,11 @@ class BusinessPanelProvider extends PanelProvider
                 scopes: [Dashboard::class],
             )
             ->renderHook(
+                PanelsRenderHook::PAGE_START,
+                fn () => view('filament.operations.dashboard.page-start', ['branding' => true, 'brandingLabel' => 'Negocios · Captación']),
+                scopes: [\App\Filament\Business\Pages\DashboardCaptacion::class],
+            )
+            ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn () => view('filament.panels.internal-quick-nav')
             )

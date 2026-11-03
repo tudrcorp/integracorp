@@ -229,6 +229,7 @@ final class DepartmentNavigationPermissionRegistry
         WhiteCompanyResource::class => ['empresas-aliadas'],
         CreditReconciliationResource::class => ['conciliacion-de-credito'],
         ProspectAgentResource::class => ['capacitacion'],
+        \App\Filament\Business\Pages\DashboardCaptacion::class => ['capacitacion'],
         BusinessAppointmentsResource::class => ['citas'],
         PlanGeneratorResource::class => ['generador-de-planes'],
         PlanGeneratorImageResource::class => ['galeria-imagenes'],

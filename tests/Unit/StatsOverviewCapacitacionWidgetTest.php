@@ -44,12 +44,12 @@ it('cuenta total de captación y los cinco estatus del embudo', function (): voi
         ->and($src)->toContain('statusKeysIncludingLegacy');
 });
 
-it('está registrado en el listado de prospectos', function (): void {
-    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/ProspectAgents/Pages/ListProspectAgents.php';
-    $contents = file_get_contents($path);
+it('sus indicadores se mudaron al Dashboard de Captación', function (): void {
+    $list = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/ProspectAgents/Pages/ListProspectAgents.php');
+    $dashboard = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Pages/DashboardCaptacion.php');
 
-    expect($contents)->not->toBeFalse()
-        ->and($contents)->toContain('StatsOverviewCapacitacion::class');
+    expect($list)->not->toContain('StatsOverviewCapacitacion::class')
+        ->and($dashboard)->toContain('CaptacionKpiTiles::class');
 });
 
 it('el default de estatus coincide con captación/prospección', function (): void {

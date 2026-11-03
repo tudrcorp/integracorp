@@ -107,4 +107,15 @@ class HelpDesk extends Model
         return $this->belongsToMany(RrhhColaborador::class, 'help_desk_rrhh_colaborador')
             ->withTimestamps();
     }
+
+    /**
+     * Prospectos de Captación sobre los que se creó el ticket («Ticket de trabajo»).
+     *
+     * @return BelongsToMany<ProspectAgent, $this>
+     */
+    public function prospectAgents(): BelongsToMany
+    {
+        return $this->belongsToMany(ProspectAgent::class, 'help_desk_prospect_agent')
+            ->withTimestamps();
+    }
 }

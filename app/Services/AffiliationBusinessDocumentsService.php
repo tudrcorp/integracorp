@@ -8,10 +8,10 @@ use App\Models\Affiliate;
 use App\Models\Affiliation;
 use App\Support\AffiliateCard\AffiliateCardPageLayout;
 use App\Support\Affiliations\Certificates\CertificatePrintableAffiliates;
+use App\Support\Affiliations\Certificates\IndividualCertificateValidity;
 use App\Support\TarjetaAfiliacionQrPlanCatalog;
 use App\Support\Viveplus\ViveplusDocumentWebhookDispatcher;
 use App\Support\WhiteCompanies\WhiteCompanyDocumentBrand;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -290,8 +290,7 @@ class AffiliationBusinessDocumentsService
             ],
         ];
 
-        $desde = $record->effective_date ?? '';
-        $hasta = self::vigenciaHasta($record->effective_date);
+        ['desde' => $desde, 'hasta' => $hasta] = IndividualCertificateValidity::forAffiliation($record);
         $planId = $record->plan_id !== null ? (int) $record->plan_id : null;
         $planDesc = $brand->planDisplayName($planId, $record->plan?->description ?? '');
         $cobertura = $record->coverage?->price ?? '';
@@ -604,19 +603,6 @@ class AffiliationBusinessDocumentsService
             if (is_file($tarjetaPath)) {
                 unlink($tarjetaPath);
             }
-        }
-    }
-
-    private static function vigenciaHasta(?string $effectiveDate): string
-    {
-        if (empty($effectiveDate)) {
-            return '';
-        }
-
-        try {
-            return Carbon::createFromFormat('d/m/Y', $effectiveDate)->addYear()->format('d/m/Y');
-        } catch (\Throwable) {
-            return '';
         }
     }
 

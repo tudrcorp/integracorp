@@ -4,11 +4,32 @@ declare(strict_types=1);
 
 namespace App\Support\Companies;
 
+use App\Models\Company;
 use App\Models\PlanGenerator;
 use App\Support\PlanGenerators\PlanGeneratorPopulationValidator;
 
 final class CompanyResponsibleDays
 {
+    /**
+     * Alias del conteo precargado de asociados que gastan días (todos menos los anulados).
+     */
+    public const string CONSUMING_ASSOCIATES_COUNT_ATTRIBUTE = 'associates_consuming_days_count';
+
+    /**
+     * Días ya gastados por la empresa: cada asociado no anulado consume
+     * {@see CompanyAssociateRegistrar::DAYS_PER_REGISTRATION}, igual que el tope por responsable.
+     */
+    public static function consumedDaysFor(Company $company): int
+    {
+        $count = $company->getAttribute(self::CONSUMING_ASSOCIATES_COUNT_ATTRIBUTE);
+
+        if ($count === null) {
+            $count = $company->associates()->consumesRegistrationDay()->count();
+        }
+
+        return (int) $count * CompanyAssociateRegistrar::DAYS_PER_REGISTRATION;
+    }
+
     public static function populationTotalFor(?PlanGenerator $plan): ?int
     {
         if (! $plan instanceof PlanGenerator) {
