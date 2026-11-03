@@ -16,6 +16,7 @@ use App\Models\CorporatePopulationUpdate;
 use App\Models\CorporatePopulationUpdateItem;
 use App\Models\PaidMembershipCorporate;
 use App\Models\User;
+use App\Support\AffiliationCorporates\CorporateBillingDocument;
 use App\Support\AffiliationCorporates\CorporatePaymentFrequency;
 use App\Support\Affiliations\DateCorrection\AffiliationDateCorrector;
 use App\Support\Affiliations\DateCorrection\DateCorrectionSubject;
@@ -640,7 +641,7 @@ final class PopulationBillingAdjuster
         $charge->affiliation_code = (string) $owner->code;
         $charge->affiliate_full_name = $template->affiliate_full_name ?: $owner->name_corporate;
         $charge->affiliate_contact = $template->affiliate_contact;
-        $charge->affiliate_ci_rif = $template->affiliate_ci_rif;
+        $charge->affiliate_ci_rif = CorporateBillingDocument::for($owner) ?? $template->affiliate_ci_rif;
         $charge->affiliate_phone = $template->affiliate_phone;
         $charge->affiliate_email = $template->affiliate_email;
         $charge->affiliate_status = (string) $owner->status;
