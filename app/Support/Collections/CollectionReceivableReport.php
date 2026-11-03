@@ -7,6 +7,7 @@ namespace App\Support\Collections;
 use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
 use App\Models\Collection;
+use App\Support\AffiliationCorporates\CorporateBillingDocument;
 use App\Support\Affiliations\AffiliationDocumentPrefix;
 use App\Support\Affiliations\AffiliationDocumentTypeColumns;
 use Carbon\CarbonImmutable;
@@ -92,6 +93,21 @@ final class CollectionReceivableReport
                 .($documentTypes ? ',document_type_ti,document_type_payer' : ''),
             'affiliationCorporateByCode:id,code,status,fee_anual,activated_at,effective_date,payment_frequency,name_corporate,rif'
                 .($documentTypes ? ',document_type_rif' : ''),
+            'affiliationCorporateByCode.affiliationCorporatePlans:id,affiliation_corporate_id,plan_id',
+            'affiliationCorporateByCode.affiliationCorporatePlans.plan:id,description',
+        ];
+    }
+
+    /**
+     * Relaciones para mostrar el plan de una cuota corporativa, que se guarda sin `plan_id`
+     * porque la afiliación puede tener varios planes ({@see self::planLabel()}).
+     *
+     * @return list<string>
+     */
+    public static function corporatePlanEagerLoads(): array
+    {
+        return [
+            'affiliationCorporateByCode:id,code',
             'affiliationCorporateByCode.affiliationCorporatePlans:id,affiliation_corporate_id,plan_id',
             'affiliationCorporateByCode.affiliationCorporatePlans.plan:id,description',
         ];
@@ -310,8 +326,20 @@ final class CollectionReceivableReport
         return self::clean($collection->affiliate_full_name);
     }
 
+    /**
+     * En corporativas el titular es la empresa: se muestra el RIF de la afiliación aunque la
+     * cuota haya guardado otro documento ({@see CorporateBillingDocument}).
+     */
     public static function holderDocument(Collection $collection): ?string
     {
+        if (self::isCorporate($collection)) {
+            $rif = self::clean(self::corporateAffiliation($collection)?->getAttribute('rif'));
+
+            if ($rif !== null) {
+                return $rif;
+            }
+        }
+
         return self::clean($collection->affiliate_ci_rif);
     }
 

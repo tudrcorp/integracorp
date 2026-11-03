@@ -512,6 +512,7 @@ final class CorporatePaymentFrequencyChanger
             $collection = $template->replicate();
             $collection->collection_invoice_number = UtilsController::generateCorrelativeCollection($lastInvoice);
             $collection->affiliate_status = $owner->status;
+            $collection->affiliate_ci_rif = CorporateBillingDocument::for($owner) ?? $template->affiliate_ci_rif;
             $collection->payment_frequency = $frequency;
             $collection->total_amount = $installment['amount'];
             $collection->next_payment_date = $installment['date']->format('d/m/Y');

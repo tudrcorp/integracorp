@@ -1,0 +1,175 @@
+{
+  "affiliation_code": "TDEC-COR-00056",
+  "reason": "Casalbeach (TDEC-COR-00056): bajas de Eusebio Torrealba (377/año) y Darwin Sifontes (339/año, 23/10/2026), sin crédito: cuotas desde 09/11/2026 bajan 59,67 (30→28 personas). Saldo calculado sobre 2.500 realmente cobrados el 09/09 (confirmado por Gustavo el 03/11/2026). La cuota de octubre queda en lo pagado (842,27). Etiqueta mensual en las 3 cuotas que decían trimestral. RIF de la empresa en lugar de la cédula del contacto.",
+  "collections": [
+    {
+      "id": 1102,
+      "invoice": "09-00974",
+      "expect": {
+        "total_amount": "1009.17",
+        "affiliate_ci_rif": "123546"
+      },
+      "set": {
+        "total_amount": "842.27",
+        "affiliate_ci_rif": "298343427"
+      }
+    },
+    {
+      "id": 1104,
+      "invoice": "09-00976",
+      "expect": {
+        "total_amount": "842.27",
+        "persons": "30",
+        "affiliate_ci_rif": "123546"
+      },
+      "set": {
+        "total_amount": "782.60",
+        "persons": "28",
+        "affiliate_ci_rif": "298343427"
+      }
+    },
+    {
+      "id": 1052,
+      "invoice": "09-00926",
+      "expect": {
+        "total_amount": "842.27",
+        "persons": "30",
+        "affiliate_ci_rif": "123546",
+        "payment_frequency": "TRIMESTRAL"
+      },
+      "set": {
+        "total_amount": "782.60",
+        "persons": "28",
+        "affiliate_ci_rif": "298343427",
+        "payment_frequency": "MENSUAL"
+      }
+    },
+    {
+      "id": 1105,
+      "invoice": "09-00977",
+      "expect": {
+        "total_amount": "842.27",
+        "persons": "30",
+        "affiliate_ci_rif": "123546"
+      },
+      "set": {
+        "total_amount": "782.60",
+        "persons": "28",
+        "affiliate_ci_rif": "298343427"
+      }
+    },
+    {
+      "id": 1106,
+      "invoice": "09-00978",
+      "expect": {
+        "total_amount": "842.27",
+        "persons": "30",
+        "affiliate_ci_rif": "123546"
+      },
+      "set": {
+        "total_amount": "782.60",
+        "persons": "28",
+        "affiliate_ci_rif": "298343427"
+      }
+    },
+    {
+      "id": 1107,
+      "invoice": "09-00979",
+      "expect": {
+        "total_amount": "842.27",
+        "persons": "30",
+        "affiliate_ci_rif": "123546"
+      },
+      "set": {
+        "total_amount": "782.60",
+        "persons": "28",
+        "affiliate_ci_rif": "298343427"
+      }
+    },
+    {
+      "id": 1053,
+      "invoice": "09-00927",
+      "expect": {
+        "total_amount": "842.27",
+        "persons": "30",
+        "affiliate_ci_rif": "123546",
+        "payment_frequency": "TRIMESTRAL"
+      },
+      "set": {
+        "total_amount": "782.60",
+        "persons": "28",
+        "affiliate_ci_rif": "298343427",
+        "payment_frequency": "MENSUAL"
+      }
+    },
+    {
+      "id": 1108,
+      "invoice": "09-00980",
+      "expect": {
+        "total_amount": "842.27",
+        "persons": "30",
+        "affiliate_ci_rif": "123546"
+      },
+      "set": {
+        "total_amount": "782.60",
+        "persons": "28",
+        "affiliate_ci_rif": "298343427"
+      }
+    },
+    {
+      "id": 1109,
+      "invoice": "09-00981",
+      "expect": {
+        "total_amount": "842.27",
+        "persons": "30",
+        "affiliate_ci_rif": "123546"
+      },
+      "set": {
+        "total_amount": "782.60",
+        "persons": "28",
+        "affiliate_ci_rif": "298343427"
+      }
+    },
+    {
+      "id": 1110,
+      "invoice": "09-00982",
+      "expect": {
+        "total_amount": "842.27",
+        "persons": "30",
+        "affiliate_ci_rif": "123546"
+      },
+      "set": {
+        "total_amount": "782.60",
+        "persons": "28",
+        "affiliate_ci_rif": "298343427"
+      }
+    },
+    {
+      "id": 1051,
+      "invoice": "09-00925",
+      "expect": {
+        "total_amount": "842.27",
+        "persons": "30",
+        "affiliate_ci_rif": "123546",
+        "payment_frequency": "TRIMESTRAL"
+      },
+      "set": {
+        "total_amount": "782.63",
+        "persons": "28",
+        "affiliate_ci_rif": "298343427",
+        "payment_frequency": "MENSUAL"
+      }
+    }
+  ],
+  "affiliation_corporate": {
+    "id": 56,
+    "expect": {
+      "fee_anual": "11388",
+      "total_amount": "949.00"
+    },
+    "set": {
+      "fee_anual": "11049",
+      "total_amount": "920.75"
+    }
+  }
+}

@@ -67,6 +67,7 @@ class CollectionsTable
                     'plan:id,description',
                     'agent:id,name',
                     'coverage:id,price',
+                    ...CollectionReceivableReport::corporatePlanEagerLoads(),
                 ])
                 ->withCount('adjustments'))
             ->defaultSort('created_at', 'desc')
@@ -100,6 +101,7 @@ class CollectionsTable
                     ->searchable(),
                 TextColumn::make('plan.description')
                     ->label('Plan')
+                    ->state(fn (Collection $record): ?string => CollectionReceivableReport::planLabel($record))
                     ->badge()
                     ->color(fn (?string $state): string => match ($state) {
                         'PLAN INICIAL' => 'azul',

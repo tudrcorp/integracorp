@@ -10,6 +10,7 @@ use App\Models\Collection;
 use App\Models\Commission;
 use App\Models\Sale;
 use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
+use App\Support\AffiliationCorporates\CorporateBillingDocument;
 use App\Support\CreditReconciliations\WhiteCompanyCreditMovementRecorder;
 use App\Support\PaidMemberships\AffiliationQuoteNumber;
 use App\Support\PaidMemberships\AgencyTypeForCommission;
@@ -107,7 +108,7 @@ class PaidMembershipCorporateController extends Controller
                 $sales->affiliation_code = $record->affiliation_corporate->code;
                 $sales->affiliate_full_name = $record->affiliation_corporate->name_corporate;
                 $sales->affiliate_contact = $record->affiliation_corporate->full_name_contact;
-                $sales->affiliate_ci_rif = $record->affiliation_corporate->nro_identificacion_contact;
+                $sales->affiliate_ci_rif = CorporateBillingDocument::for($record->affiliation_corporate);
                 $sales->affiliate_phone = $record->affiliation_corporate->phone_contact;
                 $sales->affiliate_email = $record->affiliation_corporate->email_contact;
                 $sales->service = 'servicio';
@@ -169,7 +170,7 @@ class PaidMembershipCorporateController extends Controller
                     $collections->affiliation_code = $record->affiliation_corporate->code;
                     $collections->affiliate_full_name = $record->affiliation_corporate->name_corporate;
                     $collections->affiliate_contact = $record->affiliation_corporate->full_name_contact;
-                    $collections->affiliate_ci_rif = $record->affiliation_corporate->nro_identificacion_contact;
+                    $collections->affiliate_ci_rif = CorporateBillingDocument::for($record->affiliation_corporate);
                     $collections->affiliate_phone = $record->affiliation_corporate->phone_contact;
                     $collections->affiliate_email = $record->affiliation_corporate->email_contact;
                     $collections->affiliate_status = $record->affiliation_corporate->status;
@@ -246,7 +247,7 @@ class PaidMembershipCorporateController extends Controller
                         $collections->affiliation_code = $record->affiliation_corporate->code;
                         $collections->affiliate_full_name = $record->affiliation_corporate->name_corporate;
                         $collections->affiliate_contact = $record->affiliation_corporate->full_name_contact;
-                        $collections->affiliate_ci_rif = $record->affiliation_corporate->nro_identificacion_contact;
+                        $collections->affiliate_ci_rif = CorporateBillingDocument::for($record->affiliation_corporate);
                         $collections->affiliate_phone = $record->affiliation_corporate->phone_contact;
                         $collections->affiliate_email = $record->affiliation_corporate->email_contact;
                         $collections->affiliate_status = $record->affiliation_corporate->status;
@@ -312,7 +313,7 @@ class PaidMembershipCorporateController extends Controller
                     $collections->affiliation_code = $record->affiliation_corporate->code;
                     $collections->affiliate_full_name = $record->affiliation_corporate->name_corporate;
                     $collections->affiliate_contact = $record->affiliation_corporate->full_name_contact;
-                    $collections->affiliate_ci_rif = $record->affiliation_corporate->nro_identificacion_contact;
+                    $collections->affiliate_ci_rif = CorporateBillingDocument::for($record->affiliation_corporate);
                     $collections->affiliate_phone = $record->affiliation_corporate->phone_contact;
                     $collections->affiliate_email = $record->affiliation_corporate->email_contact;
                     $collections->affiliate_status = $record->affiliation_corporate->status;
@@ -383,7 +384,7 @@ class PaidMembershipCorporateController extends Controller
                         $collections->affiliation_code = $record->affiliation_corporate->code;
                         $collections->affiliate_full_name = $record->affiliation_corporate->name_corporate;
                         $collections->affiliate_contact = $record->affiliation_corporate->full_name_contact;
-                        $collections->affiliate_ci_rif = $record->affiliation_corporate->nro_identificacion_contact;
+                        $collections->affiliate_ci_rif = CorporateBillingDocument::for($record->affiliation_corporate);
                         $collections->affiliate_phone = $record->affiliation_corporate->phone_contact;
                         $collections->affiliate_email = $record->affiliation_corporate->email_contact;
                         $collections->affiliate_status = $record->affiliation_corporate->status;
@@ -722,7 +723,7 @@ class PaidMembershipCorporateController extends Controller
                 $sales->affiliation_code = $record->affiliation_corporate->code;
                 $sales->affiliate_full_name = $record->affiliation_corporate->name_corporate;
                 $sales->affiliate_contact = $record->affiliation_corporate->full_name_contact;
-                $sales->affiliate_ci_rif = $record->affiliation_corporate->nro_identificacion_contact;
+                $sales->affiliate_ci_rif = CorporateBillingDocument::for($record->affiliation_corporate);
                 $sales->affiliate_phone = $record->affiliation_corporate->phone_contact;
                 $sales->affiliate_email = $record->affiliation_corporate->email_contact;
                 $sales->service = 'servicio';

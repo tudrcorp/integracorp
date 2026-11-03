@@ -42,6 +42,7 @@ function seedFrequencyScenario(): void
         $table->string('code')->nullable();
         $table->string('name_corporate')->nullable();
         $table->string('rif')->nullable();
+        $table->string('nro_identificacion_contact')->nullable();
         $table->string('address')->nullable();
         $table->string('phone')->nullable();
         $table->string('email')->nullable();
@@ -95,6 +96,7 @@ function seedFrequencyScenario(): void
         $table->string('collection_invoice_number')->nullable();
         $table->string('affiliation_code')->nullable();
         $table->string('affiliate_full_name')->nullable();
+        $table->string('affiliate_ci_rif')->nullable();
         $table->string('affiliate_status')->nullable();
         $table->string('type')->nullable();
         $table->string('payment_frequency')->nullable();
@@ -351,6 +353,15 @@ it('cambia la frecuencia y reemplaza los avisos pendientes por el mismo saldo', 
         ->and(DB::table('renovation_corporates')->value('payment_frequency'))->toBe('MENSUAL');
 
     Bus::assertDispatchedTimes(CreateAvisoDeCobro::class, 9);
+});
+
+it('los avisos nuevos llevan el RIF de la empresa, no el documento del aviso que reemplazan', function (): void {
+    DB::table('affiliation_corporates')->where('id', 1)->update(['rif' => '298343427', 'nro_identificacion_contact' => '123546']);
+    DB::table('collections')->whereIn('id', [11, 12, 13])->update(['affiliate_ci_rif' => '123546']);
+
+    CorporatePaymentFrequencyChanger::change(frequencyOwner(), 'mensual');
+
+    expect(DB::table('collections')->where('status', 'POR PAGAR')->pluck('affiliate_ci_rif')->unique()->all())->toBe(['298343427']);
 });
 
 it('la vista previa anticipa lo mismo que se aplica, sin escribir', function (): void {

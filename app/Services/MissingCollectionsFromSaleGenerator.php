@@ -11,6 +11,7 @@ use App\Models\AffiliationCorporate;
 use App\Models\AnnualCollection;
 use App\Models\Collection;
 use App\Models\Sale;
+use App\Support\AffiliationCorporates\CorporateBillingDocument;
 use App\Support\PaidMemberships\AffiliationQuoteNumber;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -201,9 +202,7 @@ final class MissingCollectionsFromSaleGenerator
             $collection->quote_number = AffiliationQuoteNumber::forCorporate($affiliation);
             $collection->affiliate_full_name = $affiliation->name_corporate;
             $collection->affiliate_contact = $affiliation->full_name_contact ?: $affiliation->name_corporate;
-            $collection->affiliate_ci_rif = filled($affiliation->nro_identificacion_contact)
-                ? $affiliation->nro_identificacion_contact
-                : $affiliation->rif;
+            $collection->affiliate_ci_rif = CorporateBillingDocument::for($affiliation);
             $collection->affiliate_phone = $affiliation->phone_contact ?: $affiliation->phone;
             $collection->affiliate_email = $affiliation->email_contact ?: $affiliation->email;
             $collection->type = 'AFILIACION CORPORATIVA';

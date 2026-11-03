@@ -6,6 +6,7 @@ namespace App\Support\Exports;
 
 use App\Models\Collection;
 use App\Support\Collections\CollectionDueDate;
+use App\Support\Collections\CollectionReceivableReport;
 use App\Support\CsvExportStream;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -76,7 +77,7 @@ final class CollectionCsvExportService
 
             foreach (array_chunk($ids, 1000) as $chunk) {
                 Collection::query()
-                    ->with(['plan:id,description', 'agent:id,name', 'coverage:id,price'])
+                    ->with(['plan:id,description', 'agent:id,name', 'coverage:id,price', ...CollectionReceivableReport::corporatePlanEagerLoads()])
                     ->whereKey($chunk)
                     ->lazyById(200)
                     ->each(function (Collection $record) use ($handle): void {
@@ -105,7 +106,7 @@ final class CollectionCsvExportService
             str_contains(Str::upper(Str::ascii((string) $record->type)), 'CORPORATIVA') ? 'CORPORATIVA' : 'INDIVIDUAL',
             (string) ($record->code_agency ?? ''),
             (string) ($record->agent?->name ?? ''),
-            (string) ($record->plan?->description ?? ''),
+            (string) (CollectionReceivableReport::planLabel($record) ?? ''),
             (string) ($record->payment_frequency ?? ''),
             $coverage,
             (string) ($record->persons ?? ''),
