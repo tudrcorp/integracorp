@@ -11,6 +11,7 @@ use App\Models\AffiliationCorporate;
 use App\Models\AffiliationCorporateRenovationHistory;
 use App\Models\RenovationCorporate;
 use App\Support\AffiliationAffiliateFeeCalculator;
+use App\Support\AffiliationCorporates\CorporatePlanRowSync;
 use App\Support\Renovations\EarlyRenovationAcceptance;
 use App\Support\Renovations\EarlyRenovationAuthorization;
 use App\Support\Renovations\EarlyRenovationNotificationPayload;
@@ -151,14 +152,15 @@ final class AcceptAffiliationCorporateRenovationsService
             ->withActiveUpgradesTotal()
             ->get();
 
-        if ($manualOptions !== null) {
-            $this->applyManualCommercialConfig($affiliation, $affiliates, $manualOptions, $acceptanceDate);
-        } else {
-            $this->applyProjectedRenovationConfig($renovation, $affiliation, $affiliates, $acceptanceDate);
-        }
+        $repriced = $manualOptions !== null
+            ? $this->applyManualCommercialConfig($affiliation, $affiliates, $manualOptions, $acceptanceDate)
+            : $this->applyProjectedRenovationConfig($renovation, $affiliation, $affiliates, $acceptanceDate);
 
         $affiliation->refresh();
         $this->recalculateAffiliationTotals($affiliation);
+
+        /** Sin esto las filas del plan conservan la tarifa vieja y el aviso imprime una línea distinta al total. */
+        CorporatePlanRowSync::sync($affiliation, $repriced, $acceptedBy);
 
         $newEffectiveDate = $renovation->date_renewal->format('d/m/Y');
         $affiliation->effective_date = $newEffectiveDate;
@@ -198,13 +200,16 @@ final class AcceptAffiliationCorporateRenovationsService
 
     /**
      * @param  EloquentCollection<int, AffiliateCorporate>  $affiliates
+     * @return array<int, array{plan_fee: float, age_range_id: int|null}>
      */
     private function applyManualCommercialConfig(
         AffiliationCorporate $affiliation,
         EloquentCollection $affiliates,
         ManualRenovationAcceptanceOptions $manualOptions,
         Carbon $acceptanceDate,
-    ): void {
+    ): array {
+        $repriced = [];
+
         $affiliation->payment_frequency = $manualOptions->paymentFrequency;
         $affiliation->save();
 
@@ -237,18 +242,25 @@ final class AcceptAffiliationCorporateRenovationsService
                 'payment_frequency' => $manualOptions->paymentFrequency,
                 'age' => $age,
             ]);
+
+            $repriced[(int) $affiliate->id] = self::repricedLine($amounts);
         }
+
+        return $repriced;
     }
 
     /**
      * @param  EloquentCollection<int, AffiliateCorporate>  $affiliates
+     * @return array<int, array{plan_fee: float, age_range_id: int|null}>
      */
     private function applyProjectedRenovationConfig(
         RenovationCorporate $renovation,
         AffiliationCorporate $affiliation,
         EloquentCollection $affiliates,
         Carbon $acceptanceDate,
-    ): void {
+    ): array {
+        $repriced = [];
+
         /** @var array{affiliates?: list<array<string, mixed>>, out_of_range_affiliate_ids?: list<int>} $info */
         $info = is_array($renovation->info_renovation) ? $renovation->info_renovation : [];
         $snapshotsById = collect($info['affiliates'] ?? [])->keyBy('affiliate_corporate_id');
@@ -294,6 +306,8 @@ final class AcceptAffiliationCorporateRenovationsService
                         'age' => $age,
                     ]);
 
+                    $repriced[(int) $affiliate->id] = self::repricedLine($amounts);
+
                     continue;
                 }
             }
@@ -304,6 +318,22 @@ final class AcceptAffiliationCorporateRenovationsService
                 'age' => $age ?? $affiliate->age,
             ]);
         }
+
+        return $repriced;
+    }
+
+    /**
+     * Tarifa del plan (sin upgrades) y rango de edad con que se recalculó al afiliado.
+     *
+     * @param  array{annual_fee: float, age_range_id: int|null}  $amounts
+     * @return array{plan_fee: float, age_range_id: int|null}
+     */
+    private static function repricedLine(array $amounts): array
+    {
+        return [
+            'plan_fee' => round((float) $amounts['annual_fee'], 2),
+            'age_range_id' => $amounts['age_range_id'] !== null ? (int) $amounts['age_range_id'] : null,
+        ];
     }
 
     /**
