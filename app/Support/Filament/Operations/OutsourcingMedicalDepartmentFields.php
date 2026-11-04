@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support\Filament\Operations;
 
+use App\Models\CapitationPlan;
+use App\Models\DoctorNurse;
 use App\Support\Operations\OutsourcingMedicalDepartment;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -16,6 +18,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\HtmlString;
 
 /**
  * Campos, entradas, columna y filtro del Departamento Médico Outsourcing,
@@ -69,7 +72,7 @@ final class OutsourcingMedicalDepartmentFields
     }
 
     /**
-     * @return array{0: IconEntry, 1: TextEntry}
+     * @return array{0: IconEntry, 1: TextEntry, 2: TextEntry}
      */
     public static function infolistEntries(): array
     {
@@ -90,7 +93,46 @@ final class OutsourcingMedicalDepartmentFields
                 ->formatStateUsing(fn (mixed $state): ?string => OutsourcingMedicalDepartment::formatFee($state))
                 ->visible(fn (?Model $record): bool => (bool) $record?->getAttribute(OutsourcingMedicalDepartment::FLAG_COLUMN))
                 ->placeholder('Sin tarifa registrada'),
+            TextEntry::make('capitation_plans_summary')
+                ->label('Planes de capitado')
+                ->icon(Heroicon::OutlinedHandRaised)
+                ->columnSpanFull()
+                ->state(fn (?Model $record): ?HtmlString => $record === null ? null : self::capitationPlansSummary($record))
+                ->visible(fn (?Model $record): bool => $record !== null && ((bool) $record->getAttribute(OutsourcingMedicalDepartment::FLAG_COLUMN) || self::capitationPlans($record)->isNotEmpty()))
+                ->placeholder('Sin planes de capitado. Se crean en Negocios → Configuración → Planes de Capitado.'),
         ];
+    }
+
+    /**
+     * Planes de capitado activos del proveedor (solo lectura; se gestionan en Negocios).
+     *
+     * @return \Illuminate\Support\Collection<int, CapitationPlan>
+     */
+    private static function capitationPlans(Model $provider): \Illuminate\Support\Collection
+    {
+        $type = $provider instanceof DoctorNurse ? CapitationPlan::PROVIDER_DOCTOR_NURSE : CapitationPlan::PROVIDER_SUPPLIER;
+
+        return once(static fn (): \Illuminate\Support\Collection => CapitationPlan::query()
+            ->forProvider($type, (int) $provider->getKey())
+            ->where('status', CapitationPlan::STATUS_ACTIVE)
+            ->withCount('benefits')
+            ->orderBy('name')
+            ->get(['id', 'name', 'cost_per_affiliate_usd', 'payment_frequency', 'valid_until']));
+    }
+
+    private static function capitationPlansSummary(Model $provider): ?HtmlString
+    {
+        $plans = self::capitationPlans($provider);
+
+        if ($plans->isEmpty()) {
+            return null;
+        }
+
+        return new HtmlString('<ul class="space-y-1 text-sm">'.$plans->map(fn (CapitationPlan $plan): string => '<li><span class="font-semibold text-gray-900 dark:text-white">'.e($plan->name).'</span> · US$ '
+            .number_format((float) $plan->cost_per_affiliate_usd, 2, ',', '.').' por afiliado, '.mb_strtolower($plan->payment_frequency->label())
+            .' · '.($plan->benefits_count === 1 ? '1 beneficio' : $plan->benefits_count.' beneficios')
+            .($plan->valid_until !== null ? ' · hasta '.$plan->valid_until->format('d/m/Y') : '')
+            .'</li>')->implode('').'</ul>');
     }
 
     public static function tableColumn(): TextColumn
