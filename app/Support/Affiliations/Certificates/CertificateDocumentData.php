@@ -32,7 +32,7 @@ final class CertificateDocumentData
     public const CARNETS_PER_PAGE = 4;
 
     /**
-     * @param  array{tipo: string, codigo: string, planLabel: string, benefits: array{rows: list<array{t: string, cob: string, limited: bool}>, hero: array{label: string, value: string, note: string}, carnet: string, emergency: bool}, preexNote: bool, heroSub: string, period: ?CertificatePaymentPeriod, contratante: string, contratanteId: string, agente: string, tarifaAnual: string, fechaAfiliacion: string, people: list<array<string, mixed>>, carnets: list<array<string, mixed>>, grupoTitulo: string, relationPlanColumn?: bool, issue: AffiliationCertificateIssue}  $in
+     * @param  array{tipo: string, codigo: string, planLabel: string, benefits: array{rows: list<array{t: string, cob: string, limited: bool}>, hero: array{label: string, value: string, note: string}, carnet: string, emergency: bool}, preexNote: bool, heroSub: string, period: ?CertificatePaymentPeriod, contratante: string, contratanteId: string, agente: string, tarifaAnual: string, fechaAfiliacion: string, people: list<array<string, mixed>>, carnets: list<array<string, mixed>>, grupoTitulo: string, relationPlanColumn?: bool, relationCoverageColumn?: bool, heroHidden?: bool, issue: AffiliationCertificateIssue}  $in
      * @return array<string, mixed>
      */
     public static function assemble(array $in): array
@@ -94,6 +94,8 @@ final class CertificateDocumentData
             'relPaginas' => self::relationPagesLabel($pages),
             'nBeneficios' => count(array_filter($benefits['rows'], static fn (array $row): bool => ! isset($row['section']))),
             'relationPlanColumn' => (bool) ($in['relationPlanColumn'] ?? false),
+            'relationCoverageColumn' => (bool) ($in['relationCoverageColumn'] ?? false),
+            'heroHidden' => (bool) ($in['heroHidden'] ?? false),
             'preexNote' => $in['preexNote'] || $hasEmergency,
             'carnetCobertura' => $benefits['carnet'],
             'carnetPreex' => $hasEmergency,

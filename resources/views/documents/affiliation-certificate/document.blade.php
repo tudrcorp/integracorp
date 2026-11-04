@@ -76,9 +76,12 @@
                         <div style="font-size:12px; color:{{ $th['sub'] }}; margin-top:6px;">{{ $data['heroSub'] }}</div>
                     </td>
                     <td style="width:264px; text-align:right; padding-top:4px;">
-                        <div style="font-size:10px; font-weight:bold; letter-spacing:1.6px; text-transform:uppercase; color:{{ $th['sub'] }};">{{ $data['heroLabel'] }}</div>
-                        <div style="font-size:30px; line-height:1; font-weight:bold; color:{{ $th['value'] }}; margin-top:6px;">{{ $data['heroValor'] }}</div>
-                        <div style="font-size:11px; color:{{ $th['sub'] }}; margin-top:6px;">{{ $data['heroNota'] }}</div>
+                        {{-- Con varias coberturas no hay un monto que represente al colectivo: cada afiliado lleva el suyo en la relación. --}}
+                        @unless ($data['heroHidden'] ?? false)
+                            <div style="font-size:10px; font-weight:bold; letter-spacing:1.6px; text-transform:uppercase; color:{{ $th['sub'] }};">{{ $data['heroLabel'] }}</div>
+                            <div style="font-size:30px; line-height:1; font-weight:bold; color:{{ $th['value'] }}; margin-top:6px;">{{ $data['heroValor'] }}</div>
+                            <div style="font-size:11px; color:{{ $th['sub'] }}; margin-top:6px;">{{ $data['heroNota'] }}</div>
+                        @endunless
                     </td>
                 </tr></table>
             </td></tr>
@@ -172,12 +175,17 @@
 
     @if ($pg['kind'] === 'rel')
         <table class="box" style="width:720px; margin-top:14px;">
+            {{-- Con la columna de cobertura la fila mide lo mismo (706 px): se reparte el ancho, no se agrega. --}}
+            @php($withCoverage = (bool) ($data['relationCoverageColumn'] ?? false))
             <tr style="background:#F6F6F6;">
                 <td class="k" style="width:34px; padding:7px 0 7px 14px;">N.º</td>
-                <td class="k" style="width:300px; padding:7px 0;">Nombre y apellido</td>
-                <td class="k" style="width:132px; padding:7px 0;">Documento</td>
-                <td class="k" style="width:120px; padding:7px 0;">Nacimiento</td>
+                <td class="k" style="width:{{ $withCoverage ? 246 : 300 }}px; padding:7px 0;">Nombre y apellido</td>
+                <td class="k" style="width:{{ $withCoverage ? 116 : 132 }}px; padding:7px 0;">Documento</td>
+                <td class="k" style="width:{{ $withCoverage ? 100 : 120 }}px; padding:7px 0;">Nacimiento</td>
                 <td class="k" style="width:120px; padding:7px 0;">{{ $data['relationPlanColumn'] ? 'Plan' : 'Parentesco' }}</td>
+                @if ($withCoverage)
+                    <td class="k" style="width:90px; padding:7px 0;">Cobertura</td>
+                @endif
             </tr>
             @foreach ($pg['people'] as $b)
                 <tr>
@@ -186,6 +194,9 @@
                     <td style="height:21px; border-top:1px solid #EFEFEF; font-size:11px; vertical-align:middle;">{{ $b['docFmt'] }}</td>
                     <td style="height:21px; border-top:1px solid #EFEFEF; font-size:11px; vertical-align:middle;">{{ $b['nac'] }}</td>
                     <td style="height:21px; border-top:1px solid #EFEFEF; font-size:11px; vertical-align:middle;">{{ $b['parentesco'] }}</td>
+                    @if ($withCoverage)
+                        <td style="height:21px; border-top:1px solid #EFEFEF; font-size:11px; vertical-align:middle; white-space:nowrap;">{{ $b['coberturaMonto'] ?? '—' }}</td>
+                    @endif
                 </tr>
             @endforeach
         </table>
