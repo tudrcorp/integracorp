@@ -6,6 +6,7 @@ namespace App\Filament\Business\Resources\Affiliations\RelationManagers;
 
 use App\Filament\Business\Concerns\AssignsUpgradesWithIlsVoucher;
 use App\Filament\Business\Concerns\ManagesAffiliateSpecificBusinessUnit;
+use App\Filament\Shared\Affiliations\CapitationCostColumn;
 use App\Models\Affiliate;
 use App\Models\AffiliateUpgrade;
 use App\Models\Affiliation;
@@ -17,6 +18,7 @@ use App\Support\AffiliateVaucherIlsRemainingDays;
 use App\Support\AffiliationAffiliateFeeCalculator;
 use App\Support\Affiliations\AffiliateSpecificBusinessUnitChanger;
 use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
+use App\Support\Business\CapitationPlans\AffiliateCapitationCost;
 use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\Filament\PatientAgeDisplay;
@@ -479,6 +481,7 @@ class AffiliatesRelationManager extends RelationManager
                     ->badge()
                     ->color('gray')
                     ->toggleable(isToggledHiddenByDefault: true),
+                CapitationCostColumn::make(fn (Model $record, mixed $livewire): mixed => AffiliateCapitationCost::forAffiliate($record, self::ownerAffiliation($livewire))),
                 TextColumn::make('coverage.price')
                     ->label('Cobertura')
                     ->numeric(decimalPlaces: 2)
@@ -875,6 +878,7 @@ class AffiliatesRelationManager extends RelationManager
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    CapitationCostColumn::bulkAction(),
                     $this->changeSpecificBusinessUnitBulkAction(),
                     $this->addUpgradeWithVoucherBulkAction(fn (): bool => self::userCanManageUpgrades()),
                     BulkAction::make('remove_upgrade_bulk')
@@ -1125,5 +1129,16 @@ class AffiliatesRelationManager extends RelationManager
         }
 
         return (int) $affiliateValue === (int) $ownerValue ? 'success' : 'warning';
+    }
+
+    /**
+     * La afiliación dueña ya está cargada en el relation manager: se pasa al cálculo del
+     * capitado para no consultarla por cada fila.
+     */
+    private static function ownerAffiliation(mixed $livewire): ?\App\Models\Affiliation
+    {
+        $owner = $livewire instanceof RelationManager ? $livewire->getOwnerRecord() : null;
+
+        return $owner instanceof \App\Models\Affiliation ? $owner : null;
     }
 }

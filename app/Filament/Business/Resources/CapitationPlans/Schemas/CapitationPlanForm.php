@@ -7,6 +7,7 @@ namespace App\Filament\Business\Resources\CapitationPlans\Schemas;
 use App\Enums\CapitationPaymentFrequency;
 use App\Models\Benefit;
 use App\Models\CapitationPlan;
+use App\Models\Plan;
 use App\Support\Business\CapitationPlans\CapitationProviders;
 use App\Support\Operations\OutsourcingMedicalDepartment;
 use Filament\Forms\Components\DatePicker;
@@ -32,6 +33,24 @@ final class CapitationPlanForm
     public const MAX_DOCUMENTS = 10;
 
     public const MAX_DOCUMENT_KB = 10 * 1024;
+
+    /**
+     * Planes activos, más los ya elegidos aunque hoy estén inactivos (para no perderlos al editar).
+     *
+     * @param  array<int, mixed>  $selected
+     * @return array<int, string>
+     */
+    public static function coveredPlanOptions(array $selected = []): array
+    {
+        $selected = array_values(array_filter(array_map('intval', $selected)));
+
+        return Plan::query()
+            ->where(fn ($query) => $query->where('status', 'ACTIVO')->when($selected !== [], fn ($query) => $query->orWhereIn('id', $selected)))
+            ->orderBy('description')
+            ->get(['id', 'description', 'status'])
+            ->mapWithKeys(fn (Plan $plan): array => [(int) $plan->id => $plan->description.($plan->status === 'ACTIVO' ? '' : ' (inactivo)')])
+            ->all();
+    }
 
     public static function configure(Schema $schema): Schema
     {
@@ -111,6 +130,18 @@ final class CapitationPlanForm
                         ->closeOnDateSelection()
                         ->afterOrEqual('valid_from')
                         ->validationMessages(['after_or_equal' => 'La vigencia «hasta» no puede ser anterior a «desde».']),
+                    Select::make('covered_plan_ids')
+                        ->label('Planes TDEC que cubre')
+                        ->placeholder('Elija uno o varios planes')
+                        ->helperText('Un afiliado de estos planes, atendido por este proveedor, muestra este costo en la columna «Capitado por afiliado» de Operaciones y Negocios.')
+                        ->multiple()
+                        ->searchable()
+                        ->preload()
+                        ->native(false)
+                        ->required()
+                        ->columnSpanFull()
+                        ->options(fn (Get $get): array => self::coveredPlanOptions((array) $get('covered_plan_ids')))
+                        ->validationMessages(['required' => 'Elija al menos un plan TDEC.']),
                 ]),
             Section::make('Beneficios y servicios')
                 ->description('Elíjalos del catálogo de Beneficios o escriba uno que no exista. Arrastre para ordenarlos.')

@@ -141,6 +141,7 @@ class NuevosNegociosAssociateResource extends Resource
         return SupplierAffiliateVisibility::applyToCompanyAssociates(parent::getEloquentQuery())
             ->with([
                 'company',
+                'company.planGenerator:id,plan_id,catalog_plan_id',
                 'responsible',
                 'state',
                 'city',

@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\CompanyAssociates\Tables;
 
+use App\Filament\Shared\Affiliations\CapitationCostColumn;
 use App\Models\CompanyAssociate;
+use App\Support\Business\CapitationPlans\AffiliateCapitationCost;
 use App\Support\Companies\CompanyAssociatesGroupPalette;
 use App\Support\Filament\PatientAgeDisplay;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\ViewAction;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ColumnGroup;
@@ -18,6 +21,7 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class CompanyAssociatesTable
 {
@@ -141,6 +145,7 @@ class CompanyAssociatesTable
                         ->square()
                         ->toggleable(isToggledHiddenByDefault: true),
                 ]),
+                CapitationCostColumn::make(fn (Model $record): mixed => AffiliateCapitationCost::forCompanyAssociate($record)),
             ])
             ->filters([
                 SelectFilter::make('company_id')
@@ -180,6 +185,10 @@ class CompanyAssociatesTable
                         ->label('Ver asociado'),
                 ]),
             ])
-            ->toolbarActions([]);
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    CapitationCostColumn::bulkAction(),
+                ]),
+            ]);
     }
 }

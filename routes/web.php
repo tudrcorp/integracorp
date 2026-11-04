@@ -503,6 +503,10 @@ Route::get('business/medical-questionnaires/{questionnaire}/pdf', \App\Http\Cont
     ->middleware(['web', 'auth'])
     ->name('business.medical-questionnaires.pdf');
 
+Route::get('business/capitation-plans/pdf', \App\Http\Controllers\CapitationPlanPdfController::class)
+    ->middleware(['web', 'auth'])
+    ->name('business.capitation-plans.pdf');
+
 Route::get('business/agents/{agent}/ficha-pdf/preview', [BusinessAgentFichaPdfController::class, 'preview'])
     ->middleware(['web', 'auth'])
     ->name('business.agents.ficha-pdf.preview');

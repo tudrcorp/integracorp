@@ -6,7 +6,9 @@ namespace App\Filament\Business\Resources\CompanyAssociates\Tables;
 
 use App\Enums\CompanyAssociateStatus;
 use App\Filament\Business\Resources\CompanyAssociates\Actions\CompanyAssociatesTableActions;
+use App\Filament\Shared\Affiliations\CapitationCostColumn;
 use App\Models\CompanyAssociate;
+use App\Support\Business\CapitationPlans\AffiliateCapitationCost;
 use App\Support\Companies\CompanyAssociatesGroupPalette;
 use App\Support\Filament\PatientAgeDisplay;
 use Filament\Actions\ActionGroup;
@@ -21,6 +23,7 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class CompanyAssociatesTable
 {
@@ -170,6 +173,7 @@ class CompanyAssociatesTable
                         ->square()
                         ->toggleable(isToggledHiddenByDefault: true),
                 ]),
+                CapitationCostColumn::make(fn (Model $record): mixed => AffiliateCapitationCost::forCompanyAssociate($record)),
             ])
             ->filters([
                 SelectFilter::make('company_id')
@@ -222,6 +226,7 @@ class CompanyAssociatesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    CapitationCostColumn::bulkAction(),
                     CompanyAssociatesTableActions::exportCsvBulkAction(),
                     CompanyAssociatesTableActions::sendDocumentsBulkAction(),
                 ]),

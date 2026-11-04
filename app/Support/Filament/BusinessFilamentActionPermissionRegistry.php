@@ -90,6 +90,10 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const NOTE_CORPORATE_QUALITY_CONTROL = 'notas-quality-control-corporativos';
 
+    public const DELETE_CAPITATION_PLANS = 'eliminar-planes-de-capitado';
+
+    public const EDIT_CAPITATION_PER_AFFILIATE = 'editar-capitado-por-afiliado';
+
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
      */
@@ -310,6 +314,16 @@ final class BusinessFilamentActionPermissionRegistry
                 'name' => 'Guardia Oficinas: crear, actualizar y eliminar',
                 'group' => 'DEL USUARIO',
                 'modules' => ['NEGOCIOS', 'ADMINISTRACION', 'OPERACIONES', 'MARKETING'],
+            ],
+            self::DELETE_CAPITATION_PLANS => [
+                'name' => 'Planes de Capitado: eliminar planes (con razón obligatoria)',
+                'group' => 'CONFIGURACIÓN',
+                'modules' => [self::OWNER_MODULE],
+            ],
+            self::EDIT_CAPITATION_PER_AFFILIATE => [
+                'name' => 'Capitado por afiliado: ajustar el monto negociado de uno o varios afiliados (con razón obligatoria)',
+                'group' => 'AFILIADOS',
+                'modules' => [self::OWNER_MODULE, 'OPERACIONES'],
             ],
             self::MANAGE_MEDICAL_GUARDS => [
                 'name' => 'Guardias Médicas: cargar, editar, copiar y anular',

@@ -5,24 +5,19 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\CapitationPlans\Tables;
 
 use App\Enums\CapitationPaymentFrequency;
+use App\Filament\Business\Resources\CapitationPlans\Actions\CapitationPlanActions;
 use App\Models\CapitationPlan;
-use App\Models\User;
-use App\Support\Business\CapitationPlans\CapitationPlanWriter;
 use App\Support\Business\CapitationPlans\CapitationProviders;
 use App\Support\Operations\ProviderDeletion;
-use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
-use Filament\Notifications\Notification;
-use Filament\Resources\Pages\EditRecord;
-use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
 
 final class CapitationPlansTable
 {
@@ -118,32 +113,17 @@ final class CapitationPlansTable
                 ActionGroup::make([
                     ViewAction::make()->label('Ver plan'),
                     EditAction::make()->label('Editar'),
-                    self::deleteAction(),
+                    CapitationPlanActions::pdf(),
+                    CapitationPlanActions::send(),
+                    CapitationPlanActions::delete(),
                 ]),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    CapitationPlanActions::bulkPdf(),
+                    CapitationPlanActions::bulkSend(),
+                ])->label('Acciones con los seleccionados'),
             ]);
-    }
-
-    public static function deleteAction(): Action
-    {
-        return Action::make('deleteCapitationPlan')
-            ->label('Eliminar')
-            ->icon(Heroicon::OutlinedTrash)
-            ->color('danger')
-            ->requiresConfirmation()
-            ->modalHeading('Eliminar plan de capitado')
-            ->modalDescription(fn (CapitationPlan $record): string => 'El plan «'.$record->name.'» dejará de aparecer, pero no se borra de la base de datos y queda en la auditoría. Si solo deja de aplicar, es mejor marcarlo como Inactivo.')
-            ->modalSubmitActionLabel('Sí, eliminar')
-            ->action(function (CapitationPlan $record, mixed $livewire): void {
-                $user = Auth::user();
-                CapitationPlanWriter::delete($record, $user instanceof User ? $user : null);
-
-                Notification::make()->title('Plan eliminado')->success()->send();
-
-                /** Desde la ficha o la edición se vuelve al listado: el plan ya no se puede abrir. */
-                if ($livewire instanceof ViewRecord || $livewire instanceof EditRecord) {
-                    $livewire->redirect($livewire::getResource()::getUrl('index'), navigate: true);
-                }
-            });
     }
 
     /**
