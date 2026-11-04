@@ -28,6 +28,9 @@ use Illuminate\Support\Str;
  */
 final class CorporateCertificateDocument
 {
+    /** Detalle de un beneficio con monto cuando cada afiliado tiene su propia cobertura. */
+    public const BY_COVERAGE = 'Según cobertura';
+
     public const PRINTABLE_STATUSES = IndividualCertificateDocument::PRINTABLE_STATUSES;
 
     /**
@@ -79,6 +82,8 @@ final class CorporateCertificateDocument
         $plans = Plan::query()->with('benefitPlans')->whereIn('id', $planIds->all())->get()->keyBy('id');
         $coverages = Coverage::query()->whereIn('id', $affiliates->pluck('coverage_id')->filter()->unique()->all())->pluck('price', 'id');
         $multiplePlans = $plans->count() > 1;
+        /** Varias coberturas: un solo monto destacado en el encabezado no representa al colectivo. */
+        $multipleCoverages = $affiliates->pluck('coverage_id')->filter()->unique()->count() > 1;
 
         // Un resumen de beneficios por combinación plan + cobertura: se calcula una vez, no por afiliado.
         $benefitsByCombo = [];
@@ -96,7 +101,7 @@ final class CorporateCertificateDocument
         $mainCoverageId = self::dominantCoverage($affiliates, $mainPlanId);
         $mainBenefits = $benefitsFor($mainPlanId, $mainCoverageId);
 
-        $people = $affiliates->values()->map(function (AffiliateCorporate $affiliate, int $index) use ($plans, $benefitsFor, $multiplePlans): array {
+        $people = $affiliates->values()->map(function (AffiliateCorporate $affiliate, int $index) use ($plans, $benefitsFor, $multiplePlans, $coverages): array {
             $planId = $affiliate->plan_id ? (int) $affiliate->plan_id : null;
             $planLabel = (string) ($plans->get($planId ?? 0)?->description ?? '');
 
@@ -112,6 +117,7 @@ final class CorporateCertificateDocument
                     : Str::ucfirst(mb_strtolower(CorporateAffiliateRelationship::forCertificate($affiliate->relationship))),
                 'plan' => $planLabel !== '' ? CertificateDocumentData::shortPlanName($planLabel) : null,
                 'cobertura' => $benefitsFor($planId, $affiliate->coverage_id ? (int) $affiliate->coverage_id : null)['carnet'],
+                'coberturaMonto' => self::coverageLabel($affiliate->coverage_id ? $coverages->get((int) $affiliate->coverage_id) : null),
             ];
         })->all();
 
@@ -119,6 +125,11 @@ final class CorporateCertificateDocument
         $carnets = array_values(array_filter($people, static fn (array $person): bool => isset($selected[$person['id']])));
 
         $benefits = $multiplePlans ? self::multiPlanBenefits($plans, $affiliates, $benefitsFor, $mainPlanId) : $mainBenefits;
+
+        /** Un solo plan con varias coberturas: el monto depende de cada afiliado (va en la relación). */
+        if (! $multiplePlans && $multipleCoverages) {
+            $benefits['rows'] = self::amountsByCoverage($benefits['rows']);
+        }
         $planLabel = $multiplePlans ? 'CORPORATIVO' : (string) ($plans->get($mainPlanId ?? 0)?->description ?? $mainPlan?->description ?? 'CORPORATIVO');
 
         $frequency = Str::lower(trim((string) ($affiliation->payment_frequency ?: 'anual')));
@@ -146,6 +157,8 @@ final class CorporateCertificateDocument
             'carnets' => $carnets,
             'grupoTitulo' => 'Afiliados del colectivo',
             'relationPlanColumn' => $multiplePlans,
+            'relationCoverageColumn' => true,
+            'heroHidden' => $multipleCoverages,
             'issue' => $issue,
         ]);
     }
@@ -195,9 +208,15 @@ final class CorporateCertificateDocument
             $summary = $benefitsFor((int) $plan->id, self::dominantCoverage($affiliates, (int) $plan->id));
             $main ??= $summary;
             $emergency = $emergency || $summary['emergency'];
+            $planCoverages = $affiliates
+                ->filter(fn (AffiliateCorporate $affiliate): bool => (int) $affiliate->plan_id === (int) $plan->id)
+                ->pluck('coverage_id')
+                ->filter()
+                ->unique()
+                ->count();
 
             $rows[] = ['section' => (string) $plan->description, 't' => '', 'cob' => '', 'limited' => false];
-            array_push($rows, ...$summary['rows']);
+            array_push($rows, ...($planCoverages > 1 ? self::amountsByCoverage($summary['rows']) : $summary['rows']));
         }
 
         return [
@@ -206,6 +225,21 @@ final class CorporateCertificateDocument
             'carnet' => $main['carnet'] ?? 'Según plan',
             'emergency' => $emergency,
         ];
+    }
+
+    /**
+     * Filas con monto cuando el plan tiene afiliados con distintas coberturas: el monto sale de
+     * la cobertura de cada uno (columna «Cobertura» de la relación), no de la mayoritaria.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    private static function amountsByCoverage(array $rows): array
+    {
+        return array_map(
+            static fn (array $row): array => ($row['limited'] ?? false) ? [...$row, 'cob' => self::BY_COVERAGE] : $row,
+            $rows,
+        );
     }
 
     /**
@@ -225,6 +259,17 @@ final class CorporateCertificateDocument
             ->first();
 
         return $coverageId !== null ? (int) $coverageId : null;
+    }
+
+    /**
+     * Monto de la cobertura de un afiliado para la relación («US$ 5.000»), o «—» si su plan
+     * no trabaja con coberturas.
+     */
+    public static function coverageLabel(mixed $price): string
+    {
+        $price = self::number($price);
+
+        return $price !== null && $price > 0 ? CertificateBenefits::money($price) : '—';
     }
 
     private static function number(mixed $value): ?float
