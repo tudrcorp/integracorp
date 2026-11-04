@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\ProspectAgents\Widgets;
 
 use App\Filament\Business\Resources\ProspectAgents\Concerns\HasProspectResourceChartTimeStateFilters;
+use App\Filament\Business\Resources\ProspectAgents\ProspectAgentLabels;
 use App\Filament\Business\Resources\ProspectAgents\Widgets\Concerns\AgencyLikeBarChartStyling;
 use App\Models\ProspectAgent;
 use Filament\Widgets\ChartWidget;
@@ -34,19 +35,6 @@ class TypeProspect extends ChartWidget
         $this->bootProspectChartFilters();
     }
 
-    private const TYPE_LABELS = [
-        'agencia-corretaje' => 'Agencia (corretaje)',
-        'agente-corretaje' => 'Agente (Corretaje)',
-        'agencia-viajes' => 'Agencia de Viajes',
-        'mayorista-viajes' => 'Mayorista de Viajes',
-        'freelance' => 'Freelance',
-        'asesor-exclusivo' => 'Asesor exclusivo',
-        'cliente-individual' => 'Cliente Individual',
-        'cliente-corporativo' => 'Cliente Corporativo',
-        'ejecutivo' => 'Ejecutivo',
-        'otro' => 'Otro',
-    ];
-
     protected function getType(): string
     {
         return 'bar';
@@ -69,7 +57,9 @@ class TypeProspect extends ChartWidget
         $labels = [];
         $values = [];
         foreach ($distribution as $type => $total) {
-            $labels[] = self::TYPE_LABELS[$type] ?? $type;
+            $labels[] = is_string($type)
+                ? ProspectAgentLabels::typeLabel($type)
+                : (string) $type;
             $values[] = (int) $total;
         }
 

@@ -424,7 +424,7 @@ TEXT,
                 'country_id' => 'Indícame tu país (ejemplo: Venezuela).',
                 'state_id' => '¿En qué estado te encuentras?',
                 'city_id' => '¿Cuál es tu ciudad?',
-                'type' => '¿Qué tipo de perfil eres? (agente-corretaje, agencia-corretaje, agencia-viajes, mayorista-viajes, freelance, asesor-exclusivo, cliente-individual, cliente-corporativo, ejecutivo, otro)',
+                'type' => '¿Qué tipo de perfil eres? (agente-corretaje, agencia-corretaje, agencia-viajes, mayorista-viajes, freelance, asesor-exclusivo, cliente-individual, cliente-corporativo, cliente-sol, ejecutivo, otro)',
                 default => '¿Puedes compartir ese dato para continuar?',
             },
             AgentConversationStateMachine::INTENT_COTIZACION => match ($field) {

@@ -28,6 +28,8 @@ it('define exactamente los cinco estatus del embudo en orden', function (): void
 
 it('resuelve etiquetas legibles para valores conocidos y legacy', function (): void {
     expect(ProspectAgentLabels::typeLabel('freelance'))->toBe('Freelance')
+        ->and(ProspectAgentLabels::typeLabel('cliente-sol'))->toBe('Cliente Sol')
+        ->and(ProspectAgentLabels::typeOptions())->toHaveKey('cliente-sol', 'Cliente Sol')
         ->and(ProspectAgentLabels::statusLabel(ProspectAgentLabels::STATUS_CAPTACION_PROSPECCION))->toBe('Captación/prospección')
         ->and(ProspectAgentLabels::statusLabel('captación'))->toBe('Captación/prospección')
         ->and(ProspectAgentLabels::statusLabel('prospecto'))->toBe('Captación/prospección')
