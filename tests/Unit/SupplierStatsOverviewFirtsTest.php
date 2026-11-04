@@ -33,6 +33,7 @@ it('cuenta las cuatro tarjetas superiores en una sola consulta', function (): vo
         ->and($counter)
         ->toContain("(suppliers.status_convenio = 'GENERAL' OR suppliers.status_convenio LIKE '%PREFERENCIAL%')")
         ->toContain("suppliers.carta_acceptance IS NOT NULL AND suppliers.carta_acceptance <> ''")
-        ->toContain("suppliers.status_convenio = 'NO CONVENIDO'")
+        ->toContain("'NO CONVENIDO'")
+        ->toContain("IN ('', 'PENDIENTE')")
         ->toContain('suppliers.created_at BETWEEN ? AND ?');
 });

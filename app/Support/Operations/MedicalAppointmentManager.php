@@ -21,6 +21,8 @@ final class MedicalAppointmentManager
 
     public const RESCHEDULE_PREFIX = 'Reprogramación de cita.';
 
+    public const CANCEL_PREFIX = 'Cancelación de cita.';
+
     /**
      * @return list<string>
      */
@@ -221,7 +223,7 @@ final class MedicalAppointmentManager
     {
         if ($record instanceof OperationMedicalAppointment) {
             if (filled($record->supplier?->name)) {
-                return (string) $record->supplier->name;
+                return (string) ProviderDeletion::displayName($record->supplier);
             }
 
             if (filled($record->supplier_external)) {
@@ -234,7 +236,7 @@ final class MedicalAppointmentManager
         }
 
         if (filled($record->supplier?->name)) {
-            return (string) $record->supplier->name;
+            return (string) ProviderDeletion::displayName($record->supplier);
         }
 
         if (filled($record->supplier_external)) {
@@ -242,6 +244,78 @@ final class MedicalAppointmentManager
         }
 
         return '—';
+    }
+
+    /**
+     * Cancela la cita vigente de una orden que se cancela. La bitácora la escribe quien
+     * cancela la orden, para no duplicar el aviso.
+     */
+    public static function cancelForOrder(OperationServiceOrder $order, string $reason, string $userName): bool
+    {
+        $appointment = OperationMedicalAppointment::query()
+            ->where('operation_service_order_id', $order->getKey())
+            ->lockForUpdate()
+            ->first();
+
+        if (! $appointment instanceof OperationMedicalAppointment || ProviderPendingWork::isAppointmentCancelled($appointment)) {
+            return false;
+        }
+
+        self::markCancelled($appointment, $reason, $userName);
+
+        return true;
+    }
+
+    /**
+     * Cancela una cita suelta (su orden ya está cerrada) y lo deja en la bitácora.
+     *
+     * @throws InvalidArgumentException si el motivo es corto o la cita ya estaba cancelada
+     */
+    public static function cancel(OperationMedicalAppointment $appointment, string $reason, ?User $user = null): OperationMedicalAppointment
+    {
+        $user ??= Auth::user();
+        $reason = trim($reason);
+
+        if (mb_strlen($reason) < 10) {
+            throw new InvalidArgumentException('El motivo de la cancelación de la cita debe tener al menos 10 caracteres.');
+        }
+
+        $userName = filled($user?->name) ? (string) $user->name : 'SISTEMA';
+
+        return DB::transaction(function () use ($appointment, $reason, $userName, $user): OperationMedicalAppointment {
+            $fresh = OperationMedicalAppointment::query()->lockForUpdate()->find($appointment->getKey());
+
+            if (! $fresh instanceof OperationMedicalAppointment || ProviderPendingWork::isAppointmentCancelled($fresh)) {
+                throw new InvalidArgumentException('La cita #'.$appointment->getKey().' ya no está vigente.');
+            }
+
+            self::markCancelled($fresh, $reason, $userName);
+
+            $order = $fresh->operationServiceOrder;
+
+            self::appendBitacora(
+                $fresh->operationCoordinationService ?? $order?->operationCoordinationService,
+                self::CANCEL_PREFIX
+                ."\n".'Orden: '.($order?->order_number ?? '#'.($fresh->operation_service_order_id ?? '—'))
+                ."\n".'Fecha de la cita: '.self::formatAppointmentAt($fresh->appointment_at)
+                ."\n".'Motivo: '.$reason
+                ."\n".'Analista: '.$userName,
+                $user,
+            );
+
+            return $fresh->fresh() ?? $fresh;
+        });
+    }
+
+    private static function markCancelled(OperationMedicalAppointment $appointment, string $reason, string $userName): void
+    {
+        $appointment->forceFill([
+            'status' => OperationMedicalAppointment::STATUS_CANCELLED,
+            'last_change_reason' => $reason,
+            'last_changed_at' => now(),
+            'last_changed_by' => $userName,
+            'updated_by' => $userName,
+        ])->save();
     }
 
     private static function appendBitacora(?OperationCoordinationService $coordination, string $bitacora, ?User $user): void

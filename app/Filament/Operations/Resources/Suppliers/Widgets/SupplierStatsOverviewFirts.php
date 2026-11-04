@@ -3,6 +3,7 @@
 namespace App\Filament\Operations\Resources\Suppliers\Widgets;
 
 use App\Filament\Operations\Resources\Suppliers\Pages\ListSuppliers;
+use App\Filament\Operations\Resources\Suppliers\Tables\SuppliersTable;
 use App\Filament\Widgets\Concerns\InteractsWithPageTable;
 use App\Support\Operations\SupplierListStatCounts;
 use Filament\Widgets\StatsOverviewWidget;
@@ -114,14 +115,17 @@ class SupplierStatsOverviewFirts extends StatsOverviewWidget
                 ->description(new HtmlString("
                     <div class='flex flex-col mt-1'>
                         <span class='text-xs font-semibold uppercase tracking-wide text-warning-600 dark:text-warning-400'>
-                            REGISTRADOS DESDE OPERACIONES
+                            REGISTRADOS DESDE OPERACIONES · POR GESTIONAR
                         </span>
+                        <span class='text-xs normal-case text-gray-500 dark:text-gray-400'>Clic para ver cuáles son</span>
                     </div>
                 "))
                 ->descriptionIcon('heroicon-m-exclamation-triangle')
                 ->color('warning')
+                ->url(ListSuppliers::getUrl(['filters' => [SuppliersTable::NOT_AGREED_PENDING_FILTER => ['isActive' => true]]]))
                 ->extraAttributes([
-                    'class' => 'cursor-default overflow-hidden transition-all duration-300 rounded-2xl border border-warning-200/60 dark:border-warning-700/50 bg-gradient-to-br from-warning-50/90 via-white to-warning-50/50 dark:from-warning-950/40 dark:via-gray-900/80 dark:to-warning-900/20 hover:shadow-lg hover:shadow-warning-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-warning-400/50 hover:border-warning-300 dark:hover:border-warning-500',
+                    'title' => 'Proveedores registrados desde una orden de servicio que el equipo de proveedores aún no ha gestionado. Salen de aquí al cambiar su estatus de sistema o al cargar la carta de aceptación.',
+                    'class' => 'cursor-pointer overflow-hidden transition-all duration-300 rounded-2xl border border-warning-200/60 dark:border-warning-700/50 bg-gradient-to-br from-warning-50/90 via-white to-warning-50/50 dark:from-warning-950/40 dark:via-gray-900/80 dark:to-warning-900/20 hover:shadow-lg hover:shadow-warning-500/15 hover:scale-[1.02] hover:ring-2 hover:ring-warning-400/50 hover:border-warning-300 dark:hover:border-warning-500',
                     'style' => 'min-height: 130px;',
                 ]),
         ];

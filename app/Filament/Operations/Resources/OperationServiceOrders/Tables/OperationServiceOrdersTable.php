@@ -18,6 +18,7 @@ use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Filament\Operations\SpecificBusinessUnitTableTools;
 use App\Support\Operations\OperationServiceOrderListDisplay;
 use App\Support\Operations\OperationServiceOrderValidity;
+use App\Support\Operations\ProviderDeletion;
 use App\Support\Operations\RetailServiceRegistration;
 use App\Support\Operations\ServiceOrderAccountsPayableRegistrar;
 use App\Support\Telemedicine\TelemedicinePriorityFilamentBadge;
@@ -118,7 +119,7 @@ class OperationServiceOrdersTable
     private static function supplierLabel(OperationServiceOrder $record): string
     {
         if (filled($record->supplier?->name)) {
-            return (string) $record->supplier->name;
+            return (string) ProviderDeletion::displayName($record->supplier);
         }
 
         if (filled($record->supplier_external)) {

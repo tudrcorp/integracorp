@@ -11,6 +11,7 @@ use App\Models\SupplierClasificacion;
 use App\Models\User;
 use App\Support\Filament\Operations\OutsourcingMedicalDepartmentFields;
 use App\Support\Operations\ProviderDeletion;
+use App\Support\Operations\SupplierListStatCounts;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -35,6 +36,9 @@ use Illuminate\Support\Collection;
 
 class SuppliersTable
 {
+    /** Filtro al que lleva la tarjeta «Proveedores no convenidos». */
+    public const NOT_AGREED_PENDING_FILTER = 'no_convenidos_por_gestionar';
+
     public static function configure(Table $table): Table
     {
         return $table
@@ -324,6 +328,14 @@ class SuppliersTable
             ])
             ->filters([
                 ProviderDeletion::makeDeletedFilter(),
+                Filter::make(self::NOT_AGREED_PENDING_FILTER)
+                    ->label('Solo no convenidos por gestionar')
+                    ->toggle()
+                    ->columnSpanFull()
+                    ->query(fn (Builder $query): Builder => SupplierListStatCounts::applyNotAgreedPending($query))
+                    ->indicateUsing(fn (array $data): array => ($data['isActive'] ?? false) === true
+                        ? ['no_convenidos' => 'No convenidos registrados desde Operaciones, aún sin gestionar']
+                        : []),
                 Filter::make('state_city')
                     ->label('Estado / Ciudad (sede)')
                     ->form([

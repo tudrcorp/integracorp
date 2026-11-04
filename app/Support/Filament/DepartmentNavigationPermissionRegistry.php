@@ -164,6 +164,8 @@ use App\Filament\Operations\Resources\OperationStatusServices\OperationStatusSer
 use App\Filament\Operations\Resources\OperationTypeNegotiations\OperationTypeNegotiationResource;
 use App\Filament\Operations\Resources\OperationTypeServices\OperationTypeServiceResource;
 use App\Filament\Operations\Resources\PortalHelpContacts\PortalHelpContactResource;
+use App\Filament\Operations\Resources\QualityControlCorporates\QualityControlCorporateResource;
+use App\Filament\Operations\Resources\QualityControlIndividuals\QualityControlIndividualResource;
 use App\Filament\Operations\Resources\Suppliers\SupplierResource;
 use App\Filament\Operations\Resources\TelemedicineCases\TelemedicineCaseResource;
 use App\Filament\Operations\Resources\TelemedicineDoctors\TelemedicineDoctorResource;
@@ -325,7 +327,9 @@ final class DepartmentNavigationPermissionRegistry
         OperationsCalendariosTdg::class => ['calendarios-tdg'],
         OperationsGuardiasOperaciones::class => ['guardias-operaciones'],
         AffiliateResource::class => ['afiliados-individuales'],
+        QualityControlIndividualResource::class => ['quality-control-individuales'],
         AffiliateCorporateResource::class => ['afiliados-corporativos'],
+        QualityControlCorporateResource::class => ['quality-control-corporativos'],
         NuevosNegociosAssociateResource::class => ['afiliados-nuevos-negocios'],
         OperationInventoryResource::class => ['inventario-general'],
         OperationInventoryEntryResource::class => ['entradas-inventario'],

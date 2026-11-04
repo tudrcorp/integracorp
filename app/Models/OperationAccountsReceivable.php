@@ -95,7 +95,7 @@ class OperationAccountsReceivable extends Model
      */
     public function reassignmentSupplier(): BelongsTo
     {
-        return $this->belongsTo(Supplier::class, 'reassignment_supplier_id');
+        return $this->belongsTo(Supplier::class, 'reassignment_supplier_id')->withTrashed();
     }
 
     /**

@@ -86,7 +86,7 @@ class OperationServiceOrder extends Model
 
     public function supplier()
     {
-        return $this->belongsTo(Supplier::class);
+        return $this->belongsTo(Supplier::class)->withTrashed();
     }
 
     /**
@@ -94,12 +94,12 @@ class OperationServiceOrder extends Model
      */
     public function telemedicineSupplier(): BelongsTo
     {
-        return $this->belongsTo(Supplier::class, 'telemedicine_supplier_id');
+        return $this->belongsTo(Supplier::class, 'telemedicine_supplier_id')->withTrashed();
     }
 
     public function doctorNurse()
     {
-        return $this->belongsTo(DoctorNurse::class);
+        return $this->belongsTo(DoctorNurse::class)->withTrashed();
     }
 
     public function telemedicinePriority()

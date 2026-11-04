@@ -16,6 +16,9 @@ class OperationMedicalAppointment extends Model
 
     public const STATUS_RESCHEDULED = 'RESCHEDULED';
 
+    /** Cancelada con su orden, o al eliminar al proveedor sin otro que la atienda. */
+    public const STATUS_CANCELLED = 'CANCELADA';
+
     protected $table = 'operation_medical_appointments';
 
     protected $fillable = [
@@ -68,6 +71,6 @@ class OperationMedicalAppointment extends Model
 
     public function supplier(): BelongsTo
     {
-        return $this->belongsTo(Supplier::class);
+        return $this->belongsTo(Supplier::class)->withTrashed();
     }
 }

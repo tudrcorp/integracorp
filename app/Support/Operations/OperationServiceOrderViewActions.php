@@ -109,50 +109,13 @@ final class OperationServiceOrderViewActions
             return false;
         }
 
-        $userName = self::currentUserName();
-
         try {
-            $freshRecord = DB::transaction(function () use ($record, $reason, $userName): OperationServiceOrder {
-                $order = self::lockOrder($record);
-
-                return ServiceOrderFlowTrace::withContext(
-                    ['action' => ServiceOrderFlowTrace::CONTEXT_CANCEL, 'reason' => $reason],
-                    function () use ($order, $reason, $userName): OperationServiceOrder {
-                        $order->update([
-                            'status' => 'CANCELADA',
-                            'updated_by' => $userName,
-                        ]);
-
-                        $freshOrder = $order->fresh() ?? $order;
-
-                        OperationServiceOrderCoordinationSync::cancelClinicalItemsForOrder($freshOrder);
-
-                        self::appendToCoordinationAndCase(
-                            $freshOrder,
-                            self::CANCEL_PREFIX
-                                ."\n".'Orden: '.ServiceOrderFlowTrace::orderLabel($freshOrder)
-                                ."\n".'Tipo: '.(filled($freshOrder->service_type) ? (string) $freshOrder->service_type : '—')
-                                ."\n".'Analista: '.$userName
-                                ."\n".'Motivo: '.$reason
-                                ."\n".'Los ítems de la orden quedaron CANCELADOS.',
-                            $userName,
-                        );
-
-                        return $freshOrder;
-                    },
-                );
-            });
+            $freshRecord = self::cancelOrderOrFail($record, $reason, self::currentUserName());
         } catch (ServiceOrderFlowException $exception) {
             self::recordBlocked($record, 'cancelar', $exception->getMessage());
 
             return false;
         }
-
-        SecurityAudit::log('AUDIT_OPERATIONS_SERVICE_ORDER_CANCELLED', 'operations.operation-service-orders.cancel', [
-            'operation_service_order_id' => $freshRecord->getKey(),
-            'order_number' => $freshRecord->order_number,
-            'reason' => $reason,
-        ]);
 
         self::refreshLivewireRecord($livewire, $freshRecord);
 
@@ -163,6 +126,63 @@ final class OperationServiceOrderViewActions
             ->send();
 
         return true;
+    }
+
+    /**
+     * Núcleo de la cancelación, sin notificaciones de pantalla: lo usan la acción de la
+     * orden y la eliminación de proveedores (que lo corre dentro de su propia transacción).
+     * La cita de la orden se cancela con ella.
+     *
+     * @throws ServiceOrderFlowException si la orden ya está cerrada o tiene factura
+     */
+    public static function cancelOrderOrFail(OperationServiceOrder $record, string $reason, string $userName): OperationServiceOrder
+    {
+        $reason = trim($reason);
+
+        if (mb_strlen($reason) < self::MIN_REASON_LENGTH) {
+            throw new ServiceOrderFlowException('El motivo de la cancelación debe tener al menos '.self::MIN_REASON_LENGTH.' caracteres.');
+        }
+
+        $freshRecord = DB::transaction(function () use ($record, $reason, $userName): OperationServiceOrder {
+            $order = self::lockOrder($record);
+
+            return ServiceOrderFlowTrace::withContext(
+                ['action' => ServiceOrderFlowTrace::CONTEXT_CANCEL, 'reason' => $reason],
+                function () use ($order, $reason, $userName): OperationServiceOrder {
+                    $order->update([
+                        'status' => 'CANCELADA',
+                        'updated_by' => $userName,
+                    ]);
+
+                    $freshOrder = $order->fresh() ?? $order;
+
+                    OperationServiceOrderCoordinationSync::cancelClinicalItemsForOrder($freshOrder);
+                    $appointmentCancelled = MedicalAppointmentManager::cancelForOrder($freshOrder, $reason, $userName);
+
+                    self::appendToCoordinationAndCase(
+                        $freshOrder,
+                        self::CANCEL_PREFIX
+                            ."\n".'Orden: '.ServiceOrderFlowTrace::orderLabel($freshOrder)
+                            ."\n".'Tipo: '.(filled($freshOrder->service_type) ? (string) $freshOrder->service_type : '—')
+                            ."\n".'Analista: '.$userName
+                            ."\n".'Motivo: '.$reason
+                            ."\n".'Los ítems de la orden quedaron CANCELADOS.'
+                            .($appointmentCancelled ? "\n".'La cita médica de la orden quedó CANCELADA.' : ''),
+                        $userName,
+                    );
+
+                    return $freshOrder;
+                },
+            );
+        });
+
+        SecurityAudit::log('AUDIT_OPERATIONS_SERVICE_ORDER_CANCELLED', 'operations.operation-service-orders.cancel', [
+            'operation_service_order_id' => $freshRecord->getKey(),
+            'order_number' => $freshRecord->order_number,
+            'reason' => $reason,
+        ]);
+
+        return $freshRecord;
     }
 
     public static function makeCancelAction(): Action
@@ -502,7 +522,7 @@ final class OperationServiceOrderViewActions
     /**
      * @return bool true si quedó en la bitácora del caso; false si solo en la coordinación.
      */
-    private static function appendToCoordinationAndCase(OperationServiceOrder $order, string $text, string $userName): bool
+    public static function appendToCoordinationAndCase(OperationServiceOrder $order, string $text, string $userName): bool
     {
         $order->loadMissing('operationCoordinationService');
         $coordination = $order->operationCoordinationService;

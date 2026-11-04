@@ -115,7 +115,7 @@ class OperationCoordinationService extends Model
      */
     public function supplier(): BelongsTo
     {
-        return $this->belongsTo(Supplier::class);
+        return $this->belongsTo(Supplier::class)->withTrashed();
     }
 
     /**
@@ -126,7 +126,7 @@ class OperationCoordinationService extends Model
      */
     public function assignedSupplier(): BelongsTo
     {
-        return $this->belongsTo(Supplier::class, 'assigned_supplier_id');
+        return $this->belongsTo(Supplier::class, 'assigned_supplier_id')->withTrashed();
     }
 
     /**
@@ -134,7 +134,7 @@ class OperationCoordinationService extends Model
      */
     public function assignedDoctorNurse(): BelongsTo
     {
-        return $this->belongsTo(DoctorNurse::class, 'assigned_doctor_nurse_id');
+        return $this->belongsTo(DoctorNurse::class, 'assigned_doctor_nurse_id')->withTrashed();
     }
 
     /**
@@ -142,7 +142,7 @@ class OperationCoordinationService extends Model
      */
     public function assignedCorporateAlly(): BelongsTo
     {
-        return $this->belongsTo(CorporateAlly::class, 'assigned_corporate_ally_id');
+        return $this->belongsTo(CorporateAlly::class, 'assigned_corporate_ally_id')->withTrashed();
     }
 
     /**

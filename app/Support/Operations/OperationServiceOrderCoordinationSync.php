@@ -15,6 +15,18 @@ use Illuminate\Support\Facades\Auth;
 
 final class OperationServiceOrderCoordinationSync
 {
+    /**
+     * Tipo de servicio de la orden → modelo clínico y columna con el nombre del ítem.
+     *
+     * @var array<string, array{0: class-string, 1: string}>
+     */
+    public const CLINICAL_ITEM_SOURCES = [
+        'MEDICAMENTOS' => [TelemedicinePatientMedications::class, 'medicine'],
+        'LABORATORIOS' => [TelemedicinePatientLab::class, 'laboratory'],
+        'IMAGENOLOGIA' => [TelemedicinePatientStudy::class, 'study'],
+        'ESPECIALISTA' => [TelemedicinePatientSpecialty::class, 'specialty'],
+    ];
+
     public static function finalizeOrder(OperationServiceOrder $order): OperationServiceOrder
     {
         $order->update([
@@ -183,14 +195,21 @@ final class OperationServiceOrderCoordinationSync
     /**
      * @param  list<string>  $itemNames
      */
-    private static function applyClinicalItemStatus(OperationServiceOrder $order, string $status): int
+    /**
+     * Registros clínicos EN GESTION del servicio médico que corresponden a los ítems de la
+     * orden: los que cancelar, liberar o finalizar la orden cambiaría. La eliminación de
+     * proveedores los guarda antes de cancelar para poder devolverlos al restaurar.
+     *
+     * @return list<TelemedicinePatientMedications|TelemedicinePatientLab|TelemedicinePatientStudy|TelemedicinePatientSpecialty>
+     */
+    public static function clinicalItemsForOrder(OperationServiceOrder $order): array
     {
         $order->loadMissing('operationServiceOrderItems');
 
         $coordinationId = (int) ($order->operation_coordination_service_id ?? 0);
 
         if ($coordinationId <= 0) {
-            return 0;
+            return [];
         }
 
         /** @var list<string> $itemNames */
@@ -203,50 +222,40 @@ final class OperationServiceOrderCoordinationSync
             ->all();
 
         if ($itemNames === []) {
-            return 0;
+            return [];
         }
 
-        $serviceType = mb_strtoupper(trim((string) ($order->service_type ?? '')));
+        $definition = self::CLINICAL_ITEM_SOURCES[mb_strtoupper(trim((string) ($order->service_type ?? '')))] ?? null;
 
-        return match ($serviceType) {
-            'MEDICAMENTOS' => self::updateMatchedRecords(
-                TelemedicinePatientMedications::query()
-                    ->where('operation_coordination_service_id', $coordinationId)
-                    ->where('status', 'EN GESTION')
-                    ->get(['id', 'medicine']),
-                'medicine',
-                $itemNames,
-                $status
-            ),
-            'LABORATORIOS' => self::updateMatchedRecords(
-                TelemedicinePatientLab::query()
-                    ->where('operation_coordination_service_id', $coordinationId)
-                    ->where('status', 'EN GESTION')
-                    ->get(['id', 'laboratory']),
-                'laboratory',
-                $itemNames,
-                $status
-            ),
-            'IMAGENOLOGIA' => self::updateMatchedRecords(
-                TelemedicinePatientStudy::query()
-                    ->where('operation_coordination_service_id', $coordinationId)
-                    ->where('status', 'EN GESTION')
-                    ->get(['id', 'study']),
-                'study',
-                $itemNames,
-                $status
-            ),
-            'ESPECIALISTA' => self::updateMatchedRecords(
-                TelemedicinePatientSpecialty::query()
-                    ->where('operation_coordination_service_id', $coordinationId)
-                    ->where('status', 'EN GESTION')
-                    ->get(['id', 'specialty']),
-                'specialty',
-                $itemNames,
-                $status
-            ),
-            default => 0,
-        };
+        if ($definition === null) {
+            return [];
+        }
+
+        [$model, $nameAttribute] = $definition;
+
+        return $model::query()
+            ->where('operation_coordination_service_id', $coordinationId)
+            ->where('status', 'EN GESTION')
+            ->get(['id', $nameAttribute, 'status'])
+            ->filter(function (mixed $record) use ($nameAttribute, $itemNames): bool {
+                $name = self::normalizeItemName($record->{$nameAttribute} ?? null);
+
+                return $name !== '' && in_array($name, $itemNames, true);
+            })
+            ->values()
+            ->all();
+    }
+
+    private static function applyClinicalItemStatus(OperationServiceOrder $order, string $status): int
+    {
+        $updated = 0;
+
+        foreach (self::clinicalItemsForOrder($order) as $record) {
+            $record->update(['status' => $status]);
+            $updated++;
+        }
+
+        return $updated;
     }
 
     /**

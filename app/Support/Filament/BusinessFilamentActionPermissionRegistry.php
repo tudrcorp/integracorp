@@ -82,6 +82,10 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const VIEW_HR_AMOUNTS = 'ver-montos-rrhh';
 
+    public const MANAGE_INDIVIDUAL_QUALITY_CONTROL = 'gestionar-quality-control-individuales';
+
+    public const MANAGE_CORPORATE_QUALITY_CONTROL = 'gestionar-quality-control-corporativos';
+
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
      */
@@ -235,6 +239,16 @@ final class BusinessFilamentActionPermissionRegistry
             ],
             self::EDIT_CORPORATE_AFFILIATE_PERSONAL_DATA => [
                 'name' => 'Editar datos personales de afiliados corporativos',
+                'group' => 'AFILIADOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::MANAGE_INDIVIDUAL_QUALITY_CONTROL => [
+                'name' => 'Quality Control Individuales: editar y eliminar encuestas',
+                'group' => 'AFILIADOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::MANAGE_CORPORATE_QUALITY_CONTROL => [
+                'name' => 'Quality Control Corporativos: editar y eliminar encuestas',
                 'group' => 'AFILIADOS',
                 'modules' => ['OPERACIONES'],
             ],
