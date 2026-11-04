@@ -3,23 +3,29 @@
 declare(strict_types=1);
 
 use App\Enums\CapitationPaymentFrequency;
+use App\Filament\Business\Resources\CapitationPlans\Actions\CapitationPlanActions;
 use App\Filament\Business\Resources\CapitationPlans\CapitationPlanResource;
 use App\Filament\Business\Resources\CapitationPlans\Pages\CreateCapitationPlan;
 use App\Filament\Business\Resources\CapitationPlans\Pages\EditCapitationPlan;
 use App\Filament\Business\Resources\CapitationPlans\Pages\ListCapitationPlans;
 use App\Filament\Business\Resources\CapitationPlans\Pages\ViewCapitationPlan;
+use App\Jobs\SendCapitationPlanReportJob;
+use App\Mail\CapitationPlanReportMail;
 use App\Models\Benefit;
 use App\Models\CapitationPlan;
 use App\Models\DoctorNurse;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Services\CapitationPlanPdfService;
 use App\Support\Business\CapitationPlans\CapitationPlanWriter;
 use App\Support\Business\CapitationPlans\CapitationProviders;
+use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\Filament\DepartmentNavigationPermissionRegistry;
 use App\Support\Filament\Operations\OutsourcingMedicalDepartmentFields;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 
 uses(Tests\TestCase::class);
@@ -75,8 +81,14 @@ function datosPlan(Supplier|DoctorNurse $provider, array $overrides = []): array
         ],
         'documents' => [],
         'document_names' => [],
+        'covered_plan_ids' => [(int) App\Models\Plan::query()->where('status', 'ACTIVO')->orderBy('id')->value('id')],
         ...$overrides,
     ];
+}
+
+function otroPlanTdec(): int
+{
+    return (int) App\Models\Plan::query()->where('status', 'ACTIVO')->orderBy('id')->skip(1)->value('id');
 }
 
 it('el selector solo ofrece proveedores de la red Outsourcing, jurídicos y naturales', function (): void {
@@ -156,14 +168,244 @@ it('no permite dos planes activos con el mismo nombre para el mismo proveedor', 
     expect(CapitationPlan::query()->forProvider('supplier', $provider->id)->count())->toBe(2);
 });
 
-it('eliminar es lógico y queda en la auditoría', function (): void {
+it('eliminar es lógico, exige razón y la guarda en la fila y en la auditoría', function (): void {
     $plan = CapitationPlanWriter::save(null, datosPlan(proveedorOutsourcing()), auth()->user());
 
-    CapitationPlanWriter::delete($plan, auth()->user());
+    CapitationPlanWriter::delete($plan, '  El proveedor   rescindió el convenio.  ', auth()->user());
+
+    $trashed = CapitationPlan::withTrashed()->find($plan->id);
 
     expect(CapitationPlan::query()->find($plan->id))->toBeNull()
-        ->and(CapitationPlan::withTrashed()->find($plan->id))->not->toBeNull()
-        ->and(DB::table('logs')->where('action', 'AUDIT_CAPITATION_PLAN_DELETED')->exists())->toBeTrue();
+        ->and($trashed)->not->toBeNull()
+        ->and($trashed->deletion_reason)->toBe('El proveedor rescindió el convenio.')
+        ->and($trashed->deleted_by_name)->toBe('QA CAPITADO')
+        ->and((int) $trashed->deleted_by_user_id)->toBe(999_999_071)
+        ->and(DB::table('logs')->where('action', 'AUDIT_CAPITATION_PLAN_DELETED')->latest('id')->value('response'))->toContain('rescindi');
+});
+
+it('no elimina sin una razón suficiente ni dos veces el mismo plan', function (): void {
+    $plan = CapitationPlanWriter::save(null, datosPlan(proveedorOutsourcing()), auth()->user());
+
+    expect(fn () => CapitationPlanWriter::delete($plan, '   corta   ', auth()->user()))
+        ->toThrow(ValidationException::class, 'razón de la eliminación');
+
+    expect(CapitationPlan::query()->find($plan->id))->not->toBeNull();
+
+    CapitationPlanWriter::delete($plan, 'Plan duplicado por error de carga.', auth()->user());
+
+    expect(fn () => CapitationPlanWriter::delete($plan, 'Plan duplicado por error de carga.', auth()->user()))
+        ->toThrow(ValidationException::class, 'ya fue eliminado');
+});
+
+it('eliminar requiere el permiso asignable; sin él la acción no aparece', function (): void {
+    expect(BusinessFilamentActionPermissionRegistry::all())->toHaveKey('eliminar-planes-de-capitado')
+        ->and(BusinessFilamentActionPermissionRegistry::modulesForSlug('eliminar-planes-de-capitado'))->toBe(['NEGOCIOS'])
+        ->and(CapitationPlanActions::canDelete())->toBeTrue();
+
+    test()->actingAs(User::factory()->make([
+        'id' => 999_999_072,
+        'name' => 'QA SIN PERMISO',
+        'email' => 'qa.sinpermiso@tudrencasa.com',
+        'status' => 'ACTIVO',
+        'departament' => ['NEGOCIOS'],
+    ]));
+
+    expect(CapitationPlanActions::canDelete())->toBeFalse();
+});
+
+it('la acción eliminar de la ficha pide la razón y vuelve al listado', function (): void {
+    $plan = CapitationPlanWriter::save(null, datosPlan(proveedorOutsourcing()), auth()->user());
+
+    Livewire::test(ViewCapitationPlan::class, ['record' => $plan->id])
+        ->assertActionVisible('deleteCapitationPlan')
+        ->mountAction('deleteCapitationPlan')
+        ->set('mountedActions.0.data.reason', 'corta')
+        ->callMountedAction()
+        ->assertHasActionErrors(['reason']);
+
+    expect(CapitationPlan::query()->find($plan->id))->not->toBeNull();
+
+    Livewire::test(ViewCapitationPlan::class, ['record' => $plan->id])
+        ->mountAction('deleteCapitationPlan')
+        ->set('mountedActions.0.data.reason', 'Convenio vencido y no renovado.')
+        ->callMountedAction()
+        ->assertHasNoActionErrors()
+        ->assertNotified('Plan eliminado')
+        ->assertRedirect(CapitationPlanResource::getUrl('index'));
+
+    expect(CapitationPlan::withTrashed()->find($plan->id)->deletion_reason)->toBe('Convenio vencido y no renovado.');
+});
+
+it('la cabecera de la ficha resume plan, proveedor, costo y vigencia', function (): void {
+    $provider = proveedorOutsourcing();
+    $plan = CapitationPlanWriter::save(null, datosPlan($provider), auth()->user());
+
+    Livewire::test(ViewCapitationPlan::class, ['record' => $plan->id])
+        ->assertSee('Costo por afiliado')
+        ->assertSee('US$ 60,00')
+        ->assertSee('Pago semestral · ≈ US$ 10,00 por mes')
+        ->assertSee($provider->name)
+        ->assertSee('Vigente desde 01/11/2026')
+        ->assertSee('Detalle del plan')
+        ->assertSee('Ficha PDF')
+        ->assertSee('Enviar por correo o WhatsApp');
+});
+
+it('genera el PDF de un plan una sola vez mientras no cambie', function (): void {
+    $plan = CapitationPlanWriter::save(null, datosPlan(proveedorOutsourcing()), auth()->user());
+    $plans = CapitationPlanPdfService::plans([$plan->id]);
+
+    $path = CapitationPlanPdfService::path($plans);
+    $firstWrite = filemtime($path);
+
+    try {
+        expect(file_get_contents($path, length: 5))->toBe('%PDF-')
+            ->and(CapitationPlanPdfService::path(CapitationPlanPdfService::plans([$plan->id])))->toBe($path)
+            ->and(filemtime($path))->toBe($firstWrite)
+            ->and(CapitationPlanPdfService::filename($plans))->toBe('plan-de-capitado-plan-atencion-primaria.pdf');
+
+        $plan->forceFill(['updated_at' => now()->addMinute()])->save();
+
+        expect(CapitationPlanPdfService::path(CapitationPlanPdfService::plans([$plan->id])))->not->toBe($path);
+    } finally {
+        foreach (glob(dirname($path).'/*') ?: [] as $file) {
+            @unlink($file);
+        }
+    }
+});
+
+it('el reporte de varios planes lleva resumen y un bloque por plan', function (): void {
+    $provider = proveedorOutsourcing();
+    $first = CapitationPlanWriter::save(null, datosPlan($provider), auth()->user());
+    $second = CapitationPlanWriter::save(null, datosPlan($provider, ['covered_plan_ids' => [otroPlanTdec()], 'name' => 'Plan domiciliario', 'payment_frequency' => 'MENSUAL', 'cost_per_affiliate_usd' => '8']), auth()->user());
+    $plans = CapitationPlanPdfService::plans([$second->id, $first->id, $first->id]);
+
+    $html = view('documents.capitation-plans', [
+        'rows' => $plans->map(fn (CapitationPlan $plan): array => [
+            'plan' => $plan, 'provider_name' => $provider->name, 'provider_type' => 'Jurídico', 'provider_rif' => '',
+            'monthly' => $plan->monthlyEquivalent(), 'validity' => 'Sin fecha de fin', 'document_names' => [], 'covered_plans' => 'PLAN INICIAL',
+        ])->all(),
+        'isSingle' => false,
+        'title' => CapitationPlanPdfService::title($plans),
+        'issuedAt' => '04/11/2026',
+        'tdgLogo' => '',
+        'summary' => ['plans' => 2, 'active' => 2, 'providers' => 1, 'average_monthly' => 9.0],
+    ])->render();
+
+    expect($plans)->toHaveCount(2)
+        ->and(CapitationPlanPdfService::title($plans))->toBe('Reporte de 2 planes de capitado')
+        ->and($html)->toContain('REPORTE DE PLANES DE CAPITADO')
+        ->and($html)->toContain('Resumen de planes')
+        ->and(substr_count($html, 'class="plan-name"'))->toBe(2)
+        ->and($html)->toContain('US$ 9,00')
+        ->and($html)->toContain('font-family: DejaVu Sans');
+});
+
+it('la ruta del PDF responde en línea o como descarga y valida la lista', function (): void {
+    $plan = CapitationPlanWriter::save(null, datosPlan(proveedorOutsourcing()), auth()->user());
+
+    try {
+        test()->get(route('business.capitation-plans.pdf', ['ids' => (string) $plan->id]))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+
+        expect(test()->get(route('business.capitation-plans.pdf', ['ids' => (string) $plan->id, 'download' => 1]))->headers->get('Content-Disposition'))
+            ->toContain('attachment');
+
+        test()->get(route('business.capitation-plans.pdf', ['ids' => $plan->id.',999999999']))->assertNotFound();
+        test()->get(route('business.capitation-plans.pdf', ['ids' => implode(',', range(1, 201))]))->assertStatus(422);
+        test()->get(route('business.capitation-plans.pdf', ['ids' => '1;DROP']))->assertSessionHasErrors('ids');
+    } finally {
+        foreach (glob(storage_path('app/private/capitation-plans/pdf-cache/*')) ?: [] as $file) {
+            @unlink($file);
+        }
+    }
+});
+
+it('enviar encola un trabajo por canal con el contacto del proveedor precargado', function (): void {
+    Illuminate\Support\Facades\Queue::fake();
+
+    $provider = proveedorOutsourcing();
+    $provider->forceFill(['correo_principal' => 'red@proveedor.test', 'personal_phone' => '04141234567'])->save();
+    $plan = CapitationPlanWriter::save(null, datosPlan($provider), auth()->user());
+
+    Livewire::test(ViewCapitationPlan::class, ['record' => $plan->id])
+        ->mountAction('sendCapitationPlan')
+        ->assertSet('mountedActions.0.data.email', 'red@proveedor.test')
+        ->assertSet('mountedActions.0.data.phone', '04141234567')
+        ->set('mountedActions.0.data.channels', ['email', 'whatsapp'])
+        ->set('mountedActions.0.data.phone', '123')
+        ->callMountedAction()
+        ->assertHasActionErrors(['phone']);
+
+    Illuminate\Support\Facades\Queue::assertNotPushed(SendCapitationPlanReportJob::class);
+
+    Livewire::test(ViewCapitationPlan::class, ['record' => $plan->id])
+        ->mountAction('sendCapitationPlan')
+        ->set('mountedActions.0.data.channels', ['email', 'whatsapp'])
+        ->callMountedAction()
+        ->assertHasNoActionErrors()
+        ->assertNotified('Envío en curso');
+
+    Illuminate\Support\Facades\Queue::assertPushed(SendCapitationPlanReportJob::class, 2);
+    Illuminate\Support\Facades\Queue::assertPushed(SendCapitationPlanReportJob::class, fn (SendCapitationPlanReportJob $job): bool => $job->channel === 'email' && $job->recipient === 'red@proveedor.test' && $job->planIds === [$plan->id]);
+});
+
+it('las acciones masivas arman un solo PDF y un solo envío con los seleccionados', function (): void {
+    Illuminate\Support\Facades\Queue::fake();
+
+    $provider = proveedorOutsourcing();
+    $first = CapitationPlanWriter::save(null, datosPlan($provider), auth()->user());
+    $second = CapitationPlanWriter::save(null, datosPlan($provider, ['covered_plan_ids' => [otroPlanTdec()], 'name' => 'Plan domiciliario']), auth()->user());
+
+    Livewire::test(ListCapitationPlans::class)
+        ->searchTable($provider->name)
+        ->mountTableBulkAction('capitationPlansPdf', [$first, $second])
+        ->tap(fn (Testable $page) => expect(html_entity_decode((string) json_encode($page->effects['partials'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)))
+            ->toContain('ids='.min($first->id, $second->id).'%2C'.max($first->id, $second->id))
+            ->toContain('2 planes seleccionados')
+            ->toContain('Generando el PDF'));
+
+    Livewire::test(ListCapitationPlans::class)
+        ->searchTable($provider->name)
+        ->mountTableBulkAction('sendCapitationPlans', [$first, $second])
+        ->set('mountedActions.0.data.channels', ['email'])
+        ->set('mountedActions.0.data.email', 'analista@tudrencasa.com')
+        ->callMountedAction()
+        ->assertHasNoActionErrors();
+
+    Illuminate\Support\Facades\Queue::assertPushed(SendCapitationPlanReportJob::class, 1);
+    Illuminate\Support\Facades\Queue::assertPushed(SendCapitationPlanReportJob::class, fn (SendCapitationPlanReportJob $job): bool => collect($job->planIds)->sort()->values()->all() === collect([$first->id, $second->id])->sort()->values()->all());
+});
+
+it('el trabajo de correo adjunta el PDF y avisa al analista', function (): void {
+    Illuminate\Support\Facades\Mail::fake();
+    $plan = CapitationPlanWriter::save(null, datosPlan(proveedorOutsourcing()), auth()->user());
+
+    try {
+        (new SendCapitationPlanReportJob([$plan->id], 'email', 'red@proveedor.test', 'Según lo conversado.', null))->handle();
+
+        Illuminate\Support\Facades\Mail::assertSent(CapitationPlanReportMail::class, fn (CapitationPlanReportMail $mail): bool => $mail->hasTo('red@proveedor.test')
+            && $mail->attachmentName === 'plan-de-capitado-plan-atencion-primaria.pdf'
+            && is_file($mail->attachmentPath)
+            && $mail->customMessage === 'Según lo conversado.');
+
+        expect(DB::table('logs')->where('action', 'AUDIT_CAPITATION_PLAN_REPORT_EMAIL_SENT')->exists())->toBeTrue()
+            ->and(CapitationPlanPdfService::whatsAppCaption(CapitationPlanPdfService::plans([$plan->id]), null))
+            ->toContain('Costo por afiliado: US$ 60,00 (Semestral)');
+    } finally {
+        foreach (glob(storage_path('app/private/capitation-plans/pdf-cache/*')) ?: [] as $file) {
+            @unlink($file);
+        }
+    }
+});
+
+it('el trabajo no envía nada si los planes ya no existen', function (): void {
+    Illuminate\Support\Facades\Mail::fake();
+
+    (new SendCapitationPlanReportJob([999_999_999], 'email', 'red@proveedor.test', null, null))->handle();
+
+    Illuminate\Support\Facades\Mail::assertNothingSent();
 });
 
 it('crea, ve y edita el plan desde las pantallas de Negocios', function (): void {
@@ -179,6 +421,7 @@ it('crea, ve y edita el plan desde las pantallas de Negocios', function (): void
         ->assertSee('≈ US$ 10,00 por mes')
         ->set('data.negotiation_type', 'Tarifa trimestral por afiliado asignado.')
         ->set('data.benefits', ['a' => ['benefit_id' => $benefitId, 'custom_name' => null, 'note' => null]])
+        ->set('data.covered_plan_ids', [otroPlanTdec()])
         ->call('create')
         ->assertHasNoFormErrors();
 

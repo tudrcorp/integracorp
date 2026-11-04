@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Resources\AffiliateCorporates\Tables;
 
 use App\Filament\Operations\Resources\AffiliateCorporates\AffiliateCorporateResource;
+use App\Filament\Shared\Affiliations\CapitationCostColumn;
 use App\Http\Controllers\AffiliateCorporateExportCsvController;
 use App\Models\AffiliateCorporate;
 use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
+use App\Support\Business\CapitationPlans\AffiliateCapitationCost;
 use App\Support\Filament\PatientAgeDisplay;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -23,6 +25,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
 class AffiliateCorporatesTable
@@ -162,6 +165,7 @@ class AffiliateCorporatesTable
                     ->placeholder('—')
                     ->searchable()
                     ->toggleable(),
+                CapitationCostColumn::make(fn (Model $record): mixed => AffiliateCapitationCost::forAffiliateCorporate($record)),
                 TextColumn::make('coverage.price')
                     ->label('Cobertura')
                     ->money('USD')
@@ -225,6 +229,7 @@ class AffiliateCorporatesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    CapitationCostColumn::bulkAction(),
                     BulkAction::make('exportAffiliateCorporatesCsv')
                         ->label('Exportar Afiliados')
                         ->icon('heroicon-o-arrow-down-tray')

@@ -114,6 +114,7 @@ class CompanyAssociateResource extends Resource
         return parent::getEloquentQuery()
             ->with([
                 'company',
+                'company.planGenerator:id,plan_id,catalog_plan_id',
                 'responsible',
             ]);
     }

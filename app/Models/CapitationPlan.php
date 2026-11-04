@@ -9,6 +9,7 @@ use App\Support\Operations\ProviderDeletion;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -48,6 +49,9 @@ class CapitationPlan extends Model
         'created_by_name',
         'updated_by_user_id',
         'updated_by_name',
+        'deletion_reason',
+        'deleted_by_user_id',
+        'deleted_by_name',
     ];
 
     protected function casts(): array
@@ -68,6 +72,17 @@ class CapitationPlan extends Model
     public function benefits(): HasMany
     {
         return $this->hasMany(CapitationPlanBenefit::class)->orderBy('sort')->orderBy('id');
+    }
+
+    /**
+     * Planes TDEC que cubre: un afiliado de esos planes, atendido por este proveedor, cuesta
+     * `cost_per_affiliate_usd`.
+     *
+     * @return BelongsToMany<Plan, $this>
+     */
+    public function coveredPlans(): BelongsToMany
+    {
+        return $this->belongsToMany(Plan::class, 'capitation_plan_covered_plans')->withTimestamps()->orderBy('plans.description');
     }
 
     /**
@@ -108,5 +123,16 @@ class CapitationPlan extends Model
     public function scopeForProvider(Builder $query, string $type, int $id): Builder
     {
         return $query->where('provider_type', $type)->where('provider_id', $id);
+    }
+
+    /**
+     * Vigente en una fecha: sin fechas, o con la fecha dentro de [desde, hasta], ambos inclusive.
+     */
+    public function isValidOn(\DateTimeInterface $date): bool
+    {
+        $day = $date->format('Y-m-d');
+
+        return ($this->valid_from === null || $this->valid_from->format('Y-m-d') <= $day)
+            && ($this->valid_until === null || $this->valid_until->format('Y-m-d') >= $day);
     }
 }

@@ -7,6 +7,7 @@ namespace App\Support\Business\CapitationPlans;
 use App\Enums\CapitationPaymentFrequency;
 use App\Models\Benefit;
 use App\Models\CapitationPlan;
+use App\Models\Plan;
 use App\Models\User;
 use App\Support\SecurityAudit;
 use Carbon\CarbonImmutable;
@@ -25,6 +26,10 @@ final class CapitationPlanWriter
 
     public const MAX_COST = 99999999.99;
 
+    public const MIN_DELETION_REASON = 10;
+
+    public const MAX_DELETION_REASON = 1000;
+
     /**
      * @param  array<string, mixed>  $data
      */
@@ -32,12 +37,14 @@ final class CapitationPlanWriter
     {
         $attributes = self::attributes($plan, $data);
         $benefits = self::benefits($data['benefits'] ?? []);
+        $coveredPlanIds = self::coveredPlanIds($data['covered_plan_ids'] ?? []);
         $userName = filled($user?->name) ? (string) $user->name : 'SISTEMA';
 
         $before = $plan !== null ? self::snapshot($plan) : null;
 
-        $saved = DB::transaction(function () use ($plan, $attributes, $benefits, $user, $userName): CapitationPlan {
+        $saved = DB::transaction(function () use ($plan, $attributes, $benefits, $coveredPlanIds, $user, $userName): CapitationPlan {
             self::assertNameIsFree($plan, $attributes);
+            self::assertCoverageIsFree($plan, $attributes, $coveredPlanIds);
 
             $plan ??= new CapitationPlan([
                 'created_by_user_id' => $user?->getKey(),
@@ -56,8 +63,12 @@ final class CapitationPlanWriter
                 $plan->benefits()->create([...$benefit, 'sort' => $position]);
             }
 
-            return $plan->fresh(['benefits']) ?? $plan;
+            $plan->coveredPlans()->sync($coveredPlanIds);
+
+            return $plan->fresh(['benefits', 'coveredPlans']) ?? $plan;
         });
+
+        AffiliateCapitationCost::flush();
 
         SecurityAudit::log($before === null ? 'AUDIT_CAPITATION_PLAN_CREATED' : 'AUDIT_CAPITATION_PLAN_UPDATED', 'business.capitation-plans.save', [
             'capitation_plan_id' => $saved->getKey(),
@@ -69,13 +80,47 @@ final class CapitationPlanWriter
         return $saved;
     }
 
-    public static function delete(CapitationPlan $plan, ?User $user): void
+    /**
+     * Eliminación lógica con razón obligatoria. La razón y el autor quedan en la fila y en la auditoría.
+     *
+     * @throws ValidationException si la razón es demasiado corta o el plan ya estaba eliminado.
+     */
+    public static function delete(CapitationPlan $plan, string $reason, ?User $user): void
     {
+        $reason = Str::squish($reason);
+
+        if (mb_strlen($reason) < self::MIN_DELETION_REASON || mb_strlen($reason) > self::MAX_DELETION_REASON) {
+            throw ValidationException::withMessages([
+                'reason' => 'Explique la razón de la eliminación (entre '.self::MIN_DELETION_REASON.' y '.self::MAX_DELETION_REASON.' caracteres).',
+            ]);
+        }
+
+        $userName = filled($user?->name) ? (string) $user->name : 'SISTEMA';
         $snapshot = self::snapshot($plan);
-        $plan->delete();
+
+        DB::transaction(function () use ($plan, $reason, $user, $userName): void {
+            /** Releer con bloqueo: dos analistas eliminando a la vez no deben pisarse la razón. */
+            $locked = CapitationPlan::query()->whereKey($plan->getKey())->lockForUpdate()->first();
+
+            if (! $locked instanceof CapitationPlan) {
+                throw ValidationException::withMessages(['reason' => 'Este plan ya fue eliminado por otra persona.']);
+            }
+
+            $locked->forceFill([
+                'deletion_reason' => $reason,
+                'deleted_by_user_id' => $user?->getKey(),
+                'deleted_by_name' => $userName,
+            ])->save();
+
+            $locked->delete();
+        });
+
+        AffiliateCapitationCost::flush();
 
         SecurityAudit::log('AUDIT_CAPITATION_PLAN_DELETED', 'business.capitation-plans.delete', [
             'capitation_plan_id' => $plan->getKey(),
+            'reason' => $reason,
+            'deleted_by' => $userName,
             'plan' => $snapshot,
         ], $user);
     }
@@ -210,6 +255,76 @@ final class CapitationPlanWriter
     }
 
     /**
+     * Planes TDEC cubiertos: al menos uno, todos existentes. Sin esta relación el costo de
+     * capitación de un afiliado no se puede resolver.
+     *
+     * @return list<int>
+     */
+    private static function coveredPlanIds(mixed $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(
+            array_map(fn (mixed $id): int => is_numeric($id) ? (int) $id : 0, is_array($ids) ? $ids : []),
+            fn (int $id): bool => $id > 0,
+        )));
+
+        if ($ids === []) {
+            throw ValidationException::withMessages(['data.covered_plan_ids' => 'Elija al menos un plan TDEC que cubra este plan de capitado.']);
+        }
+
+        $existing = Plan::query()->whereKey($ids)->pluck('id')->map(fn (mixed $id): int => (int) $id)->all();
+        $missing = array_diff($ids, $existing);
+
+        if ($missing !== []) {
+            throw ValidationException::withMessages(['data.covered_plan_ids' => 'Alguno de los planes TDEC elegidos ya no existe. Recargue la página y vuelva a elegirlos.']);
+        }
+
+        sort($ids);
+
+        return $ids;
+    }
+
+    /**
+     * Un afiliado no puede quedar con dos costos de capitación del mismo proveedor: dos planes
+     * activos del proveedor no pueden cubrir el mismo plan TDEC con vigencias que se crucen.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @param  list<int>  $coveredPlanIds
+     */
+    private static function assertCoverageIsFree(?CapitationPlan $plan, array $attributes, array $coveredPlanIds): void
+    {
+        if ($attributes['status'] !== CapitationPlan::STATUS_ACTIVE) {
+            return;
+        }
+
+        $from = $attributes['valid_from'] ?? null;
+        $until = $attributes['valid_until'] ?? null;
+
+        $conflicts = CapitationPlan::query()
+            ->forProvider($attributes['provider_type'], (int) $attributes['provider_id'])
+            ->where('status', CapitationPlan::STATUS_ACTIVE)
+            ->when($plan?->exists, fn ($query) => $query->whereKeyNot($plan->getKey()))
+            ->whereHas('coveredPlans', fn ($query) => $query->whereIn('plans.id', $coveredPlanIds))
+            /** Dos rangos [a, b] y [c, d] se cruzan si a <= d y c <= b; NULL es abierto. */
+            ->when($until !== null, fn ($query) => $query->where(fn ($query) => $query->whereNull('valid_from')->orWhere('valid_from', '<=', $until)))
+            ->when($from !== null, fn ($query) => $query->where(fn ($query) => $query->whereNull('valid_until')->orWhere('valid_until', '>=', $from)))
+            ->with(['coveredPlans' => fn ($query) => $query->whereIn('plans.id', $coveredPlanIds)])
+            ->lockForUpdate()
+            ->get();
+
+        if ($conflicts->isEmpty()) {
+            return;
+        }
+
+        $first = $conflicts->first();
+
+        throw ValidationException::withMessages([
+            'data.covered_plan_ids' => 'El plan de capitado «'.$first->name.'» de este proveedor ya cubre '
+                .$first->coveredPlans->pluck('description')->implode(', ')
+                .' en una vigencia que se cruza. Ajuste las fechas, inactive uno de los dos o quite el plan TDEC repetido.',
+        ]);
+    }
+
+    /**
      * Dos planes activos del mismo proveedor no pueden llamarse igual.
      *
      * @param  array<string, mixed>  $attributes
@@ -238,7 +353,7 @@ final class CapitationPlanWriter
      */
     private static function snapshot(CapitationPlan $plan): array
     {
-        $plan->loadMissing('benefits');
+        $plan->loadMissing(['benefits', 'coveredPlans']);
 
         return [
             'provider' => $plan->providerKey(),
@@ -250,6 +365,7 @@ final class CapitationPlanWriter
             'status' => $plan->status,
             'negotiation_type' => $plan->negotiation_type,
             'documents' => array_values((array) $plan->documents),
+            'covered_plan_ids' => $plan->coveredPlans->modelKeys(),
             'benefits' => $plan->benefits->map(fn ($benefit): array => ['benefit_id' => $benefit->benefit_id, 'name' => $benefit->name, 'note' => $benefit->note])->all(),
         ];
     }

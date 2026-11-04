@@ -12,6 +12,7 @@ use App\Support\Operations\ProviderDeletion;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Storage;
@@ -22,37 +23,34 @@ final class CapitationPlanInfolist
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Plan')
+            View::make('filament.business.capitation-plans.plan-header')
+                ->columnSpanFull()
+                ->viewData(fn (?CapitationPlan $record): array => $record !== null ? self::headerData($record) : []),
+            Section::make('Detalle del plan')
                 ->icon(Heroicon::OutlinedClipboardDocumentList)
                 ->columnSpanFull()
+                ->collapsible()
                 ->columns(['default' => 1, 'md' => 3])
                 ->schema([
-                    TextEntry::make('name')->label('Nombre del plan')->weight('semibold'),
-                    TextEntry::make('provider_name')
-                        ->label('Proveedor')
-                        ->state(fn (CapitationPlan $record): string => CapitationProviders::typeLabel($record->provider_type).' · '.ProviderDeletion::displayName($record->provider())),
-                    TextEntry::make('status')
-                        ->label('Estado')
-                        ->badge()
-                        ->formatStateUsing(fn (string $state): string => $state === CapitationPlan::STATUS_ACTIVE ? 'Activo' : 'Inactivo')
-                        ->color(fn (string $state): string => $state === CapitationPlan::STATUS_ACTIVE ? 'success' : 'gray'),
-                    TextEntry::make('cost_per_affiliate_usd')
-                        ->label('Costo por afiliado')
-                        ->money('USD')
-                        ->weight('semibold'),
                     TextEntry::make('payment_frequency')
                         ->label('Frecuencia de pago')
                         ->formatStateUsing(fn (CapitationPaymentFrequency $state, CapitationPlan $record): string => $state === CapitationPaymentFrequency::Monthly
                             ? 'Mensual'
                             : $state->label().' (≈ US$ '.number_format($record->monthlyEquivalent(), 2, ',', '.').' por mes)'),
-                    TextEntry::make('provider_fee')
-                        ->label('Tarifa de referencia en la ficha')
-                        ->state(fn (CapitationPlan $record): string => $record->provider() !== null ? OutsourcingMedicalDepartment::summary($record->provider()) : '—'),
                     TextEntry::make('valid_from')->label('Vigente desde')->date('d/m/Y')->placeholder('—'),
                     TextEntry::make('valid_until')->label('Vigente hasta')->date('d/m/Y')->placeholder('Sin fecha de fin'),
-                    TextEntry::make('updated_by_name')
-                        ->label('Última actualización')
-                        ->state(fn (CapitationPlan $record): string => ($record->updated_by_name ?: '—').' · '.$record->updated_at?->format('d/m/Y h:i A')),
+                    TextEntry::make('provider_fee')
+                        ->label('Tarifa de referencia en la ficha del proveedor')
+                        ->state(fn (CapitationPlan $record): string => $record->provider() !== null ? OutsourcingMedicalDepartment::summary($record->provider()) : '—'),
+                    TextEntry::make('coveredPlans.description')
+                        ->label('Planes TDEC que cubre')
+                        ->badge()
+                        ->color('info')
+                        ->columnSpanFull()
+                        ->placeholder('Ninguno: este plan no aplica a ningún afiliado hasta que se elijan sus planes TDEC.'),
+                    TextEntry::make('created_by_name')
+                        ->label('Creado por')
+                        ->state(fn (CapitationPlan $record): string => ($record->created_by_name ?: '—').' · '.$record->created_at?->format('d/m/Y h:i A')),
                 ]),
             Section::make('Beneficios y servicios')
                 ->icon(Heroicon::OutlinedSparkles)
@@ -82,6 +80,40 @@ final class CapitationPlanInfolist
                         ->state(fn (CapitationPlan $record): HtmlString => self::documentLinks($record)),
                 ]),
         ]);
+    }
+
+    /**
+     * Datos de la cabecera. Prefijo `plan` para no chocar con las variables reservadas de la vista.
+     *
+     * @return array<string, mixed>
+     */
+    private static function headerData(CapitationPlan $record): array
+    {
+        $provider = $record->provider();
+        $isMonthly = $record->payment_frequency === CapitationPaymentFrequency::Monthly;
+
+        return [
+            'planName' => (string) $record->name,
+            'planIsActive' => $record->status === CapitationPlan::STATUS_ACTIVE,
+            'planIsExpired' => $record->valid_until !== null && $record->valid_until->isPast() && ! $record->valid_until->isToday(),
+            'planValidity' => match (true) {
+                $record->valid_from === null && $record->valid_until === null => 'Sin fecha de fin',
+                $record->valid_until === null => 'Vigente desde '.$record->valid_from->format('d/m/Y'),
+                $record->valid_from === null => 'Vigente hasta '.$record->valid_until->format('d/m/Y'),
+                default => $record->valid_from->format('d/m/Y').' – '.$record->valid_until->format('d/m/Y'),
+            },
+            'planProviderName' => (string) ProviderDeletion::displayName($provider),
+            'planProviderType' => CapitationProviders::typeLabel($record->provider_type),
+            'planProviderRif' => (string) ($provider?->getAttribute('rif') ?? ''),
+            'planCost' => 'US$ '.number_format((float) $record->cost_per_affiliate_usd, 2, ',', '.'),
+            'planFrequency' => $isMonthly
+                ? 'Pago mensual'
+                : 'Pago '.mb_strtolower($record->payment_frequency->label()).' · ≈ US$ '.number_format($record->monthlyEquivalent(), 2, ',', '.').' por mes',
+            'planBenefitsCount' => (int) ($record->benefits_count ?? $record->benefits()->count()),
+            'planDocumentsCount' => count((array) $record->documents),
+            'planUpdatedBy' => $record->updated_by_name ?: '—',
+            'planUpdatedAt' => $record->updated_at?->format('d/m/Y h:i A') ?? '—',
+        ];
     }
 
     /**

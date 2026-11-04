@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\CapitationPlans\Pages;
 
+use App\Filament\Business\Resources\CapitationPlans\Actions\CapitationPlanActions;
 use App\Filament\Business\Resources\CapitationPlans\CapitationPlanResource;
-use App\Filament\Business\Resources\CapitationPlans\Tables\CapitationPlansTable;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Contracts\Support\Htmlable;
@@ -23,7 +23,9 @@ class ViewCapitationPlan extends ViewRecord
     {
         return [
             EditAction::make()->label('Editar'),
-            CapitationPlansTable::deleteAction(),
+            CapitationPlanActions::pdf(),
+            CapitationPlanActions::send(),
+            CapitationPlanActions::delete(),
         ];
     }
 }

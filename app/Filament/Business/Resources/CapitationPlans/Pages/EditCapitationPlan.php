@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Resources\CapitationPlans\Pages;
 
+use App\Filament\Business\Resources\CapitationPlans\Actions\CapitationPlanActions;
 use App\Filament\Business\Resources\CapitationPlans\CapitationPlanResource;
-use App\Filament\Business\Resources\CapitationPlans\Tables\CapitationPlansTable;
 use App\Models\CapitationPlan;
 use App\Models\User;
 use App\Support\Business\CapitationPlans\CapitationPlanWriter;
@@ -28,7 +28,9 @@ class EditCapitationPlan extends EditRecord
     {
         return [
             ViewAction::make()->label('Ver plan'),
-            CapitationPlansTable::deleteAction(),
+            CapitationPlanActions::pdf(),
+            CapitationPlanActions::send(),
+            CapitationPlanActions::delete(),
         ];
     }
 
@@ -45,6 +47,7 @@ class EditCapitationPlan extends EditRecord
             ...$data,
             'provider_key' => $plan->providerKey(),
             'payment_frequency' => $plan->payment_frequency->value,
+            'covered_plan_ids' => $plan->coveredPlans()->pluck('plans.id')->map(fn (mixed $id): int => (int) $id)->all(),
             'benefits' => $plan->benefits()->get()->map(fn ($benefit): array => [
                 'benefit_id' => $benefit->benefit_id,
                 'custom_name' => $benefit->benefit_id === null ? $benefit->name : null,

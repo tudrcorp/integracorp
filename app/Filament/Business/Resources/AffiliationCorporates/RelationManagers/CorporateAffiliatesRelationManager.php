@@ -7,6 +7,7 @@ namespace App\Filament\Business\Resources\AffiliationCorporates\RelationManagers
 use App\Filament\Business\Concerns\AssignsUpgradesWithIlsVoucher;
 use App\Filament\Business\Concerns\ManagesAffiliateSpecificBusinessUnit;
 use App\Filament\Business\Resources\AffiliationCorporates\Support\CorporateAffiliateIlsVoucherForm;
+use App\Filament\Shared\Affiliations\CapitationCostColumn;
 use App\Http\Controllers\AffiliateCorporateController;
 use App\Models\AffiliateCorporate;
 use App\Models\AffiliateCorporateUpgrade;
@@ -23,6 +24,7 @@ use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
 use App\Support\AffiliationCorporates\CorporateAffiliateUpgradeManager;
 use App\Support\Affiliations\AffiliateSpecificBusinessUnitChanger;
 use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
+use App\Support\Business\CapitationPlans\AffiliateCapitationCost;
 use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\Filament\PatientAgeDisplay;
@@ -446,6 +448,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
                     ->trueColor('success')
                     ->falseColor('warning')
                     ->tooltip(fn (AffiliateCorporate $record): string => $this->syncPendingSummary($record)),
+                CapitationCostColumn::make(fn (Model $record, mixed $livewire): mixed => AffiliateCapitationCost::forAffiliateCorporate($record, self::ownerAffiliationCorporate($livewire))),
                 TextColumn::make('coverage.price')
                     ->label('Cobertura')
                     ->numeric(decimalPlaces: 2)
@@ -819,6 +822,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    CapitationCostColumn::bulkAction(),
                     $this->changeSpecificBusinessUnitBulkAction(),
                     BulkAction::make('asigned_vaucher_ils')
                         ->label('Asignar vouchers ILS')
@@ -1313,5 +1317,16 @@ class CorporateAffiliatesRelationManager extends RelationManager
         }
 
         return (int) $affiliateValue === (int) $ownerValue ? 'success' : 'warning';
+    }
+
+    /**
+     * La afiliación dueña ya está cargada en el relation manager: se pasa al cálculo del
+     * capitado para no consultarla por cada fila.
+     */
+    private static function ownerAffiliationCorporate(mixed $livewire): ?\App\Models\AffiliationCorporate
+    {
+        $owner = $livewire instanceof RelationManager ? $livewire->getOwnerRecord() : null;
+
+        return $owner instanceof \App\Models\AffiliationCorporate ? $owner : null;
     }
 }
