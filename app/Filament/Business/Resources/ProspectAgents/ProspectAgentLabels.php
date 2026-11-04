@@ -35,6 +35,7 @@ final class ProspectAgentLabels
             'asesor-exclusivo' => 'Asesor exclusivo',
             'cliente-individual' => 'Cliente Individual',
             'cliente-corporativo' => 'Cliente Corporativo',
+            'cliente-sol' => 'Cliente Sol',
             'ejecutivo' => 'Ejecutivo',
             'otro' => 'Otro',
         ];
