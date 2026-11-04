@@ -68,7 +68,7 @@ class TelemedicineAmdInform extends Model
 
     public function supplier(): BelongsTo
     {
-        return $this->belongsTo(Supplier::class, 'supplier_id');
+        return $this->belongsTo(Supplier::class, 'supplier_id')->withTrashed();
     }
 
     public function createdBy(): BelongsTo

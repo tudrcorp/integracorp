@@ -12,6 +12,7 @@ use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\MedicalAppointmentManager;
+use App\Support\Operations\ProviderPendingWork;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\DateTimePicker;
@@ -119,16 +120,19 @@ final class OperationMedicalAppointmentsTable
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => match (mb_strtoupper(trim((string) $state))) {
                         'RESCHEDULED' => 'REPROGRAMADA',
+                        OperationMedicalAppointment::STATUS_CANCELLED => 'CANCELADA',
                         default => 'AGENDADA',
                     })
                     ->color(fn (?string $state): string => match (mb_strtoupper(trim((string) $state))) {
                         'RESCHEDULED' => 'warning',
+                        OperationMedicalAppointment::STATUS_CANCELLED => 'danger',
                         default => 'success',
                     }),
             ])
             ->recordActions([
                 Action::make('reschedule')
                     ->label('Cambiar fecha')
+                    ->hidden(fn (OperationMedicalAppointment $record): bool => ProviderPendingWork::isAppointmentCancelled($record))
                     ->icon(Heroicon::OutlinedCalendarDays)
                     ->color('warning')
                     ->modalHeading('Reprogramar cita médica')

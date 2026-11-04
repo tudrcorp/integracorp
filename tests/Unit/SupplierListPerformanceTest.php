@@ -56,7 +56,7 @@ it('resume las tarjetas superiores en una consulta y coincide con los conteos su
     expect(DB::getQueryLog())->toHaveCount(1)
         ->and($summary['total'])->toBe(Supplier::query()->count())
         ->and($summary['registered_in_month'])->toBe(Supplier::query()->whereBetween('created_at', [$start, $end])->count())
-        ->and($summary['not_agreed'])->toBe(Supplier::query()->where('status_convenio', 'NO CONVENIDO')->count())
+        ->and($summary['not_agreed'])->toBe(SupplierListStatCounts::applyNotAgreedPending(Supplier::query())->count())
         ->and($summary['with_acceptance_letter'])->toBe(
             Supplier::query()
                 ->where(fn ($q) => $q->where('status_convenio', 'GENERAL')->orWhere('status_convenio', 'like', '%PREFERENCIAL%'))

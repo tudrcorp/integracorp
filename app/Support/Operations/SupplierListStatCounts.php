@@ -62,7 +62,7 @@ final class SupplierListStatCounts
                 .' COALESCE(SUM(CASE WHEN suppliers.created_at BETWEEN ? AND ? THEN 1 ELSE 0 END), 0) as registered_in_month,'
                 ." COALESCE(SUM(CASE WHEN (suppliers.status_convenio = 'GENERAL' OR suppliers.status_convenio LIKE '%PREFERENCIAL%')"
                 ." AND suppliers.carta_acceptance IS NOT NULL AND suppliers.carta_acceptance <> '' THEN 1 ELSE 0 END), 0) as with_acceptance_letter,"
-                ." COALESCE(SUM(CASE WHEN suppliers.status_convenio = 'NO CONVENIDO' THEN 1 ELSE 0 END), 0) as not_agreed",
+                .' COALESCE(SUM(CASE WHEN '.self::notAgreedPendingSql('suppliers').' THEN 1 ELSE 0 END), 0) as not_agreed',
                 [$monthStart, $monthEnd],
             )
             ->first();
@@ -73,6 +73,32 @@ final class SupplierListStatCounts
             'with_acceptance_letter' => (int) ($row->with_acceptance_letter ?? 0),
             'not_agreed' => (int) ($row->not_agreed ?? 0),
         ];
+    }
+
+    /**
+     * «Proveedores no convenidos»: los que se registraron rápido desde una orden de servicio
+     * (convenio NO CONVENIDO) y el equipo de proveedores **todavía no ha trabajado**.
+     *
+     * Sale de la tarjeta en cuanto el equipo lo trabaja, aunque olvide cambiar el convenio:
+     * - el estatus de sistema deja de ser PENDIENTE (o vacío), o
+     * - ya tiene carta de aceptación.
+     *
+     * Es la misma regla del filtro «Solo no convenidos por gestionar» de la tabla.
+     */
+    public static function notAgreedPendingSql(string $table): string
+    {
+        return "UPPER(TRIM(COALESCE({$table}.status_convenio, ''))) = 'NO CONVENIDO'"
+            ." AND UPPER(TRIM(COALESCE({$table}.status_sistema, ''))) IN ('', 'PENDIENTE')"
+            ." AND ({$table}.carta_acceptance IS NULL OR TRIM({$table}.carta_acceptance) = '')";
+    }
+
+    /**
+     * @param  Builder<\App\Models\Supplier>  $query
+     * @return Builder<\App\Models\Supplier>
+     */
+    public static function applyNotAgreedPending(Builder $query): Builder
+    {
+        return $query->whereRaw('('.self::notAgreedPendingSql($query->getModel()->getTable()).')');
     }
 
     public static function statusKey(?string $status): string

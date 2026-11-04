@@ -368,9 +368,9 @@ final class ServiceOrderFlowTrace
             return 'sin proveedor';
         }
 
-        $name = Supplier::query()->whereKey((int) $supplierId)->value('name');
+        $supplier = Supplier::query()->withTrashed()->select(['id', 'name', 'deleted_at'])->find((int) $supplierId);
 
-        return filled($name) ? trim((string) $name) : 'proveedor #'.$supplierId;
+        return $supplier instanceof Supplier ? (string) ProviderDeletion::displayName($supplier) : 'proveedor #'.$supplierId;
     }
 
     public static function orderProviderLabel(OperationServiceOrder $order): string

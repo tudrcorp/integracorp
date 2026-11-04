@@ -78,7 +78,7 @@ class TelemedicineCase extends Model
      */
     public function medicalTeamSupplier(): BelongsTo
     {
-        return $this->belongsTo(Supplier::class, 'medical_team_supplier_id');
+        return $this->belongsTo(Supplier::class, 'medical_team_supplier_id')->withTrashed();
     }
 
     public function consultations()
@@ -150,6 +150,6 @@ class TelemedicineCase extends Model
      */
     public function supplier(): BelongsTo
     {
-        return $this->belongsTo(Supplier::class);
+        return $this->belongsTo(Supplier::class)->withTrashed();
     }
 }
