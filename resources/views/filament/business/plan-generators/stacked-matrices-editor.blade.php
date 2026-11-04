@@ -296,5 +296,6 @@
         'groupTotalHiddenRows' => $groupTotalHiddenRows,
         'editable' => true,
         'matrixStatePath' => $matrixStatePath,
+        'upgradeBillingFrequency' => $upgradeBillingFrequency ?? null,
     ])
 </div>

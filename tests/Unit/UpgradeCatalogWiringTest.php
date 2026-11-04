@@ -63,7 +63,7 @@ it('los familiares individuales tienen agregar y quitar upgrade, por fila y en l
         ->toContain('$this->addUpgradeWithVoucherBulkAction(fn (): bool => self::userCanManageUpgrades()),')
         ->toContain("BulkAction::make('remove_upgrade_bulk')")
         ->toContain('use AssignsUpgradesWithIlsVoucher;')
-        ->toContain('IndividualAffiliateUpgradeManager::add($this->getOwnerRecord(), $affiliateIds, [$coverageId], null, $vouchers)')
+        ->toContain('IndividualAffiliateUpgradeManager::add($this->getOwnerRecord(), $affiliateIds, [$coverageId], null, $vouchers, $billingChoice)')
         ->toContain('IndividualAffiliateUpgradeManager::deactivate($owner, $upgradeIds)')
         ->toContain('BusinessFilamentActionPermissionRegistry::MANAGE_INDIVIDUAL_AFFILIATE_UPGRADES')
         ->toContain('->withActiveUpgradesTotal()')
@@ -80,7 +80,7 @@ it('todo recálculo de tarifa individual conserva o recotiza los upgrades', func
         ->toContain("round((float) \$amounts['annual_fee'] + IndividualAffiliateUpgradeManager::activeTotalFor(\$affiliate), 2)")
         ->and(upgradeWiringSource('app/Support/Renovations/RenewalFeeProjection.php'))
         ->toContain('UpgradeRenewalRepricer::projectedTotal($affiliate, $referenceDate)')
-        ->and(substr_count(upgradeWiringSource('app/Services/AcceptAffiliationRenovationsService.php'), 'UpgradeRenewalRepricer::reprice($affiliate, $acceptanceDate)'))->toBe(2)
+        ->and(substr_count(upgradeWiringSource('app/Services/AcceptAffiliationRenovationsService.php'), 'UpgradeRenewalRepricer::reprice($affiliate, $acceptanceDate, null, '))->toBe(2)
         ->and(substr_count(upgradeWiringSource('app/Support/Filament/Renovations/RenovationManualAcceptancePricing.php'), 'UpgradeRenewalRepricer::projectedTotal($affiliate, $referenceDate)'))->toBe(2);
 });
 

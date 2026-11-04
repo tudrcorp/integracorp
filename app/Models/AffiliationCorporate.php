@@ -68,6 +68,7 @@ class AffiliationCorporate extends Model
         'business_unit_id',
         'specific_business_unit',
         'business_line_id',
+        'upgrade_billing_frequency',
     ];
 
     protected $casts = [

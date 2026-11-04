@@ -231,7 +231,7 @@ final class AcceptAffiliationCorporateRenovationsService
                 continue;
             }
 
-            $annualFee = $this->annualFeeWithUpgrades($affiliate, (float) $amounts['annual_fee'], $acceptanceDate);
+            $annualFee = $this->annualFeeWithUpgrades($affiliate, (float) $amounts['annual_fee'], $acceptanceDate, $manualOptions->paymentFrequency);
 
             $affiliate->update([
                 'plan_id' => $manualOptions->planId,
@@ -294,7 +294,7 @@ final class AcceptAffiliationCorporateRenovationsService
                 );
 
                 if ($amounts !== null) {
-                    $annualFee = $this->annualFeeWithUpgrades($affiliate, (float) $amounts['annual_fee'], $acceptanceDate);
+                    $annualFee = $this->annualFeeWithUpgrades($affiliate, (float) $amounts['annual_fee'], $acceptanceDate, $paymentFrequency);
 
                     $affiliate->update([
                         'plan_id' => $planId,
@@ -340,9 +340,9 @@ final class AcceptAffiliationCorporateRenovationsService
      * La tarifa renovada por edad suma los upgrades activos, recotizados con la
      * edad a la fecha de renovación.
      */
-    private function annualFeeWithUpgrades(AffiliateCorporate $affiliate, float $planAnnualFee, Carbon $acceptanceDate): float
+    private function annualFeeWithUpgrades(AffiliateCorporate $affiliate, float $planAnnualFee, Carbon $acceptanceDate, ?string $paymentFrequency = null): float
     {
-        return round($planAnnualFee + UpgradeRenewalRepricer::reprice($affiliate, $acceptanceDate), 2);
+        return round($planAnnualFee + UpgradeRenewalRepricer::reprice($affiliate, $acceptanceDate, null, $paymentFrequency), 2);
     }
 
     private function recalculateAffiliationTotals(AffiliationCorporate $affiliation): void

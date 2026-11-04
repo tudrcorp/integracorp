@@ -258,7 +258,7 @@ final class AcceptAffiliationRenovationsService
 
         foreach ($affiliates as $affiliate) {
             if ($this->isTitular($affiliate)) {
-                $annualFee = round($titularAmounts['annual_fee'] + UpgradeRenewalRepricer::reprice($affiliate, $acceptanceDate), 2);
+                $annualFee = round($titularAmounts['annual_fee'] + UpgradeRenewalRepricer::reprice($affiliate, $acceptanceDate, null, $manualOptions->paymentFrequency), 2);
 
                 $affiliate->update([
                     'plan_id' => $manualOptions->planId,
@@ -350,7 +350,7 @@ final class AcceptAffiliationRenovationsService
 
         $paymentFrequency = (string) ($affiliationForFees->payment_frequency ?? 'ANUAL');
         /** Los upgrades se recotizan con la edad a la fecha de renovación, igual que el plan. */
-        $annualFee = round((float) $amounts['annual_fee'] + UpgradeRenewalRepricer::reprice($affiliate, $acceptanceDate), 2);
+        $annualFee = round((float) $amounts['annual_fee'] + UpgradeRenewalRepricer::reprice($affiliate, $acceptanceDate, null, $paymentFrequency), 2);
 
         $affiliate->update([
             'plan_id' => $affiliationForFees->plan_id,

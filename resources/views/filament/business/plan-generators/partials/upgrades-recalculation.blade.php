@@ -8,9 +8,10 @@
     $rateRows = (array) ($rateRows ?? []);
     $upgradesAnnual = (float) ($upgradeQuote['annual_total'] ?? 0);
     $planTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn($columns, $rateRows);
-    $withUpgrades = PlanGeneratorGroupTotalCalculator::totalsByColumn($columns, $rateRows, $upgradesAnnual);
+    $upgradeBillingFrequency = $upgradeBillingFrequency ?? null;
+    $withUpgrades = PlanGeneratorGroupTotalCalculator::totalsByColumn($columns, $rateRows, $upgradesAnnual, $upgradeBillingFrequency);
     $frequencyRows = array_values(array_filter(
-        PlanGeneratorGroupTotalCalculator::displayRows((bool) ($includeMonthlyTotal ?? false), $groupTotalHiddenRows ?? [], $upgradesAnnual),
+        PlanGeneratorGroupTotalCalculator::displayRows((bool) ($includeMonthlyTotal ?? false), $groupTotalHiddenRows ?? [], $upgradesAnnual, $upgradeBillingFrequency),
         static fn (array $row): bool => $row['key'] !== PlanGeneratorGroupTotalCalculator::ROW_ANNUAL,
     ));
     $errors = (array) ($upgradeQuote['errors'] ?? []);
@@ -81,7 +82,7 @@
             </table>
         </div>
         <p class="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-            Los upgrades se pagan una sola vez al año, completos, en el primer pago; los pagos siguientes llevan solo el plan.
+            {{ PlanGeneratorGroupTotalCalculator::upgradeRuleText($upgradeBillingFrequency) }}
             Este desglose es solo para usted. En el PDF el cliente ve un único total grupal (ya con los upgrades) y, debajo, una tabla por upgrade con su cobertura, su tarifa y sus servicios.
         </p>
     @endif

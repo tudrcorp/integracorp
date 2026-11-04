@@ -118,6 +118,7 @@ class Affiliation extends Model
         'date_end_aliado_1',
         'vaucher_aliado_1',
 
+        'upgrade_billing_frequency',
     ];
 
     /**

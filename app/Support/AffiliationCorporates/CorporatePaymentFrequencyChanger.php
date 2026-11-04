@@ -148,6 +148,8 @@ final class CorporatePaymentFrequencyChanger
             $periodAmount = \App\Support\Upgrades\UpgradeFirstPaymentBilling::corporateRegular($locked, (float) $locked->fee_anual, $target);
             $locked->payment_frequency = $target;
             $locked->total_amount = $periodAmount;
+            /** Upgrades repartidos en cuotas: siguen repartidos con la frecuencia nueva. */
+            \App\Support\Upgrades\UpgradeBillingChoice::followFrequency($locked, $previousRaw);
             $locked->save();
 
             AffiliateCorporate::query()

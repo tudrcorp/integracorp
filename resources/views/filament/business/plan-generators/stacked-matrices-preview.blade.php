@@ -155,6 +155,7 @@
         'upgradesAnnual' => (float) ($upgradeQuote['annual_total'] ?? 0),
         'includeMonthlyTotal' => (bool) ($includeMonthlyTotal ?? false),
         'groupTotalHiddenRows' => $groupTotalHiddenRows ?? [],
+        'upgradeBillingFrequency' => $upgradeBillingFrequency ?? null,
     ])
 
     @include('filament.business.plan-generators.partials.upgrades-preview', [

@@ -139,6 +139,8 @@ final class PlanGeneratorTemplateCloner
         }
 
         $attributes['include_monthly_total'] = (bool) ($formState['include_monthly_total'] ?? false);
+        /** Los upgrades pasan a la derivada: también su forma de cobro. */
+        $attributes['upgrade_billing_frequencies'] = $template->upgradeBillingFrequencies();
         $attributes['group_total_hidden_rows'] = PlanGeneratorGroupTotalCalculator::normalizeHiddenRows($formState['group_total_hidden_rows'] ?? []);
         $attributes['conditions'] = self::conditionsFromFormState($formState);
         $attributes['parent_id'] = $base->getKey();

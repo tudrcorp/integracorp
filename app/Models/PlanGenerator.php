@@ -31,6 +31,8 @@ class PlanGenerator extends Model
         'population_import_id',
         'status',
         'created_by',
+        'upgrade_billing_frequency',
+        'upgrade_billing_frequencies',
     ];
 
     /**
@@ -48,6 +50,7 @@ class PlanGenerator extends Model
             'population_import_id' => 'integer',
             'include_monthly_total' => 'boolean',
             'group_total_hidden_rows' => 'array',
+            'upgrade_billing_frequencies' => 'array',
         ];
     }
 
@@ -166,5 +169,22 @@ class PlanGenerator extends Model
     public function populationImport(): BelongsTo
     {
         return $this->belongsTo(Import::class, 'population_import_id');
+    }
+
+    /**
+     * Formas de pago de upgrades que muestra la cotización (Anual si no se eligió ninguna).
+     * Lee la lista nueva y, si está vacía, la elección única de antes.
+     *
+     * @return list<string>
+     */
+    public function upgradeBillingFrequencies(): array
+    {
+        $list = \App\Support\Upgrades\UpgradeBillingChoice::normalizeList($this->getAttribute('upgrade_billing_frequencies'));
+
+        if ($list === []) {
+            $list = \App\Support\Upgrades\UpgradeBillingChoice::normalizeList([$this->getAttribute('upgrade_billing_frequency')]);
+        }
+
+        return $list !== [] ? $list : [\App\Support\Upgrades\UpgradeBillingChoice::DEFAULT];
     }
 }

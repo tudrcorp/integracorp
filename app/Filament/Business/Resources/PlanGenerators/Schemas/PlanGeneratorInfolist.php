@@ -228,6 +228,7 @@ class PlanGeneratorInfolist
                                                         'populationUnitLabel' => PlanGeneratorPopulationUnit::resolve($record->population_unit)->label(),
                                                         'includeMonthlyTotal' => (bool) $record->include_monthly_total,
                                                         'groupTotalHiddenRows' => $record->group_total_hidden_rows ?? [],
+                                                        'upgradeBillingFrequency' => $record->upgradeBillingFrequencies(),
                                                         'conditions' => PlanGeneratorConditions::normalize($record->conditions),
                                                         'upgradeQuote' => PlanGeneratorUpgrades::quote(
                                                             PlanGeneratorUpgrades::linesFromModel($record),

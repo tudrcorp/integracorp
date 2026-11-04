@@ -141,5 +141,6 @@ it('la aprobación, la renovación, el cambio de plan y la unificación aplican 
         ->and(substr_count($renewal, '$paymentDate === $paymentDates[0] ? round($periodAmount + $oneTimeUpgrades, 2) : $periodAmount'))->toBe(2)
         ->and((string) file_get_contents($root.'app/Support/Affiliations/PlanChange/IndividualAffiliationPlanChanger.php'))->toContain("UpgradeFirstPaymentBilling::moveCharges('affiliate_upgrades'")
         ->and((string) file_get_contents($root.'app/Support/Affiliations/FamilyMergeBilling.php'))->toContain('$installments[0][\'amount\'] = round($installments[0][\'amount\'] + $oneTimeUpgrades, 2);')
-        ->and((string) file_get_contents($root.'app/Support/Upgrades/UpgradeRenewalRepricer.php'))->toContain("'billing_mode' => UpgradeFirstPaymentBilling::MODE");
+        ->and((string) file_get_contents($root.'app/Support/Upgrades/UpgradeRenewalRepricer.php'))->toContain("'billing_mode' => self::renewalMode(\$affiliate, \$paymentFrequency)")
+        ->and((string) file_get_contents($root.'app/Support/Upgrades/UpgradeRenewalRepricer.php'))->toContain('return UpgradeFirstPaymentBilling::MODE;');
 });

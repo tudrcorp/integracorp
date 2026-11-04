@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Concerns;
 
+use App\Models\Affiliation;
+use App\Models\AffiliationCorporate;
 use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
 use App\Support\Upgrades\UpgradeAssignmentPreview;
+use App\Support\Upgrades\UpgradeBillingChoice;
+use App\Support\Upgrades\UpgradeBillingResolution;
 use App\Support\Upgrades\UpgradeIlsVoucher;
 use App\Support\Upgrades\UpgradePricing;
 use Closure;
@@ -18,6 +22,7 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -61,14 +66,14 @@ trait AssignsUpgradesWithIlsVoucher
      * @param  list<int>  $affiliateIds
      * @return array<string, mixed>
      */
-    abstract protected function upgradeManagerPreview(array $affiliateIds, mixed $coverageId): array;
+    abstract protected function upgradeManagerPreview(array $affiliateIds, mixed $coverageId, ?string $billingChoice = null): array;
 
     /**
      * @param  list<int>  $affiliateIds
      * @param  array<int, array<string, mixed>>  $vouchers
      * @return array{affiliates_updated: int, upgrades_created: int, annual_delta: float, collections_adjusted: int, skipped: list<array<string, string>>}
      */
-    abstract protected function upgradeManagerAdd(array $affiliateIds, mixed $coverageId, array $vouchers): array;
+    abstract protected function upgradeManagerAdd(array $affiliateIds, mixed $coverageId, array $vouchers, ?string $billingChoice = null): array;
 
     abstract protected function upgradeAffiliateLabel(Model $affiliate): string;
 
@@ -88,6 +93,7 @@ trait AssignsUpgradesWithIlsVoucher
             ->modalSubmitActionLabel('Agregar upgrade y guardar voucher')
             ->schema(fn (Model $record): array => [
                 $this->upgradeCoverageSelect(),
+                $this->upgradeBillingChoiceField(),
                 $this->upgradePreviewView(fn (): array => [(int) $record->getKey()]),
                 Section::make('Paso 3 · Voucher ILS')
                     ->description('Obligatorio. Queda guardado con este upgrade; no reemplaza el voucher del plan.')
@@ -103,6 +109,7 @@ trait AssignsUpgradesWithIlsVoucher
                     [(int) $record->getKey()],
                     $data['upgrade_coverage_id'] ?? null,
                     [(int) $record->getKey() => (array) ($data['voucher'] ?? [])],
+                    $data['upgrade_billing_frequency'] ?? null,
                 );
             })
             ->visible($visible);
@@ -135,6 +142,7 @@ trait AssignsUpgradesWithIlsVoucher
 
                 $schema?->fill([
                     'upgrade_coverage_id' => null,
+                    'upgrade_billing_frequency' => $this->upgradeOwnerBillingChoice(),
                     'vouchers' => $records->mapWithKeys(fn (Model $record): array => ['affiliate-'.$record->getKey() => [
                         'affiliate_id' => (int) $record->getKey(),
                         'name' => $this->upgradeAffiliateLabel($record),
@@ -143,6 +151,7 @@ trait AssignsUpgradesWithIlsVoucher
             })
             ->schema(fn (Collection $records): array => [
                 $this->upgradeCoverageSelect(),
+                $this->upgradeBillingChoiceField(),
                 $this->upgradePreviewView(fn (): array => array_map('intval', $records->modelKeys())),
                 Section::make('Paso 3 · Voucher ILS de cada afiliado')
                     ->description('Obligatorio para cada afiliado que recibe el upgrade. Cada voucher queda con su upgrade; el número no se puede repetir.')
@@ -158,7 +167,7 @@ trait AssignsUpgradesWithIlsVoucher
                             ->itemLabel(fn (array $state): string => (string) ($state['name'] ?? 'Afiliado'))
                             ->schema(function () use ($records): array {
                                 $receives = function (Get $get) use ($records): bool {
-                                    $preview = $this->memoizedUpgradePreview(array_map('intval', $records->modelKeys()), $get('../../upgrade_coverage_id'));
+                                    $preview = $this->memoizedUpgradePreview(array_map('intval', $records->modelKeys()), $get('../../upgrade_coverage_id'), $get('../../upgrade_billing_frequency'));
 
                                     return in_array((int) $get('affiliate_id'), UpgradeAssignmentPreview::receivingIds($preview), true);
                                 };
@@ -189,7 +198,7 @@ trait AssignsUpgradesWithIlsVoucher
                     }
                 }
 
-                $this->runUpgradeAssignment($action, array_map('intval', $records->modelKeys()), $data['upgrade_coverage_id'] ?? null, $vouchers);
+                $this->runUpgradeAssignment($action, array_map('intval', $records->modelKeys()), $data['upgrade_coverage_id'] ?? null, $vouchers, $data['upgrade_billing_frequency'] ?? null);
             })
             ->visible($visible);
     }
@@ -217,7 +226,7 @@ trait AssignsUpgradesWithIlsVoucher
         return View::make('filament.business.upgrades.assignment-preview')
             ->visible(fn (Get $get): bool => filled($get('upgrade_coverage_id')))
             ->viewData(fn (Get $get): array => [
-                'preview' => $this->memoizedUpgradePreview($affiliateIds(), $get('upgrade_coverage_id')),
+                'preview' => $this->memoizedUpgradePreview($affiliateIds(), $get('upgrade_coverage_id'), $get('upgrade_billing_frequency')),
             ])
             ->columnSpanFull();
     }
@@ -291,15 +300,69 @@ trait AssignsUpgradesWithIlsVoucher
      * @param  list<int>  $affiliateIds
      * @return array<string, mixed>
      */
-    private function memoizedUpgradePreview(array $affiliateIds, mixed $coverageId): array
+    private function memoizedUpgradePreview(array $affiliateIds, mixed $coverageId, mixed $billingChoice = null): array
     {
         if (blank($coverageId)) {
             return UpgradeAssignmentPreview::empty();
         }
 
-        $key = implode(',', $affiliateIds).'|'.(string) $coverageId;
+        $billingChoice = UpgradeBillingChoice::normalize($billingChoice);
+        $key = implode(',', $affiliateIds).'|'.(string) $coverageId.'|'.(string) $billingChoice;
 
-        return $this->upgradePreviewMemo[$key] ??= $this->upgradeManagerPreview($affiliateIds, $coverageId);
+        return $this->upgradePreviewMemo[$key] ??= $this->upgradeManagerPreview($affiliateIds, $coverageId, $billingChoice);
+    }
+
+    /**
+     * Forma de cobro vigente de la afiliación dueña (Anual si nunca se eligió).
+     */
+    private function upgradeOwnerBillingChoice(): string
+    {
+        $owner = $this->getOwnerRecord();
+
+        return $owner instanceof Affiliation || $owner instanceof AffiliationCorporate
+            ? UpgradeBillingChoice::of($owner)
+            : UpgradeBillingChoice::DEFAULT;
+    }
+
+    /**
+     * Paso 2 · Cómo se cobra. Obligatorio. Si la afiliación ya tiene upgrades activos, su
+     * forma de cobro es la de ellos y no se puede cambiar aquí.
+     */
+    private function upgradeBillingChoiceField(): ToggleButtons
+    {
+        $owner = $this->getOwnerRecord();
+        $locked = ($owner instanceof Affiliation || $owner instanceof AffiliationCorporate) && UpgradeBillingResolution::hasActiveUpgrades($owner);
+        $frequency = $owner instanceof Model ? (string) ($owner->getAttribute('payment_frequency') ?: 'ANUAL') : 'ANUAL';
+
+        return ToggleButtons::make('upgrade_billing_frequency')
+            ->label('Paso 2 · ¿Cómo se cobrará el upgrade?')
+            ->helperText($locked
+                ? 'Esta afiliación ya tiene upgrades: todos se cobran igual ('.mb_strtolower(UpgradeBillingChoice::label($this->upgradeOwnerBillingChoice())).'). Para cambiarlo, quite primero los upgrades actuales.'
+                : 'Anual: completo en el primer pago o, si la afiliación ya está en curso, en el próximo aviso. Para repartirlo en las cuotas, elija la misma frecuencia de la afiliación ('.mb_strtolower($frequency).').')
+            ->options(UpgradeBillingChoice::options())
+            ->default(fn (): string => $this->upgradeOwnerBillingChoice())
+            ->afterStateHydrated(function (ToggleButtons $component, mixed $state): void {
+                if (UpgradeBillingChoice::normalize($state) === null) {
+                    $component->state($this->upgradeOwnerBillingChoice());
+                }
+            })
+            ->inline()
+            ->live()
+            ->required()
+            ->disabled($locked)
+            ->dehydrated()
+            ->visible(fn (Get $get): bool => filled($get('upgrade_coverage_id')))
+            ->rules([
+                fn (): Closure => function (string $attribute, mixed $value, Closure $fail) use ($frequency): void {
+                    $error = UpgradeBillingChoice::error($value, $frequency);
+
+                    if ($error !== null) {
+                        $fail($error);
+                    }
+                },
+            ])
+            ->validationMessages(['required' => 'Indique cómo se cobrará el upgrade.'])
+            ->columnSpanFull();
     }
 
     /**
@@ -308,10 +371,11 @@ trait AssignsUpgradesWithIlsVoucher
      * @param  list<int>  $affiliateIds
      * @param  array<int, array<string, mixed>>  $vouchers
      */
-    private function runUpgradeAssignment(Action $action, array $affiliateIds, mixed $coverageId, array $vouchers): void
+    private function runUpgradeAssignment(Action $action, array $affiliateIds, mixed $coverageId, array $vouchers, mixed $billingChoice = null): void
     {
         $this->upgradePreviewMemo = [];
-        $preview = $this->upgradeManagerPreview($affiliateIds, $coverageId);
+        $billingChoice = UpgradeBillingChoice::normalize($billingChoice);
+        $preview = $this->upgradeManagerPreview($affiliateIds, $coverageId, $billingChoice);
         $blocking = UpgradeAssignmentPreview::blockingMessage($preview);
 
         if ($blocking !== null) {
@@ -323,7 +387,7 @@ trait AssignsUpgradesWithIlsVoucher
         $vouchers = array_intersect_key($vouchers, array_flip($receiving));
 
         try {
-            $result = $this->upgradeManagerAdd($receiving, $coverageId, $vouchers);
+            $result = $this->upgradeManagerAdd($receiving, $coverageId, $vouchers, $billingChoice);
         } catch (InvalidArgumentException|RuntimeException $exception) {
             Notification::make()->danger()->title('No se guardó nada')->body($exception->getMessage())->persistent()->send();
             $action->halt();

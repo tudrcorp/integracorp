@@ -50,12 +50,13 @@ final class UpgradeRenewalRepricer
      * transacción de la renovación. Cada upgrade que cambia de precio o de rango
      * pasa a INACTIVO y lo reemplaza uno nuevo que apunta a él (`replaces_id`).
      *
-     * El año nuevo arranca con la regla de cobro único: todos los upgrades activos (también los
-     * que venían repartidos en cuotas) quedan para cobrarse completos en el primer pago.
+     * El año nuevo conserva la forma de cobro elegida para la afiliación (UpgradeBillingChoice):
+     * Anual (completos en el primer pago) o repartidos en cada cuota con su misma frecuencia.
+     * Si la frecuencia de la afiliación cambió y la elección ya no le corresponde, pasa a Anual.
      *
      * @return float suma de upgrades activos después de recotizar
      */
-    public static function reprice(Affiliate|AffiliateCorporate $affiliate, Carbon $asOf, ?string $actor = null): float
+    public static function reprice(Affiliate|AffiliateCorporate $affiliate, Carbon $asOf, ?string $actor = null, ?string $paymentFrequency = null): float
     {
         if (! self::mayHaveUpgrades($affiliate)) {
             return 0.0;
@@ -65,7 +66,7 @@ final class UpgradeRenewalRepricer
         $total = 0.0;
         $table = $affiliate instanceof Affiliate ? 'affiliate_upgrades' : 'affiliate_corporate_upgrades';
         $billing = UpgradeFirstPaymentBilling::hasColumn($table, 'charged_collection_id')
-            ? ['billing_mode' => UpgradeFirstPaymentBilling::MODE, 'charged_collection_id' => null]
+            ? ['billing_mode' => self::renewalMode($affiliate, $paymentFrequency), 'charged_collection_id' => null]
             : [];
 
         foreach (self::activeAssignments($affiliate, lock: true) as $assignment) {
@@ -109,6 +110,37 @@ final class UpgradeRenewalRepricer
         }
 
         return round($total, 2);
+    }
+
+    /**
+     * Forma de cobro del año nuevo. Una elección que ya no cuadra con la frecuencia de la
+     * afiliación vuelve a Anual y queda así guardada, para que no reviva si la frecuencia
+     * vuelve a cambiar.
+     */
+    private static function renewalMode(Affiliate|AffiliateCorporate $affiliate, ?string $paymentFrequency): string
+    {
+        /** Sin la columna de elección (migración pendiente) todo sigue como antes: Anual. */
+        if (! UpgradeFirstPaymentBilling::hasColumn($affiliate instanceof Affiliate ? 'affiliations' : 'affiliation_corporates', 'upgrade_billing_frequency')) {
+            return UpgradeFirstPaymentBilling::MODE;
+        }
+
+        $owner = $affiliate instanceof Affiliate ? $affiliate->affiliation : $affiliate->affiliationCorporate;
+
+        if ($owner === null) {
+            return UpgradeFirstPaymentBilling::MODE;
+        }
+
+        /** La frecuencia del año nuevo (la renovación puede cambiarla en el mismo acto). */
+        $frequency = $paymentFrequency ?? $owner->payment_frequency;
+        $stored = UpgradeBillingChoice::normalize($owner->getAttribute('upgrade_billing_frequency'));
+
+        if ($stored !== null && UpgradeBillingChoice::error($stored, $frequency) !== null) {
+            $owner->forceFill(['upgrade_billing_frequency' => UpgradeBillingChoice::ANNUAL])->saveQuietly();
+
+            return UpgradeFirstPaymentBilling::MODE;
+        }
+
+        return UpgradeBillingChoice::modeFor($stored ?? UpgradeBillingChoice::ANNUAL, $frequency);
     }
 
     /**

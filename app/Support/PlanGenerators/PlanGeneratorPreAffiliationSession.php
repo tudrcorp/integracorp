@@ -247,6 +247,38 @@ final class PlanGeneratorPreAffiliationSession
         return is_array($data) ? $data : null;
     }
 
+    /**
+     * La cotización activa trae upgrades: la afiliación debe indicar cómo se cobran.
+     */
+    public static function hasUpgrades(): bool
+    {
+        $payload = self::get();
+
+        return is_array($payload) && (($payload['has_upgrades'] ?? false) === true || ((array) ($payload['upgrade_lines'] ?? [])) !== []);
+    }
+
+    /**
+     * Formas de pago de upgrades que la cotización le mostró al cliente.
+     *
+     * @return list<string>
+     */
+    public static function offeredUpgradeBillingFrequencies(): array
+    {
+        $payload = self::get() ?? [];
+        $list = \App\Support\Upgrades\UpgradeBillingChoice::normalizeList($payload['upgrade_billing_frequencies'] ?? [$payload['upgrade_billing_frequency'] ?? null]);
+
+        return $list !== [] ? $list : [\App\Support\Upgrades\UpgradeBillingChoice::DEFAULT];
+    }
+
+    /**
+     * Sugerencia al afiliar: la frecuencia de la afiliación si la cotización la ofreció
+     * repartida; si no, Anual.
+     */
+    public static function suggestedUpgradeBillingFrequency(mixed $affiliationFrequency = null): string
+    {
+        return \App\Support\Upgrades\UpgradeBillingChoice::suggestFor(self::offeredUpgradeBillingFrequencies(), $affiliationFrequency);
+    }
+
     public static function type(): ?string
     {
         return self::get()['type'] ?? null;
@@ -315,10 +347,13 @@ final class PlanGeneratorPreAffiliationSession
         $matrixState = PlanGeneratorPersistence::formStateFromModel($plan);
         $columns = $matrixState['columns'];
         $rateRows = $matrixState['rate_rows'];
+        $upgradeLines = PlanGeneratorUpgrades::linesFromModel($plan);
+        $upgradeBillingFrequencies = $plan->upgradeBillingFrequencies();
         $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn(
             $columns,
             $rateRows,
-            PlanGeneratorUpgrades::quote(PlanGeneratorUpgrades::linesFromModel($plan), $rateRows)['annual_total'],
+            PlanGeneratorUpgrades::quote($upgradeLines, $rateRows)['annual_total'],
+            $upgradeBillingFrequencies,
         );
         $columnKeys = PlanGeneratorMatrixState::extractColumnKeys($columns);
         $primaryColumnKey = $columnKeys[0] ?? null;
@@ -347,6 +382,9 @@ final class PlanGeneratorPreAffiliationSession
             'group_totals' => $groupTotals,
             'total_persons' => $totalPersons,
             'data_records' => $dataRecords,
+            /** Forma de cobro de upgrades elegida en la cotización: es la sugerida al afiliar. */
+            'has_upgrades' => $upgradeLines !== [],
+            'upgrade_billing_frequencies' => $upgradeBillingFrequencies,
         ];
     }
 

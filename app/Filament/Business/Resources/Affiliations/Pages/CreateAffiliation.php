@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\Affiliations\Pages;
 
 use App\Filament\Business\Resources\Affiliations\AffiliationResource;
+use App\Filament\Shared\Affiliations\UpgradeBillingField;
 use App\Http\Controllers\AffiliationController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PdfController;
@@ -104,6 +105,8 @@ class CreateAffiliation extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        /** Cómo se cobran los upgrades de la cotización: validado antes de escribir nada. */
+        $data = UpgradeBillingField::normalizeForCreate($data);
         $data = $this->publishPlanGeneratorCatalogPlan($data);
 
         session()->put('affiliates', isset($data['affiliates']) ? $data['affiliates'] : []);

@@ -13,8 +13,11 @@
     $columnCount = count($columns);
     // Costo anual de los upgrades de la cotización: se suma a cada columna.
     $upgradesAnnual = (float) ($upgradesAnnual ?? 0);
-    $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn($columns, $rateRows, $upgradesAnnual);
-    $rows = PlanGeneratorGroupTotalCalculator::displayRows($includeMonthlyTotal, $groupTotalHiddenRows, $upgradesAnnual);
+    // Forma de cobro de upgrades elegida (Anual por defecto): la fila de esa frecuencia los reparte.
+    $upgradeBillingFrequency = $upgradeBillingFrequency ?? null;
+    [$includeMonthlyTotal, $groupTotalHiddenRows] = PlanGeneratorGroupTotalCalculator::visibilityForUpgradeBilling($includeMonthlyTotal, $groupTotalHiddenRows, $upgradeBillingFrequency, $upgradesAnnual);
+    $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn($columns, $rateRows, $upgradesAnnual, $upgradeBillingFrequency);
+    $rows = PlanGeneratorGroupTotalCalculator::displayRows($includeMonthlyTotal, $groupTotalHiddenRows, $upgradesAnnual, $upgradeBillingFrequency);
     $frequencyRowCount = count(PlanGeneratorGroupTotalCalculator::groupTotalRows($includeMonthlyTotal, $groupTotalHiddenRows));
     $removedRows = $editable ? PlanGeneratorGroupTotalCalculator::removedRows($includeMonthlyTotal, $groupTotalHiddenRows) : [];
     $visibleKeys = array_column($rows, 'frequency_key');
