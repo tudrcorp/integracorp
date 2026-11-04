@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Resources\QualityControlSurveys\Pages;
 
 use App\Enums\QualityControlAffiliateType;
+use App\Filament\Operations\Resources\QualityControlSurveys\Actions\QualityControlSurveyActions;
 use App\Filament\Operations\Resources\QualityControlSurveys\QualityControlSurveyResource;
 use App\Jobs\ImportQualityControlSurveysJob;
+use App\Jobs\SendQualityControlPdfJob;
+use App\Services\QualityControlPdfService;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Operations\QualityControl\QualityControlReportRequest;
 use App\Support\Operations\QualityControl\QualityControlSurveyImporter;
 use App\Support\Operations\QualityControl\QualityControlSurveySummary;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
@@ -18,6 +23,7 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -83,6 +89,7 @@ abstract class ListQualityControlSurveys extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            $this->reportActions(),
             $this->importAction(),
             CreateAction::make()
                 ->label('Nueva encuesta')
@@ -90,6 +97,132 @@ abstract class ListQualityControlSurveys extends ListRecords
                 ->color('primary')
                 ->extraAttributes(['class' => FilamentIosButton::extraClassForFilamentColor('primary')]),
         ];
+    }
+
+    public const REPORT_PREVIEW_ACTION = 'reportPdfPreview';
+
+    protected function reportActions(): ActionGroup
+    {
+        $type = $this->qualityControlResource()::affiliateType();
+
+        return ActionGroup::make([
+            Action::make('previewReportPdf')
+                ->label('Ver informe')
+                ->icon(Heroicon::OutlinedDocumentChartBar)
+                ->action(function (): void {
+                    $report = $this->reportSelection();
+
+                    if ($report === null) {
+                        return;
+                    }
+
+                    $this->replaceMountedAction(self::REPORT_PREVIEW_ACTION, [
+                        'token' => QualityControlReportRequest::store($this->qualityControlResource()::affiliateType(), $report['ids'], $report['label']),
+                    ]);
+                }),
+            Action::make('emailReportPdf')
+                ->label('Enviar informe por correo')
+                ->icon(Heroicon::OutlinedEnvelope)
+                ->modalHeading('Enviar informe por correo')
+                ->modalDescription('Se envía el informe de las encuestas que tiene filtradas en pantalla, como PDF adjunto.')
+                ->modalWidth(Width::Large)
+                ->modalSubmitActionLabel('Enviar')
+                ->schema([QualityControlSurveyActions::emailsField()])
+                ->action(function (array $data) use ($type): void {
+                    $report = $this->reportSelection();
+
+                    if ($report !== null) {
+                        QualityControlSurveyActions::dispatch(SendQualityControlPdfJob::CHANNEL_EMAIL, QualityControlSurveyActions::cleanEmails($data['emails'] ?? []), $type->value, reportIds: $report['ids'], reportLabel: $report['label']);
+                    }
+                }),
+            Action::make('whatsappReportPdf')
+                ->label('Enviar informe por WhatsApp')
+                ->icon(Heroicon::OutlinedChatBubbleLeftRight)
+                ->modalHeading('Enviar informe por WhatsApp')
+                ->modalDescription('El informe de las encuestas filtradas llega como documento por un enlace que vence en 48 horas.')
+                ->modalWidth(Width::Large)
+                ->modalSubmitActionLabel('Enviar')
+                ->schema([QualityControlSurveyActions::phoneField()])
+                ->action(function (array $data) use ($type): void {
+                    $report = $this->reportSelection();
+
+                    if ($report !== null) {
+                        QualityControlSurveyActions::dispatch(SendQualityControlPdfJob::CHANNEL_WHATSAPP, [QualityControlSurveyActions::normalizedPhone($data['phone'] ?? '')], $type->value, reportIds: $report['ids'], reportLabel: $report['label']);
+                    }
+                }),
+        ])
+            ->label('Informe PDF')
+            ->icon(Heroicon::OutlinedDocumentChartBar)
+            ->color('gray')
+            ->button()
+            ->extraAttributes(['class' => FilamentIosButton::extraClassForFilamentColor('gray')]);
+    }
+
+    protected function reportPdfPreviewAction(): Action
+    {
+        return Action::make(self::REPORT_PREVIEW_ACTION)
+            ->modalHeading('Informe de Quality Control '.$this->qualityControlResource()::affiliateType()->label())
+            ->modalWidth(Width::SevenExtraLarge)
+            ->modalContent(function (array $arguments): ViewContract {
+                $token = (string) ($arguments['token'] ?? '');
+
+                return QualityControlSurveyActions::previewView(
+                    route('operations.quality-control.report.pdf.preview', ['token' => $token]),
+                    route('operations.quality-control.report.pdf.download', ['token' => $token]),
+                    'Informe de Quality Control',
+                    'Encuestas filtradas en pantalla',
+                );
+            })
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cerrar')
+            ->action(fn () => null);
+    }
+
+    /**
+     * Encuestas del listado tal como está filtrado y buscado, y un texto con esos filtros.
+     *
+     * @return array{ids: list<int>, label: string}|null
+     */
+    protected function reportSelection(): ?array
+    {
+        abort_unless($this->qualityControlResource()::canAccess(), 403);
+
+        $query = $this->getFilteredTableQuery();
+        $ids = $query === null ? [] : (clone $query)
+            ->reorder()
+            ->limit(QualityControlPdfService::REPORT_MAX_SURVEYS + 1)
+            ->pluck('quality_control_surveys.id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
+
+        if ($ids === []) {
+            Notification::make()->title('No hay encuestas para el informe')->body('Los filtros actuales no dejan ninguna encuesta. Ajústelos e intente de nuevo.')->warning()->send();
+
+            return null;
+        }
+
+        if (count($ids) > QualityControlPdfService::REPORT_MAX_SURVEYS) {
+            Notification::make()
+                ->title('Demasiadas encuestas para un informe')
+                ->body('El informe admite hasta '.number_format(QualityControlPdfService::REPORT_MAX_SURVEYS, 0, ',', '.').' encuestas. Acote con un rango de fechas u otro filtro.')
+                ->warning()
+                ->send();
+
+            return null;
+        }
+
+        $labels = collect($this->getTable()->getFilters())
+            ->flatMap(fn ($filter): array => $filter->getIndicators())
+            ->map(fn ($indicator): string => strip_tags((string) $indicator->getLabel()))
+            ->filter()
+            ->values()
+            ->all();
+
+        if (filled($this->getTableSearch())) {
+            $labels[] = 'Búsqueda: «'.trim((string) $this->getTableSearch()).'»';
+        }
+
+        return ['ids' => $ids, 'label' => implode(' · ', $labels)];
     }
 
     protected function importAction(): Action

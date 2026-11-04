@@ -33,6 +33,11 @@ class QualityControlIndividualResource extends QualityControlSurveyResource
         return BusinessFilamentActionPermissionRegistry::MANAGE_INDIVIDUAL_QUALITY_CONTROL;
     }
 
+    public static function noteActionSlug(): string
+    {
+        return BusinessFilamentActionPermissionRegistry::NOTE_INDIVIDUAL_QUALITY_CONTROL;
+    }
+
     public static function getPages(): array
     {
         return [

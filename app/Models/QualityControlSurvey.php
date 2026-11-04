@@ -9,6 +9,7 @@ use App\Enums\QualityControlRating;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -100,6 +101,16 @@ class QualityControlSurvey extends Model
     public function corporateAffiliate(): BelongsTo
     {
         return $this->belongsTo(AffiliateCorporate::class, 'affiliate_id');
+    }
+
+    /**
+     * Notas de seguimiento, de la más reciente a la más antigua.
+     *
+     * @return HasMany<QualityControlSurveyNote, $this>
+     */
+    public function notes(): HasMany
+    {
+        return $this->hasMany(QualityControlSurveyNote::class)->orderByDesc('created_at')->orderByDesc('id');
     }
 
     /**

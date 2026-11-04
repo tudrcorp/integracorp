@@ -466,6 +466,27 @@ Route::get('operations/suppliers/{supplier}/carta-acceptance/download', [Supplie
     ->middleware(['web', 'auth'])
     ->name('operations.suppliers.carta-acceptance.download');
 
+Route::get('operations/quality-control/surveys/{qualityControlSurvey}/pdf/preview', [\App\Http\Controllers\QualityControlPdfController::class, 'surveyPreview'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.quality-control.survey.pdf.preview');
+
+Route::get('operations/quality-control/surveys/{qualityControlSurvey}/pdf/download', [\App\Http\Controllers\QualityControlPdfController::class, 'surveyDownload'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.quality-control.survey.pdf.download');
+
+Route::get('operations/quality-control/reports/{token}/pdf/preview', [\App\Http\Controllers\QualityControlPdfController::class, 'reportPreview'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.quality-control.report.pdf.preview');
+
+Route::get('operations/quality-control/reports/{token}/pdf/download', [\App\Http\Controllers\QualityControlPdfController::class, 'reportDownload'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.quality-control.report.pdf.download');
+
+/** Copia para WhatsApp: sin sesión, solo con firma vigente (48 h). */
+Route::get('qc/pdf/{share}', [\App\Http\Controllers\QualityControlPdfController::class, 'shared'])
+    ->middleware(['signed'])
+    ->name('quality-control.pdf.shared');
+
 Route::get('operations/operation-service-orders/{operationServiceOrder}/pdf/preview', [OperationServiceOrderPdfController::class, 'preview'])
     ->middleware(['web', 'auth'])
     ->name('operations.operation-service-orders.pdf.preview');

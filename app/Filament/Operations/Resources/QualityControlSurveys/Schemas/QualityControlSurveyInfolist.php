@@ -9,6 +9,7 @@ use App\Enums\QualityControlRating;
 use App\Enums\QualityControlService;
 use App\Models\QualityControlSurvey;
 use App\Support\Operations\QualityControl\QualityControlAffiliateLookup;
+use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -78,6 +79,26 @@ final class QualityControlSurveyInfolist
                         ->label('Sugerencia u observación')
                         ->placeholder('Sin observaciones')
                         ->prose(),
+                ]),
+            Section::make('Notas de seguimiento')
+                ->icon(Heroicon::OutlinedChatBubbleBottomCenterText)
+                ->description('Lo que se hizo con esta encuesta, de lo más reciente a lo más antiguo. Las notas no se editan ni se borran.')
+                ->columnSpanFull()
+                ->schema([
+                    RepeatableEntry::make('notes')
+                        ->hiddenLabel()
+                        ->placeholder('Todavía no hay notas de seguimiento.')
+                        ->schema([
+                            TextEntry::make('note')
+                                ->hiddenLabel()
+                                ->prose()
+                                ->columnSpanFull(),
+                            TextEntry::make('created_by_name')
+                                ->hiddenLabel()
+                                ->size('xs')
+                                ->color('gray')
+                                ->formatStateUsing(fn (?string $state, \App\Models\QualityControlSurveyNote $record): string => ($state ?: '—').' · '.$record->created_at?->format('d/m/Y h:i A')),
+                        ]),
                 ]),
             Section::make('Registro')
                 ->icon(Heroicon::OutlinedInformationCircle)

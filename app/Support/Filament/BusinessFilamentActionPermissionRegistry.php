@@ -86,6 +86,10 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const MANAGE_CORPORATE_QUALITY_CONTROL = 'gestionar-quality-control-corporativos';
 
+    public const NOTE_INDIVIDUAL_QUALITY_CONTROL = 'notas-quality-control-individuales';
+
+    public const NOTE_CORPORATE_QUALITY_CONTROL = 'notas-quality-control-corporativos';
+
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
      */
@@ -249,6 +253,16 @@ final class BusinessFilamentActionPermissionRegistry
             ],
             self::MANAGE_CORPORATE_QUALITY_CONTROL => [
                 'name' => 'Quality Control Corporativos: editar y eliminar encuestas',
+                'group' => 'AFILIADOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::NOTE_INDIVIDUAL_QUALITY_CONTROL => [
+                'name' => 'Quality Control Individuales: agregar notas de seguimiento',
+                'group' => 'AFILIADOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::NOTE_CORPORATE_QUALITY_CONTROL => [
+                'name' => 'Quality Control Corporativos: agregar notas de seguimiento',
                 'group' => 'AFILIADOS',
                 'modules' => ['OPERACIONES'],
             ],
