@@ -103,8 +103,11 @@ final class CorporatePaymentFrequencyChangeReverser
             $snapshot = $locked->snapshot ?? [];
             $previousFrequency = $snapshot['affiliation']['payment_frequency'] ?? $locked->previous_frequency;
 
+            $frequencyBeforeReversal = (string) $owner->payment_frequency;
             $owner->payment_frequency = $previousFrequency;
             $owner->total_amount = round((float) ($snapshot['affiliation']['total_amount'] ?? $locked->previous_total_amount), 2);
+            /** Upgrades repartidos en cuotas: vuelven a la frecuencia restaurada. */
+            \App\Support\Upgrades\UpgradeBillingChoice::followFrequency($owner, $frequencyBeforeReversal);
             $owner->save();
 
             self::restoreAffiliates($owner, $snapshot['affiliates'] ?? [], $previousFrequency);

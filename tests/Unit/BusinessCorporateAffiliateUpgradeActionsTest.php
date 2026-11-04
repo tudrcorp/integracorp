@@ -19,8 +19,8 @@ it('expone agregar y quitar upgrade por fila y en lote', function (): void {
         ->toContain('$this->addUpgradeWithVoucherBulkAction(fn (): bool => self::userCanManageUpgrades()),')
         ->toContain("BulkAction::make('remove_upgrade_bulk')")
         ->toContain('use AssignsUpgradesWithIlsVoucher;')
-        ->toContain('CorporateAffiliateUpgradeManager::add($this->getOwnerRecord(), $affiliateIds, [$coverageId], null, $vouchers)')
-        ->toContain('CorporateAffiliateUpgradeManager::preview($this->getOwnerRecord(), $affiliateIds, $coverageId)')
+        ->toContain('CorporateAffiliateUpgradeManager::add($this->getOwnerRecord(), $affiliateIds, [$coverageId], null, $vouchers, $billingChoice)')
+        ->toContain('CorporateAffiliateUpgradeManager::preview($this->getOwnerRecord(), $affiliateIds, $coverageId, $billingChoice)')
         ->toContain('CorporateAffiliateUpgradeManager::deactivate($owner, $upgradeIds)');
 });
 
@@ -59,8 +59,8 @@ it('la renovación corporativa recotiza los upgrades por edad al recalcular', fu
 
     $accept = corporateUpgradeSource('app/Services/AcceptAffiliationCorporateRenovationsService.php');
 
-    expect(substr_count($accept, "\$this->annualFeeWithUpgrades(\$affiliate, (float) \$amounts['annual_fee'], \$acceptanceDate)"))->toBe(2)
-        ->and($accept)->toContain('UpgradeRenewalRepricer::reprice($affiliate, $acceptanceDate)')
+    expect(substr_count($accept, "\$this->annualFeeWithUpgrades(\$affiliate, (float) \$amounts['annual_fee'], \$acceptanceDate, "))->toBe(2)
+        ->and($accept)->toContain('UpgradeRenewalRepricer::reprice($affiliate, $acceptanceDate, null, $paymentFrequency)')
         ->and($accept)->toContain('->withActiveUpgradesTotal()');
 });
 

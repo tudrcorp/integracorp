@@ -25,17 +25,22 @@ final class PlanGeneratorGroupTotalCalculator
      * suma igual a cada columna que tiene tarifa. Una columna sin tarifas sigue
      * en cero.
      *
-     * Los upgrades no se reparten en cuotas (`UpgradeInstallments`): van completos en el
-     * primer pago. Por eso cada frecuencia trae su primer pago (`semestral`, …: plan ÷ n +
-     * upgrades) y sus pagos siguientes (`semestral_next`, …: solo plan ÷ n). Sin upgrades
-     * ambos valen lo mismo.
+     * Por defecto los upgrades se cobran Anual (`UpgradeInstallments`): completos en el primer
+     * pago. Por eso cada frecuencia trae su primer pago (`semestral`, …: plan ÷ n + upgrades) y
+     * sus pagos siguientes (`semestral_next`, …: solo plan ÷ n).
+     *
+     * Si el analista eligió cobrar los upgrades con una frecuencia (`$upgradeBillingFrequency`,
+     * ver UpgradeBillingChoice), en esa fila van repartidos: todos los pagos valen
+     * (plan + upgrades) ÷ n. Las demás frecuencias siguen con el cobro Anual, porque el upgrade
+     * solo puede repartirse con la misma frecuencia de la afiliación.
      *
      * @param  array<int, array<string, mixed>>  $columns
      * @param  array<string, array<string, mixed>>  $rateRows
      * @return array<string, array<string, float>>
      */
-    public static function totalsByColumn(array $columns, array $rateRows, float $upgradesAnnual = 0.0): array
+    public static function totalsByColumn(array $columns, array $rateRows, float $upgradesAnnual = 0.0, array|string|null $upgradeBillingFrequency = null): array
     {
+        $spreadRows = self::spreadRows($upgradeBillingFrequency);
         $columns = PlanGeneratorMatrixState::normalizeColumns($columns);
         $upgradesAnnual = max(0.0, $upgradesAnnual);
         $totals = [
@@ -54,6 +59,13 @@ final class PlanGeneratorGroupTotalCalculator
             $totals[self::ROW_ANNUAL][$columnKey] = $planAnnual + $upgrades;
 
             foreach ([self::ROW_SEMESTRAL => 2, self::ROW_TRIMESTRAL => 4, self::ROW_MENSUAL => 12] as $row => $installments) {
+                if (in_array($row, $spreadRows, true)) {
+                    $totals[$row][$columnKey] = ($planAnnual + $upgrades) / $installments;
+                    $totals[$row.self::NEXT_SUFFIX][$columnKey] = ($planAnnual + $upgrades) / $installments;
+
+                    continue;
+                }
+
                 $totals[$row][$columnKey] = $planAnnual / $installments + $upgrades;
                 $totals[$row.self::NEXT_SUFFIX][$columnKey] = $planAnnual / $installments;
             }
@@ -70,11 +82,19 @@ final class PlanGeneratorGroupTotalCalculator
      *
      * @return list<array{key: string, frequency_key: string, label: string, bold: bool}>
      */
-    public static function displayRows(bool $includeMonthlyTotal, mixed $hiddenRows, float $upgradesAnnual = 0.0): array
+    public static function displayRows(bool $includeMonthlyTotal, mixed $hiddenRows, float $upgradesAnnual = 0.0, array|string|null $upgradeBillingFrequency = null): array
     {
         $rows = [];
+        $spreadRows = self::spreadRows($upgradeBillingFrequency);
+        [$includeMonthlyTotal, $hiddenRows] = self::visibilityForUpgradeBilling($includeMonthlyTotal, $hiddenRows, $upgradeBillingFrequency, $upgradesAnnual);
 
         foreach (self::groupTotalRows($includeMonthlyTotal, $hiddenRows) as $row) {
+            if ($upgradesAnnual > 0 && in_array($row['key'], $spreadRows, true)) {
+                $rows[] = [...$row, 'frequency_key' => $row['key'], 'label' => $row['label'].' (upgrades en cada cuota)'];
+
+                continue;
+            }
+
             if ($upgradesAnnual <= 0 || $row['key'] === self::ROW_ANNUAL) {
                 $rows[] = [...$row, 'frequency_key' => $row['key'], 'label' => $row['key'] === self::ROW_ANNUAL && $upgradesAnnual > 0 ? $row['label'].' (pago único)' : $row['label']];
 
@@ -97,6 +117,70 @@ final class PlanGeneratorGroupTotalCalculator
         }
 
         return $rows;
+    }
+
+    /**
+     * Filas cuyos pagos llevan los upgrades repartidos (las frecuencias marcadas, salvo la
+     * anual, que siempre es un pago único).
+     *
+     * @return list<string>
+     */
+    public static function spreadRows(array|string|null $upgradeBillingFrequencies): array
+    {
+        $rows = [];
+
+        foreach (\App\Support\Upgrades\UpgradeBillingChoice::normalizeList(is_array($upgradeBillingFrequencies) ? $upgradeBillingFrequencies : [$upgradeBillingFrequencies]) as $frequency) {
+            $row = array_search($frequency, self::ROW_PAYMENT_FREQUENCIES, true);
+
+            if (is_string($row) && $row !== self::ROW_ANNUAL) {
+                $rows[] = $row;
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Las filas de las frecuencias con upgrades repartidos siempre se muestran: son los pagos
+     * que el cliente tiene que ver, aunque el analista haya ocultado esas frecuencias.
+     *
+     * @return array{0: bool, 1: list<string>} incluir mensual, filas ocultas
+     */
+    public static function visibilityForUpgradeBilling(bool $includeMonthlyTotal, mixed $hiddenRows, array|string|null $upgradeBillingFrequency, float $upgradesAnnual): array
+    {
+        $hidden = self::normalizeHiddenRows($hiddenRows);
+        $spreadRows = $upgradesAnnual > 0 ? self::spreadRows($upgradeBillingFrequency) : [];
+
+        if ($spreadRows === []) {
+            return [$includeMonthlyTotal, $hidden];
+        }
+
+        return [
+            $includeMonthlyTotal || in_array(self::ROW_MENSUAL, $spreadRows, true),
+            array_values(array_diff($hidden, $spreadRows)),
+        ];
+    }
+
+    /**
+     * Texto de la regla de cobro de upgrades para la cotización.
+     */
+    public static function upgradeRuleText(array|string|null $upgradeBillingFrequency): string
+    {
+        $rows = self::spreadRows($upgradeBillingFrequency);
+
+        if ($rows === []) {
+            return \App\Support\Upgrades\UpgradeInstallments::RULE.' Los pagos siguientes llevan solo el plan.';
+        }
+
+        $labels = array_map(
+            fn (string $row): string => mb_strtolower(\App\Support\AffiliationCorporates\CorporatePaymentFrequency::label(self::ROW_PAYMENT_FREQUENCIES[$row])),
+            $rows,
+        );
+        $last = array_pop($labels);
+        $list = $labels === [] ? $last : implode(', ', $labels).' o '.$last;
+
+        return 'Con pago '.$list.' los upgrades van repartidos en cada cuota. Con pago anual se pagan una sola vez, completos'
+            .(count($rows) < 3 ? '; con cualquier otra frecuencia, completos en el primer pago.' : '.');
     }
 
     /**

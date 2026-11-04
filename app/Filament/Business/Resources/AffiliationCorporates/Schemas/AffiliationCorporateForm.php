@@ -139,6 +139,7 @@ class AffiliationCorporateForm
                                             ])
                                             ->preload()
                                             ->afterStateUpdated(function ($set, Get $get) use ($dataRecords) {
+                                                \App\Filament\Shared\Affiliations\UpgradeBillingField::syncWithFrequency($set, $get('payment_frequency'));
 
                                                 $plans_records = $dataRecords;
                                                 $subtotal_anual = array_sum(array_column($plans_records, 'subtotal_anual'));
@@ -300,6 +301,7 @@ class AffiliationCorporateForm
 
                                                 $set('fee_anual', $subtotal_anual);
                                             }),
+                                        \App\Filament\Shared\Affiliations\UpgradeBillingField::make(),
                                         TextInput::make('fee_anual')
                                             ->label('Tarifa anual')
                                             ->helperText('Punto(,) para separar decimales')

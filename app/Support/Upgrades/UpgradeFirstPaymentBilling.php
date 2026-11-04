@@ -11,6 +11,7 @@ use App\Models\AffiliateUpgrade;
 use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
 use App\Models\Collection as BillingCollection;
+use App\Models\UpgradeInstallmentCharge;
 use App\Services\CorporateAffiliateRemovalService;
 use App\Support\AffiliationAffiliateFeeCalculator;
 use App\Support\AffiliationCorporates\CorporateAffiliatePlanSynchronizer;
@@ -22,7 +23,9 @@ use Throwable;
  * año y la cuota regular de la afiliación lleva solo el plan (`UpgradeInstallments`).
  *
  * Las asignaciones con `billing_mode` NULL son de antes del 30/10/2026 y siguen repartidas en las
- * cuotas: no se tocan. La renovación las pasa a cobro único (el año nuevo arranca con la regla).
+ * cuotas: no se tocan. Las `CUOTAS` (desde el 05/11/2026) también van repartidas: la afiliación
+ * eligió cobrar sus upgrades con su misma frecuencia (UpgradeBillingChoice). La renovación aplica
+ * la elección vigente de la afiliación.
  *
  * - `fee_anual` / `fee` siguen siendo el total del año (plan + todos los upgrades).
  * - `total_amount` (cuota regular) = (anual − upgrades de cobro único) ÷ cuotas.
@@ -32,6 +35,12 @@ use Throwable;
 final class UpgradeFirstPaymentBilling
 {
     public const MODE = 'PRIMER_PAGO';
+
+    /**
+     * Repartidos en cada cuota de la afiliación (elección «misma frecuencia», ver
+     * UpgradeBillingChoice). No son de cobro único: van dentro de la cuota regular.
+     */
+    public const MODE_INSTALLMENTS = 'CUOTAS';
 
     /** Mismos estados que pagan en una afiliación individual (activa o aún pre-aprobada). */
     public const INDIVIDUAL_BILLABLE_STATUSES = ['ACTIVO', 'PRE-APROBADA'];
@@ -54,13 +63,16 @@ final class UpgradeFirstPaymentBilling
     }
 
     /**
-     * Atributos de una asignación nueva: cobro único si la tabla ya lo admite.
+     * Atributos de una asignación nueva: el modo elegido para la afiliación (cobro único por
+     * defecto) si la tabla ya lo admite.
      *
      * @return array<string, string>
      */
-    public static function assignmentAttributes(string $table): array
+    public static function assignmentAttributes(string $table, ?string $mode = null): array
     {
-        return self::hasColumn($table, 'billing_mode') ? ['billing_mode' => self::MODE] : [];
+        $mode = in_array($mode, [self::MODE, self::MODE_INSTALLMENTS], true) ? $mode : self::MODE;
+
+        return self::hasColumn($table, 'billing_mode') ? ['billing_mode' => $mode] : [];
     }
 
     /**
@@ -250,7 +262,7 @@ final class UpgradeFirstPaymentBilling
 
         return 'Primer pago: cuota '.UpgradePricing::money((float) $affiliation->total_amount)
             .' + upgrades '.UpgradePricing::money($oneTime)
-            .'. Los upgrades se pagan una sola vez al año; las cuotas siguientes llevan solo el plan.';
+            .'. Los upgrades de esta afiliación se cobran Anual: una sola vez al año; las cuotas siguientes llevan solo el plan.';
     }
 
     /**
@@ -316,7 +328,7 @@ final class UpgradeFirstPaymentBilling
 
         $model = $table === 'affiliate_upgrades' ? AffiliateUpgrade::class : AffiliateCorporateUpgrade::class;
 
-        return $model::query()
+        $charged = $model::query()
             ->whereIn('charged_collection_id', $collectionIds)
             ->where('status', AffiliateUpgrade::STATUS_ACTIVE)
             ->where('billing_mode', self::MODE)
@@ -325,6 +337,238 @@ final class UpgradeFirstPaymentBilling
             ->pluck('charged', 'charged_collection_id')
             ->mapWithKeys(fn (mixed $amount, mixed $id): array => [(int) $id => round((float) $amount, 2)])
             ->all();
+
+        /** Partes de upgrades repartidos agregados a mitad de año: también van sumadas a esos avisos. */
+        foreach (self::installmentChargesOn($table, $collectionIds) as $collectionId => $amount) {
+            $charged[$collectionId] = round(($charged[$collectionId] ?? 0.0) + $amount, 2);
+        }
+
+        return $charged;
+    }
+
+    /**
+     * Partes activas de upgrades repartidos (agregados a mitad de año) sumadas a cada aviso.
+     *
+     * @param  list<int>  $collectionIds
+     * @return array<int, float> aviso => monto
+     */
+    public static function installmentChargesOn(string $table, array $collectionIds): array
+    {
+        if ($collectionIds === [] || ! self::installmentChargesAvailable()) {
+            return [];
+        }
+
+        $model = $table === 'affiliate_upgrades' ? AffiliateUpgrade::class : AffiliateCorporateUpgrade::class;
+        $activeUpgradeIds = $model::query()->where('status', AffiliateUpgrade::STATUS_ACTIVE)->select('id');
+
+        return UpgradeInstallmentCharge::query()
+            ->where('upgrade_table', $table)
+            ->whereIn('collection_id', $collectionIds)
+            ->where('status', UpgradeInstallmentCharge::STATUS_ACTIVE)
+            ->whereIn('upgrade_id', $activeUpgradeIds)
+            ->selectRaw('collection_id, SUM(amount) as charged')
+            ->groupBy('collection_id')
+            ->pluck('charged', 'collection_id')
+            ->mapWithKeys(fn (mixed $amount, mixed $id): array => [(int) $id => round((float) $amount, 2)])
+            ->all();
+    }
+
+    /**
+     * Reparte cada upgrade, completo, entre los avisos POR PAGAR que quedan del año (en partes
+     * iguales; los céntimos que sobran van al último). Suma a cada aviso y anota cada parte.
+     *
+     * @param  array<int, float>  $amountsByUpgrade  id de la asignación => monto anual
+     * @return list<array{collection: BillingCollection, before: float, after: float, added: float}>
+     *
+     * @throws \RuntimeException si no hay avisos pendientes o alguno tiene un abono
+     */
+    public static function spreadOverPendingInstallments(string $table, string $affiliationCode, array $amountsByUpgrade, string $pendingStatus = 'POR PAGAR'): array
+    {
+        $amountsByUpgrade = array_filter($amountsByUpgrade, fn (float $amount): bool => $amount > 0);
+
+        if ($amountsByUpgrade === []) {
+            return [];
+        }
+
+        $collections = self::pendingInstallments($affiliationCode, $pendingStatus);
+
+        if ($collections->isEmpty()) {
+            throw new \RuntimeException('La afiliación no tiene avisos de cobro por pagar este año donde repartir el upgrade. Elija cobro Anual o espere al próximo aviso.');
+        }
+
+        foreach ($collections as $collection) {
+            if ((float) ($collection->pay_amount_usd ?? 0) > 0 || (float) ($collection->pay_amount_ves ?? 0) > 0) {
+                $invoice = (string) ($collection->collection_invoice_number ?: '#'.$collection->getKey());
+
+                throw new \RuntimeException('El aviso de cobro '.$invoice.' tiene un abono registrado. Concilie ese pago en Administración antes de cambiar upgrades.');
+            }
+        }
+
+        $count = $collections->count();
+        $added = array_fill_keys($collections->modelKeys(), 0.0);
+
+        foreach ($amountsByUpgrade as $upgradeId => $amount) {
+            $cents = (int) round($amount * 100);
+            $part = intdiv($cents, $count);
+            $remainder = $cents - $part * $count;
+
+            foreach ($collections->values() as $position => $collection) {
+                $share = ($part + ($position === $count - 1 ? $remainder : 0)) / 100;
+
+                if ($share <= 0) {
+                    continue;
+                }
+
+                if (self::installmentChargesAvailable()) {
+                    UpgradeInstallmentCharge::query()->create([
+                        'upgrade_table' => $table,
+                        'upgrade_id' => (int) $upgradeId,
+                        'collection_id' => (int) $collection->getKey(),
+                        'amount' => $share,
+                        'status' => UpgradeInstallmentCharge::STATUS_ACTIVE,
+                    ]);
+                }
+
+                $added[(int) $collection->getKey()] += $share;
+            }
+        }
+
+        $result = [];
+
+        foreach ($collections as $collection) {
+            $share = round($added[(int) $collection->getKey()], 2);
+
+            if ($share <= 0) {
+                continue;
+            }
+
+            $before = round((float) $collection->total_amount, 2);
+            $after = round($before + $share, 2);
+            $collection->forceFill(['total_amount' => $after])->save();
+            $result[] = ['collection' => $collection, 'before' => $before, 'after' => $after, 'added' => $share];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Descuenta de los avisos que siguen POR PAGAR las partes de los upgrades repartidos que se
+     * quitan. Las partes de avisos ya pagados quedan como cobradas.
+     *
+     * @param  list<int>  $upgradeIds
+     * @return list<array{collection: BillingCollection, before: float, after: float, released: float}>
+     */
+    public static function releaseInstallmentCharges(string $table, array $upgradeIds, string $affiliationCode, string $pendingStatus = 'POR PAGAR'): array
+    {
+        if ($upgradeIds === [] || ! self::installmentChargesAvailable()) {
+            return [];
+        }
+
+        $charges = UpgradeInstallmentCharge::query()
+            ->where('upgrade_table', $table)
+            ->whereIn('upgrade_id', $upgradeIds)
+            ->where('status', UpgradeInstallmentCharge::STATUS_ACTIVE)
+            ->lockForUpdate()
+            ->get();
+
+        if ($charges->isEmpty()) {
+            return [];
+        }
+
+        $pending = BillingCollection::query()
+            ->whereIn('id', $charges->pluck('collection_id')->unique()->all())
+            ->where('affiliation_code', $affiliationCode)
+            ->where('status', $pendingStatus)
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+
+        $result = [];
+
+        foreach ($charges->groupBy('collection_id') as $collectionId => $rows) {
+            $collection = $pending->get((int) $collectionId);
+
+            if ($collection === null) {
+                continue;
+            }
+
+            if ((float) ($collection->pay_amount_usd ?? 0) > 0 || (float) ($collection->pay_amount_ves ?? 0) > 0) {
+                $invoice = (string) ($collection->collection_invoice_number ?: '#'.$collection->getKey());
+
+                throw new \RuntimeException('El aviso de cobro '.$invoice.' tiene un abono registrado. Concilie ese pago en Administración antes de cambiar upgrades.');
+            }
+
+            $released = round((float) $rows->sum('amount'), 2);
+            $before = round((float) $collection->total_amount, 2);
+            $after = max(0.0, round($before - $released, 2));
+            $collection->forceFill(['total_amount' => $after])->save();
+
+            UpgradeInstallmentCharge::query()->whereIn('id', $rows->modelKeys())->update(['status' => UpgradeInstallmentCharge::STATUS_RELEASED, 'updated_at' => now()]);
+
+            $result[] = ['collection' => $collection, 'before' => $before, 'after' => $after, 'released' => $released];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Upgrades repartidos que se agregaron a mitad de año (tienen partes anotadas).
+     *
+     * @param  list<int>  $upgradeIds
+     * @return list<int>
+     */
+    public static function upgradesWithInstallmentCharges(string $table, array $upgradeIds): array
+    {
+        if ($upgradeIds === [] || ! self::installmentChargesAvailable()) {
+            return [];
+        }
+
+        return UpgradeInstallmentCharge::query()
+            ->where('upgrade_table', $table)
+            ->whereIn('upgrade_id', $upgradeIds)
+            ->distinct()
+            ->pluck('upgrade_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
+    }
+
+    /**
+     * Avisos POR PAGAR del calendario de la afiliación, por fecha, bloqueados para escribir.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, BillingCollection>
+     */
+    public static function pendingInstallments(string $affiliationCode, string $pendingStatus = 'POR PAGAR'): \Illuminate\Database\Eloquent\Collection
+    {
+        if (trim($affiliationCode) === '') {
+            return new \Illuminate\Database\Eloquent\Collection;
+        }
+
+        return BillingCollection::query()
+            ->calendarInstallments()
+            ->where('affiliation_code', $affiliationCode)
+            ->where('status', $pendingStatus)
+            ->orderByRaw('filter_next_payment_date IS NULL')
+            ->orderBy('filter_next_payment_date')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+    }
+
+    public static function installmentChargesAvailable(): bool
+    {
+        return self::hasTable('upgrade_installment_charges');
+    }
+
+    public static function hasTable(string $table): bool
+    {
+        static $exists = [];
+        $connection = (string) config('database.default');
+
+        try {
+            return $exists[$connection.'.'.$table] ??= Schema::connection($connection)->hasTable($table);
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     /**
@@ -344,6 +588,15 @@ final class UpgradeFirstPaymentBilling
             ->whereIn('charged_collection_id', $fromCollectionIds)
             ->where('status', AffiliateUpgrade::STATUS_ACTIVE)
             ->update(['charged_collection_id' => $toCollectionId]);
+
+        /** Las partes de upgrades repartidos de esos avisos pasan también al aviso nuevo. */
+        if (self::installmentChargesAvailable()) {
+            UpgradeInstallmentCharge::query()
+                ->where('upgrade_table', $table)
+                ->whereIn('collection_id', $fromCollectionIds)
+                ->where('status', UpgradeInstallmentCharge::STATUS_ACTIVE)
+                ->update(['collection_id' => $toCollectionId, 'updated_at' => now()]);
+        }
     }
 
     /**

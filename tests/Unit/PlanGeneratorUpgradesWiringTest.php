@@ -14,7 +14,7 @@ it('el formulario ofrece los upgrades del catálogo y el editor suma su costo al
         ->toContain('UpgradePricing::coverageOptions()')
         ->toContain("'upgradesAnnual' => self::upgradesQuote(\$get, \$record)['annual_total'],")
         ->and(pgUpgradeSource('resources/views/filament/business/plan-generators/partials/group-total-matrix.blade.php'))
-        ->toContain('PlanGeneratorGroupTotalCalculator::totalsByColumn($columns, $rateRows, $upgradesAnnual)');
+        ->toContain('PlanGeneratorGroupTotalCalculator::totalsByColumn($columns, $rateRows, $upgradesAnnual, $upgradeBillingFrequency)');
 });
 
 it('crear y editar validan los upgrades antes de guardar y los guardan con la matriz', function (): void {
@@ -31,7 +31,7 @@ it('la vista previa y el PDF muestran los upgrades y el PDF los incluye en su ca
     expect(pgUpgradeSource('resources/views/filament/business/plan-generators/stacked-matrices-preview.blade.php'))
         ->toContain("@include('filament.business.plan-generators.partials.upgrades-preview'")
         ->and(pgUpgradeSource('resources/views/documents/partials/plan-generator-plan-body.blade.php'))
-        ->toContain("PlanGeneratorGroupTotalCalculator::totalsByColumn((array) \$columns, (array) \$rateRows, \$upgradeQuote['annual_total'])")
+        ->toContain("PlanGeneratorGroupTotalCalculator::totalsByColumn((array) \$columns, (array) \$rateRows, \$upgradeQuote['annual_total'], \$upgradeBillingFrequency)")
         ->and(pgUpgradeSource('app/Services/PlanGeneratorPdfService.php'))
         ->toContain("DB::table('plan_generator_upgrades')");
 });

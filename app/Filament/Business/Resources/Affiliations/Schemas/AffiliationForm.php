@@ -176,6 +176,7 @@ class AffiliationForm
                                             ])
                                             ->preload()
                                             ->afterStateUpdated(function ($state, $set, Get $get) use ($quoteRecord) {
+                                                \App\Filament\Shared\Affiliations\UpgradeBillingField::syncWithFrequency($set, $state);
 
                                                 $set('fee_anual', $quoteRecord['subtotal_anual'] ?? 0);
 
@@ -193,6 +194,7 @@ class AffiliationForm
                                                 }
 
                                             }),
+                                        \App\Filament\Shared\Affiliations\UpgradeBillingField::make(),
                                         TextInput::make('fee_anual')
                                             ->label('Tarifa anual')
                                             ->prefix('US$')

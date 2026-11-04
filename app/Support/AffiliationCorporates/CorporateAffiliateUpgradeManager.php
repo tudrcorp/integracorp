@@ -11,6 +11,8 @@ use App\Models\Collection as BillingCollection;
 use App\Services\CorporateAffiliateRemovalService;
 use App\Support\SecurityAudit;
 use App\Support\Upgrades\UpgradeAssignmentPreview;
+use App\Support\Upgrades\UpgradeBillingChoice;
+use App\Support\Upgrades\UpgradeBillingResolution;
 use App\Support\Upgrades\UpgradeFirstPaymentBilling;
 use App\Support\Upgrades\UpgradeIlsVoucher;
 use App\Support\Upgrades\UpgradePricing;
@@ -156,7 +158,7 @@ final class CorporateAffiliateUpgradeManager
      * @param  array<int|string, mixed>  $vouchers
      * @return array{affiliates_updated: int, upgrades_created: int, annual_delta: float, collections_adjusted: int, skipped: list<array{name: string, reason: string, upgrade?: string}>}
      */
-    public static function add(AffiliationCorporate $owner, iterable $affiliates, array $coverageIds, ?string $actor = null, array $vouchers = []): array
+    public static function add(AffiliationCorporate $owner, iterable $affiliates, array $coverageIds, ?string $actor = null, array $vouchers = [], ?string $billingChoice = null): array
     {
         $affiliateIds = self::affiliateIds($affiliates);
 
@@ -171,8 +173,10 @@ final class CorporateAffiliateUpgradeManager
             ->all();
         $vouchers = UpgradeIlsVoucher::validateMany($vouchers, $labels);
 
-        $result = DB::transaction(function () use ($owner, $affiliateIds, $coverages, $actor, $vouchers): array {
+        $result = DB::transaction(function () use ($owner, $affiliateIds, $coverages, $actor, $vouchers, $billingChoice): array {
             $ownerLocked = self::lockOwner($owner);
+            /** Una sola forma de cobro por afiliación: Anual o repartidos con su misma frecuencia. */
+            $mode = UpgradeBillingResolution::resolveForAdd($ownerLocked, $billingChoice);
             $locked = self::lockAffiliates($ownerLocked, $affiliateIds);
             $skipped = self::skippedForeignAffiliates($affiliateIds, $locked);
 
@@ -188,6 +192,7 @@ final class CorporateAffiliateUpgradeManager
             $ownerDelta = 0.0;
             $created = [];
             $chargedIds = [];
+            $chargedAmounts = [];
 
             foreach ($locked as $affiliate) {
                 $name = CorporateAffiliatePlanSynchronizer::labelFor($affiliate);
@@ -238,11 +243,11 @@ final class CorporateAffiliateUpgradeManager
                         'affiliation_corporate_id' => $ownerLocked->getKey(),
                         ...UpgradePricing::assignmentAttributes($coverage, $range, $age, $actor),
                         ...UpgradeIlsVoucher::columns($voucher),
-                        ...UpgradeFirstPaymentBilling::assignmentAttributes('affiliate_corporate_upgrades'),
+                        ...UpgradeFirstPaymentBilling::assignmentAttributes('affiliate_corporate_upgrades', $mode),
                     ]);
 
                     $created[] = $upgrade->getKey();
-                    $affiliateCreated[] = (int) $upgrade->getKey();
+                    $affiliateCreated[(int) $upgrade->getKey()] = round((float) $upgrade->amount, 2);
                     $delta += (float) $upgrade->amount;
                     $upgradesCreated++;
                 }
@@ -256,13 +261,16 @@ final class CorporateAffiliateUpgradeManager
 
                 if (self::countsAsPopulation($affiliate)) {
                     $ownerDelta += $delta;
-                    $chargedIds = [...$chargedIds, ...$affiliateCreated];
+                    $chargedIds = [...$chargedIds, ...array_keys($affiliateCreated)];
+                    $chargedAmounts += $affiliateCreated;
                 }
             }
 
-            $collectionIds = UpgradeFirstPaymentBilling::hasColumn('affiliate_corporate_upgrades', 'billing_mode')
-                ? self::chargeOnNextCollection($ownerLocked, $ownerDelta, $chargedIds)
-                : self::applyOwnerDelta($ownerLocked, $ownerDelta);
+            $collectionIds = match (true) {
+                ! UpgradeFirstPaymentBilling::hasColumn('affiliate_corporate_upgrades', 'billing_mode') => self::applyOwnerDelta($ownerLocked, $ownerDelta),
+                $mode === UpgradeFirstPaymentBilling::MODE_INSTALLMENTS => self::chargeAcrossInstallments($ownerLocked, $ownerDelta, $chargedAmounts),
+                default => self::chargeOnNextCollection($ownerLocked, $ownerDelta, $chargedIds),
+            };
 
             SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_AFFILIATE_UPGRADES_ADDED', 'business.affiliation-corporates.upgrades.add', [
                 'panel' => 'business',
@@ -272,6 +280,8 @@ final class CorporateAffiliateUpgradeManager
                 'upgrade_coverage_ids' => $coverages->modelKeys(),
                 'affiliate_ids' => $locked->modelKeys(),
                 'upgrade_ids' => $created,
+                'billing_mode' => $mode,
+                'upgrade_billing_frequency' => UpgradeBillingChoice::of($ownerLocked),
                 'annual_delta' => round($ownerDelta, 2),
                 'collections_adjusted' => $collectionIds,
                 'skipped' => $skipped,
@@ -326,9 +336,12 @@ final class CorporateAffiliateUpgradeManager
 
             $affiliatesUpdated = 0;
             $ownerDelta = 0.0;
-            /** Repartidos en las cuotas (antes del cobro único): se descuentan de todas, como siempre. */
+            /** Repartidos en las cuotas (antes del cobro único, o elegidos así): se descuentan de todas, como siempre. */
             $spreadDelta = 0.0;
             $billedOnce = [];
+            /** Repartidos agregados a mitad de año: se descuenta exacto lo que se sumó a cada aviso. */
+            $withCharges = UpgradeFirstPaymentBilling::upgradesWithInstallmentCharges('affiliate_corporate_upgrades', $upgrades->modelKeys());
+            $releasedCharges = [];
 
             foreach ($locked as $affiliate) {
                 $rows = $byAffiliate->get($affiliate->getKey());
@@ -366,6 +379,8 @@ final class CorporateAffiliateUpgradeManager
                     foreach ($rows as $row) {
                         if ($row->billing_mode === UpgradeFirstPaymentBilling::MODE) {
                             $billedOnce[] = $row;
+                        } elseif (in_array((int) $row->getKey(), $withCharges, true)) {
+                            $releasedCharges[] = (int) $row->getKey();
                         } else {
                             $spreadDelta -= round((float) $row->amount, 2);
                         }
@@ -376,6 +391,10 @@ final class CorporateAffiliateUpgradeManager
             $collectionIds = array_values(array_unique([
                 ...self::applyOwnerDelta($ownerLocked, $ownerDelta, $spreadDelta),
                 ...self::releaseChargedCollections($ownerLocked, $billedOnce),
+                ...array_map(
+                    static fn (array $row): int => (int) $row['collection']->getKey(),
+                    UpgradeFirstPaymentBilling::releaseInstallmentCharges('affiliate_corporate_upgrades', $releasedCharges, (string) $ownerLocked->code, self::PENDING_COLLECTION_STATUS),
+                ),
             ]));
 
             SecurityAudit::log('AUDIT_BUSINESS_CORPORATE_AFFILIATE_UPGRADES_REMOVED', 'business.affiliation-corporates.upgrades.remove', [
@@ -415,10 +434,13 @@ final class CorporateAffiliateUpgradeManager
      * @param  list<int>  $affiliateIds
      * @return array<string, mixed> ver `UpgradeAssignmentPreview`
      */
-    public static function preview(AffiliationCorporate $owner, array $affiliateIds, mixed $coverageId): array
+    public static function preview(AffiliationCorporate $owner, array $affiliateIds, mixed $coverageId, ?string $billingChoice = null): array
     {
         $owner = AffiliationCorporate::query()->findOrFail($owner->getKey());
         $frequency = (string) ($owner->payment_frequency ?: 'ANUAL');
+        $billing = UpgradeBillingResolution::preview($owner, $billingChoice);
+        $spread = $billing['mode'] === UpgradeFirstPaymentBilling::MODE_INSTALLMENTS;
+        $prices = [];
 
         try {
             $coverage = UpgradePricing::resolveCoverages([$coverageId])->first();
@@ -460,6 +482,7 @@ final class CorporateAffiliateUpgradeManager
             if ($price > 0) {
                 if (self::countsAsPopulation($affiliate)) {
                     $ownerDelta += $price;
+                    $prices[] = $price;
                 } else {
                     $outsidePopulation++;
                 }
@@ -477,7 +500,7 @@ final class CorporateAffiliateUpgradeManager
                 'fee_before' => $feeBefore,
                 'fee_after' => $feeAfter,
                 'period_before' => round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($feeBefore, $affiliateFrequency), 2),
-                'period_after' => UpgradeFirstPaymentBilling::hasColumn('affiliate_corporate_upgrades', 'billing_mode')
+                'period_after' => UpgradeFirstPaymentBilling::hasColumn('affiliate_corporate_upgrades', 'billing_mode') && ! $spread
                     ? round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($feeBefore, $affiliateFrequency), 2)
                     : round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($feeAfter, $affiliateFrequency), 2),
             ];
@@ -486,11 +509,17 @@ final class CorporateAffiliateUpgradeManager
         $annualBefore = round((float) $owner->fee_anual, 2);
         $annualAfter = round($annualBefore + $ownerDelta, 2);
         $collections = [];
-        $blockers = [];
+        $blockers = $billing['blocker'] !== null ? [$billing['blocker']] : [];
         $billingNote = null;
         $billedOnce = UpgradeFirstPaymentBilling::hasColumn('affiliate_corporate_upgrades', 'billing_mode');
 
-        if ($billedOnce && $ownerDelta > 0) {
+        if ($billedOnce && $spread && $ownerDelta > 0) {
+            [$collections, $billingNote, $blocker] = UpgradeBillingResolution::spreadPreview($owner, $prices);
+
+            if ($blocker !== null) {
+                $blockers[] = $blocker;
+            }
+        } elseif ($billedOnce && $ownerDelta > 0) {
             [$collections, $billingNote, $blocker] = self::nextCollectionPreview($owner, $ownerDelta);
 
             if ($blocker !== null) {
@@ -526,9 +555,13 @@ final class CorporateAffiliateUpgradeManager
                 'annual_before' => $annualBefore,
                 'annual_after' => $annualAfter,
                 'period_before' => round((float) $owner->total_amount, 2),
-                'period_after' => $billedOnce
-                    ? round((float) $owner->total_amount, 2)
-                    : round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($annualAfter, $frequency), 2),
+                'period_after' => match (true) {
+                    ! $billedOnce => round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($annualAfter, $frequency), 2),
+                    $spread => UpgradeFirstPaymentBilling::regularInstallment($annualAfter, UpgradeFirstPaymentBilling::corporateOneTimeTotal($owner), $frequency),
+                    default => round((float) $owner->total_amount, 2),
+                },
+                'billing_choice' => $billing['choice'],
+                'billing_choice_locked' => $billing['locked'],
                 'note' => trim(implode(' ', array_filter([
                     $billingNote,
                     $outsidePopulation > 0
@@ -758,6 +791,28 @@ final class CorporateAffiliateUpgradeManager
         }
 
         return [(int) $collection->getKey()];
+    }
+
+    /**
+     * Upgrades nuevos repartidos (misma frecuencia de la afiliación): la cuota regular ya los
+     * incluye. Si el primer pago no se hizo, van desde él; si no, cada upgrade se reparte,
+     * completo, entre los avisos POR PAGAR que quedan del año, anotando cada parte.
+     *
+     * @param  array<int, float>  $amountsByUpgrade  asignaciones de afiliados que cuentan como población
+     * @return list<int> IDs de cobros ajustados
+     */
+    private static function chargeAcrossInstallments(AffiliationCorporate $owner, float $annualDelta, array $amountsByUpgrade): array
+    {
+        self::applyOwnerDelta($owner, $annualDelta, 0.0);
+
+        if (round($annualDelta, 2) < 0.01 || UpgradeFirstPaymentBilling::awaitsFirstPayment($owner)) {
+            return [];
+        }
+
+        return array_map(
+            static fn (array $row): int => (int) $row['collection']->getKey(),
+            UpgradeFirstPaymentBilling::spreadOverPendingInstallments('affiliate_corporate_upgrades', (string) $owner->code, $amountsByUpgrade, self::PENDING_COLLECTION_STATUS),
+        );
     }
 
     /**

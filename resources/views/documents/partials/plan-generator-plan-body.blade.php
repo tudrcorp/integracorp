@@ -25,10 +25,13 @@
     $planPercent = PlanGeneratorMatrixColumnLayout::planColumnPercent(max(1, $columnCount));
     // Upgrades de la cotización: su costo anual va al total grupal y cada uno sale en su tabla.
     $upgradeQuote = PlanGeneratorUpgrades::quote(PlanGeneratorUpgrades::linesFromModel($planGenerator), (array) $rateRows);
-    $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn((array) $columns, (array) $rateRows, $upgradeQuote['annual_total']);
+    $upgradeBillingFrequency = $planGenerator->upgradeBillingFrequencies();
+    $groupTotals = PlanGeneratorGroupTotalCalculator::totalsByColumn((array) $columns, (array) $rateRows, $upgradeQuote['annual_total'], $upgradeBillingFrequency);
     $includeMonthlyTotal = (bool) ($planGenerator->include_monthly_total ?? false);
     $groupTotalHiddenRows = PlanGeneratorGroupTotalCalculator::normalizeHiddenRows($planGenerator->group_total_hidden_rows ?? []);
-    $groupRows = PlanGeneratorGroupTotalCalculator::displayRows($includeMonthlyTotal, $groupTotalHiddenRows, (float) $upgradeQuote['annual_total']);
+    // La frecuencia con que se reparten los upgrades siempre se muestra (y así la mide la paginación).
+    [$includeMonthlyTotal, $groupTotalHiddenRows] = PlanGeneratorGroupTotalCalculator::visibilityForUpgradeBilling($includeMonthlyTotal, $groupTotalHiddenRows, $upgradeBillingFrequency, (float) $upgradeQuote['annual_total']);
+    $groupRows = PlanGeneratorGroupTotalCalculator::displayRows($includeMonthlyTotal, $groupTotalHiddenRows, (float) $upgradeQuote['annual_total'], $upgradeBillingFrequency);
     $calculationsOnNextPage = $columnCount > 0 && PlanGeneratorPdfPagination::calculationsStartOnNextPage(
         (array) $columns,
         (array) $rows,

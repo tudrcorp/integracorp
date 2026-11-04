@@ -20,6 +20,7 @@ use App\Support\PlanGenerators\PlanGeneratorQuotationState;
 use App\Support\PlanGenerators\PlanGeneratorQuotationValidator;
 use App\Support\PlanGenerators\PlanGeneratorStructureImporter;
 use App\Support\PlanGenerators\PlanGeneratorUpgrades;
+use App\Support\Upgrades\UpgradeBillingChoice;
 use App\Support\Upgrades\UpgradePricing;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
@@ -34,6 +35,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -44,6 +46,7 @@ use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 
 class PlanGeneratorForm
@@ -605,6 +608,7 @@ class PlanGeneratorForm
                                                         'rows' => (array) ($get('rows') ?? []),
                                                         'rateRows' => (array) ($get('rate_rows') ?? []),
                                                         'upgradesAnnual' => self::upgradesQuote($get, $record)['annual_total'],
+                                                        'upgradeBillingFrequency' => $get('upgrade_billing_frequencies'),
                                                         'populationUnitLabel' => PlanGeneratorPopulationUnit::resolve($get('population_unit'))->label(),
                                                         'includeMonthlyTotal' => (bool) $get('include_monthly_total'),
                                                         'groupTotalHiddenRows' => $get('group_total_hidden_rows') ?? [],
@@ -697,6 +701,43 @@ class PlanGeneratorForm
                             ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
+                Fieldset::make('Forma de pago de los upgrades')
+                    ->visible(fn (Get $get): bool => filled($get('upgrades')))
+                    ->columns(1)
+                    ->columnSpanFull()
+                    ->schema([
+                        ToggleButtons::make('upgrade_billing_frequencies')
+                            ->label('¿Con qué frecuencias verá el cliente el pago?')
+                            ->helperText('Marque una o varias. Anual: el upgrade se paga completo, una sola vez. Semestral, trimestral o mensual: va repartido en cada cuota. Al afiliar, la frecuencia de la afiliación decide cuál aplica.')
+                            ->options(array_combine(
+                                array_keys(UpgradeBillingChoice::options()),
+                                array_map(fn (string $choice): string => UpgradeBillingChoice::shortLabel($choice), array_keys(UpgradeBillingChoice::options())),
+                            ))
+                            ->icons([
+                                UpgradeBillingChoice::ANNUAL => Heroicon::OutlinedBanknotes,
+                                'SEMESTRAL' => Heroicon::OutlinedCalendarDays,
+                                'TRIMESTRAL' => Heroicon::OutlinedCalendarDays,
+                                'MENSUAL' => Heroicon::OutlinedCalendarDays,
+                            ])
+                            ->multiple()
+                            ->inline()
+                            ->live()
+                            ->default([UpgradeBillingChoice::DEFAULT])
+                            ->afterStateHydrated(function (ToggleButtons $component, mixed $state, ?PlanGenerator $record): void {
+                                if (UpgradeBillingChoice::normalizeList($state) === []) {
+                                    $component->state($record?->upgradeBillingFrequencies() ?? [UpgradeBillingChoice::DEFAULT]);
+                                }
+                            })
+                            ->required(fn (Get $get): bool => filled($get('upgrades')))
+                            ->dehydrateStateUsing(fn (mixed $state): array => UpgradeBillingChoice::normalizeList($state) ?: [UpgradeBillingChoice::DEFAULT])
+                            ->validationMessages(['required' => 'Marque al menos una forma de pago para los upgrades.']),
+                        Placeholder::make('upgrade_billing_summary')
+                            ->hiddenLabel()
+                            ->content(fn (Get $get, ?PlanGenerator $record): HtmlString => self::upgradeBillingSummary(
+                                (array) ($get('upgrade_billing_frequencies') ?? []),
+                                (float) self::upgradesQuote($get, $record)['annual_total'],
+                            )),
+                    ]),
                 View::make('filament.business.plan-generators.partials.upgrades-recalculation')
                     ->visible(fn (Get $get): bool => filled($get('upgrades')))
                     ->viewData(fn (Get $get, ?PlanGenerator $record): array => [
@@ -705,9 +746,52 @@ class PlanGeneratorForm
                         'upgradeQuote' => self::upgradesQuote($get, $record),
                         'includeMonthlyTotal' => (bool) $get('include_monthly_total'),
                         'groupTotalHiddenRows' => $get('group_total_hidden_rows') ?? [],
+                        'upgradeBillingFrequency' => $get('upgrade_billing_frequencies'),
                     ])
                     ->columnSpanFull(),
             ]);
+    }
+
+    /**
+     * «Así lo verá el cliente»: una ficha por forma de pago marcada, con lo que paga de
+     * upgrades en cada cuota.
+     *
+     * @param  array<int, mixed>  $selected
+     */
+    private static function upgradeBillingSummary(array $selected, float $upgradesAnnual): HtmlString
+    {
+        $selected = UpgradeBillingChoice::normalizeList($selected);
+
+        if ($selected === []) {
+            return new HtmlString('<p class="text-sm text-danger-600 dark:text-danger-400">Marque al menos una forma de pago.</p>');
+        }
+
+        $money = fn (float $value): string => 'US$ '.number_format($value, 2, ',', '.');
+        $cards = '';
+
+        foreach ($selected as $choice) {
+            $installments = \App\Support\AffiliationCorporates\CorporatePaymentFrequency::installmentsPerYear($choice);
+            $detail = $installments === 1
+                ? 'Pago único'.($upgradesAnnual > 0 ? ' de '.$money($upgradesAnnual) : '')
+                : $installments.' cuotas'.($upgradesAnnual > 0 ? ' de '.$money(round($upgradesAnnual / $installments, 2)) : '');
+
+            $cards .= '<div class="flex min-w-36 flex-col gap-0.5 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 dark:border-primary-500/30 dark:bg-primary-500/10">'
+                .'<span class="text-xs font-semibold uppercase tracking-wide text-primary-700 dark:text-primary-300">'.e(UpgradeBillingChoice::shortLabel($choice)).'</span>'
+                .'<span class="text-sm font-medium text-gray-900 dark:text-white">'.e($detail).'</span>'
+                .'<span class="text-xs text-gray-500 dark:text-gray-400">'.($installments === 1 ? 'Completo al inicio' : 'Repartido en cada cuota').'</span>'
+                .'</div>';
+        }
+
+        $missing = array_diff(['SEMESTRAL', 'TRIMESTRAL', 'MENSUAL'], $selected);
+        $note = $missing === []
+            ? ''
+            : '<p class="text-xs text-gray-500 dark:text-gray-400">Si la cotización muestra otras frecuencias ('
+                .e(implode(', ', array_map(fn (string $choice): string => mb_strtolower(UpgradeBillingChoice::shortLabel($choice)), $missing)))
+                .'), en ellas los upgrades se cobran completos en el primer pago.</p>';
+
+        return new HtmlString('<div class="space-y-2"><p class="text-xs font-medium text-gray-600 dark:text-gray-300">Así lo verá el cliente'
+            .($upgradesAnnual > 0 ? ' (upgrades: '.e($money($upgradesAnnual)).' al año)' : '').':</p>'
+            .'<div class="flex flex-wrap gap-2">'.$cards.'</div>'.$note.'</div>');
     }
 
     /**

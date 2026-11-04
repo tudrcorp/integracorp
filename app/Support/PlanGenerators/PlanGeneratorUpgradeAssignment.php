@@ -11,6 +11,7 @@ use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
 use App\Models\Upgrade;
 use App\Support\AffiliationAffiliateFeeCalculator;
+use App\Support\Upgrades\UpgradeBillingChoice;
 use App\Support\Upgrades\UpgradeFirstPaymentBilling;
 use App\Support\Upgrades\UpgradePricing;
 use Illuminate\Support\Facades\Auth;
@@ -44,6 +45,8 @@ final class PlanGeneratorUpgradeAssignment
 
         $rateRows = (array) ($payload['rate_rows'] ?? []);
         $fallbackLabel = (string) ($payload['upgrade_row_label'] ?? '');
+        /** Forma de cobro elegida al afiliar (Anual o repartidos con la misma frecuencia). */
+        $mode = UpgradeBillingChoice::modeOf($affiliation);
         $actor = self::actor();
         $created = 0;
         $annual = 0.0;
@@ -56,7 +59,7 @@ final class PlanGeneratorUpgradeAssignment
                 AffiliateUpgrade::query()->create([
                     'affiliate_id' => $affiliate->getKey(),
                     ...self::attributes($upgrade, $age, $actor),
-                    ...UpgradeFirstPaymentBilling::assignmentAttributes('affiliate_upgrades'),
+                    ...UpgradeFirstPaymentBilling::assignmentAttributes('affiliate_upgrades', $mode),
                 ]);
                 $created++;
                 $annual += (float) $upgrade['amount'];
@@ -69,7 +72,7 @@ final class PlanGeneratorUpgradeAssignment
         $feeAnual = max(0.0, round((float) $affiliation->fee_anual + $delta, 2));
         $frequency = (string) ($affiliation->payment_frequency ?? 'ANUAL');
 
-        /** La cuota regular lleva solo el plan: los upgrades se cobran completos en el primer pago. */
+        /** Anual: la cuota regular lleva solo el plan. Repartidos: la cuota los incluye (no son de cobro único). */
         $affiliation->forceFill([
             'fee_anual' => $feeAnual,
             'total_amount' => UpgradeFirstPaymentBilling::hasColumn('affiliate_upgrades', 'billing_mode')
@@ -119,6 +122,7 @@ final class PlanGeneratorUpgradeAssignment
         $actor = self::actor();
         $now = now();
         $rows = [];
+        $mode = UpgradeBillingChoice::modeOf($affiliation);
 
         foreach (array_values($inserted) as $position => $person) {
             $affiliate = $affiliates[$position];
@@ -132,7 +136,7 @@ final class PlanGeneratorUpgradeAssignment
                     'affiliate_corporate_id' => $affiliate->getKey(),
                     'affiliation_corporate_id' => $affiliation->getKey(),
                     ...self::attributes($upgrade, UpgradePricing::ageOf($affiliate), $actor),
-                    ...UpgradeFirstPaymentBilling::assignmentAttributes('affiliate_corporate_upgrades'),
+                    ...UpgradeFirstPaymentBilling::assignmentAttributes('affiliate_corporate_upgrades', $mode),
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];

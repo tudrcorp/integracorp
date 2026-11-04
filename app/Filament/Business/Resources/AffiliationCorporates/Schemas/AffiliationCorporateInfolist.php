@@ -600,6 +600,12 @@ class AffiliationCorporateInfolist
                                                             ->label('Frecuencia de pago')
                                                             ->badge()
                                                             ->color('warning'),
+                                                        TextEntry::make('upgrade_billing_frequency')
+                                                            ->label('Cobro de upgrades')
+                                                            ->state(fn ($record): string => \App\Support\Upgrades\UpgradeBillingChoice::label(\App\Support\Upgrades\UpgradeBillingChoice::of($record)))
+                                                            ->badge()
+                                                            ->color('info')
+                                                            ->visible(fn ($record): bool => \App\Support\Upgrades\UpgradeBillingResolution::hasActiveUpgrades($record)),
                                                         TextEntry::make('fee_anual')
                                                             ->label('Costo anual')
                                                             ->money('USD'),

@@ -40,6 +40,17 @@ function seedUpgradeScenario(): void
         $table->string('fee_anual')->nullable();
         $table->decimal('total_amount', 8, 2)->default(0);
         $table->string('activated_at')->nullable();
+        $table->string('upgrade_billing_frequency', 20)->nullable();
+        $table->timestamps();
+    });
+
+    Schema::create('upgrade_installment_charges', function (Blueprint $table): void {
+        $table->id();
+        $table->string('upgrade_table', 40);
+        $table->unsignedBigInteger('upgrade_id');
+        $table->unsignedBigInteger('collection_id');
+        $table->decimal('amount', 12, 2);
+        $table->string('status', 20)->default('ACTIVO');
         $table->timestamps();
     });
 
@@ -400,4 +411,38 @@ it('corporativo: sin voucher no se agrega nada y la vista previa calcula sin esc
         ->and($preview['owner']['note'])->toContain('una sola vez')
         ->and(array_column($preview['collections'], 'after'))->toBe([350.0])
         ->and(affiliateFee(1))->toBe(500.0);
+});
+
+it('corporativo repartido: el upgrade completo se reparte entre los avisos pendientes y la cuota del afiliado lo incluye', function (): void {
+    $result = CorporateAffiliateUpgradeManager::add(upgradeOwner(), [1], [10], null, upgradeVouchersFor([1]), 'TRIMESTRAL');
+    $affiliate = AffiliateCorporate::query()->findOrFail(1);
+    $owner = upgradeOwner();
+    $upgrade = AffiliateCorporateUpgrade::query()->sole();
+
+    expect($result['collections_adjusted'])->toBe(2)
+        ->and($owner->upgrade_billing_frequency)->toBe('TRIMESTRAL')
+        ->and($upgrade->billing_mode)->toBe(App\Support\Upgrades\UpgradeFirstPaymentBilling::MODE_INSTALLMENTS)
+        ->and($upgrade->charged_collection_id)->toBeNull()
+        ->and((float) $affiliate->subtotal_payment_frequency)->toBe(135.0)
+        ->and((float) $owner->total_amount)->toBe(260.0)
+        ->and(collectionTotal(100))->toBe(270.0)
+        ->and(collectionTotal(101))->toBe(270.0)
+        ->and(collectionTotal(102))->toBe(250.0)
+        ->and(App\Support\Upgrades\UpgradeFirstPaymentBilling::corporateOneTimeTotal($owner))->toBe(0.0);
+
+    CorporateAffiliateUpgradeManager::deactivate(upgradeOwner(), [(int) $upgrade->getKey()]);
+
+    expect(collectionTotal(100))->toBe(250.0)
+        ->and(collectionTotal(101))->toBe(250.0)
+        ->and((float) upgradeOwner()->total_amount)->toBe(250.0)
+        ->and(DB::table('upgrade_installment_charges')->where('status', 'ACTIVO')->count())->toBe(0);
+});
+
+it('corporativo: una frecuencia distinta de la de la empresa bloquea sin escribir nada', function (): void {
+    expect(fn () => CorporateAffiliateUpgradeManager::add(upgradeOwner(), [1], [10], null, upgradeVouchersFor([1]), 'MENSUAL'))
+        ->toThrow(RuntimeException::class, 'debe ser igual a la frecuencia de pago de la afiliación (Trimestral)');
+
+    expect(AffiliateCorporateUpgrade::query()->count())->toBe(0)
+        ->and(collectionTotal(100))->toBe(250.0)
+        ->and(CorporateAffiliateUpgradeManager::preview(upgradeOwner(), [1], 10, 'MENSUAL')['blockers'][0] ?? '')->toContain('debe ser igual');
 });

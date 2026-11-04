@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\AffiliationCorporates\Pages;
 
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
+use App\Filament\Shared\Affiliations\UpgradeBillingField;
 use App\Models\AffiliateCorporate;
 use App\Models\AffiliationCorporate;
 use App\Models\AfilliationCorporatePlan;
@@ -44,6 +45,8 @@ class CreateAffiliationCorporate extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        /** Cómo se cobran los upgrades de la cotización: validado antes de escribir nada. */
+        $data = UpgradeBillingField::normalizeForCreate($data);
         $data = $this->publishPlanGeneratorCatalogPlan($data);
 
         $data['code_agency'] = $data['code_agency'] == null ? 'TDG-100' : $data['code_agency'];
@@ -305,8 +308,13 @@ class CreateAffiliationCorporate extends CreateRecord
             // formulario: así la cabecera cuadra con «Plan(es) Afiliado(s)».
             $record->poblation = $imported;
             $record->fee_anual = $placements['annual'];
-            /** La cuota regular lleva solo el plan: los upgrades se cobran completos en el primer pago. */
-            $record->total_amount = $upgradesAssigned > 0 && \App\Support\Upgrades\UpgradeFirstPaymentBilling::hasColumn('affiliate_corporate_upgrades', 'billing_mode')
+            /**
+             * Upgrades Anual: la cuota regular lleva solo el plan (van completos en el primer pago).
+             * Upgrades repartidos (misma frecuencia): la cuota regular los incluye.
+             */
+            $record->total_amount = $upgradesAssigned > 0
+                && \App\Support\Upgrades\UpgradeFirstPaymentBilling::hasColumn('affiliate_corporate_upgrades', 'billing_mode')
+                && \App\Support\Upgrades\UpgradeBillingChoice::modeOf($record) === \App\Support\Upgrades\UpgradeFirstPaymentBilling::MODE
                 ? \App\Support\Upgrades\UpgradeFirstPaymentBilling::regularInstallment((float) $placements['annual'], (float) ($placements['upgrades_annual'] ?? 0), (string) $record->payment_frequency)
                 : round(CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount(
                     $placements['annual'],
@@ -416,12 +424,13 @@ class CreateAffiliationCorporate extends CreateRecord
         $createdBy = Auth::id();
         $specificBusinessUnit = AffiliationAffiliateBusinessContextSynchronizer::normalizeSpecificBusinessUnit($record->specific_business_unit);
         $this->planGeneratorInsertedPeople = [];
+        $upgradesSpread = \App\Support\Upgrades\UpgradeBillingChoice::modeOf($record) === \App\Support\Upgrades\UpgradeFirstPaymentBilling::MODE_INSTALLMENTS;
 
         $plan->populations()
             ->getQuery()
             ->reorder()
             ->orderBy('id')
-            ->chunkById(500, function ($populations) use ($record, $now, $placements, $frequency, $createdBy, $specificBusinessUnit, &$inserted): void {
+            ->chunkById(500, function ($populations) use ($record, $now, $placements, $frequency, $createdBy, $specificBusinessUnit, &$inserted, $upgradesSpread): void {
                 $rows = [];
                 $people = [];
 
@@ -434,8 +443,11 @@ class CreateAffiliationCorporate extends CreateRecord
                     }
 
                     $fee = $placement['fee'];
-                    /** La cuota del afiliado lleva solo el plan: sus upgrades van completos en el primer pago. */
-                    $planFee = max(0.0, round($fee - array_sum(array_map(
+                    /**
+                     * Upgrades Anual: la cuota del afiliado lleva solo el plan (van completos en el
+                     * primer pago). Repartidos: la cuota del afiliado los incluye.
+                     */
+                    $planFee = $upgradesSpread ? $fee : max(0.0, round($fee - array_sum(array_map(
                         static fn (mixed $upgrade): float => is_array($upgrade) && is_numeric($upgrade['amount'] ?? null) ? (float) $upgrade['amount'] : 0.0,
                         (array) ($placement['upgrades'] ?? []),
                     )), 2));

@@ -228,7 +228,10 @@ final class IndividualAffiliationPlanChanger
             'fee_anual' => $feeAnual,
             'total_amount' => $periodAmount,
             'family_members' => count($lines),
-        ])->save();
+        ]);
+        /** Upgrades repartidos en cuotas: siguen repartidos con la frecuencia nueva. */
+        \App\Support\Upgrades\UpgradeBillingChoice::followFrequency($locked, (string) $previous['frequency']);
+        $locked->save();
 
         $whiteCompany = $this->recalculateWhiteCompanyRate($locked);
         $billing = $this->rebuildPendingBilling($locked, $plan, $coverageId, $frequency, $previous['frequency'], $regularAnnual, count($lines), $frequencyChanged, $actorName, $simulate);

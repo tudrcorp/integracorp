@@ -31,6 +31,7 @@ function seedIndividualUpgradeScenario(): void
         $table->decimal('fee_anual', 8, 2)->default(0);
         $table->decimal('total_amount', 8, 2)->default(0);
         $table->string('activated_at')->nullable();
+        $table->string('upgrade_billing_frequency', 20)->nullable();
         $table->timestamps();
     });
 
@@ -97,6 +98,16 @@ function seedIndividualUpgradeScenario(): void
         $table->unsignedBigInteger('affiliation_id')->nullable();
         $table->string('status')->nullable();
         $table->string('date_renewal')->nullable();
+        $table->timestamps();
+    });
+
+    Schema::create('upgrade_installment_charges', function (Blueprint $table): void {
+        $table->id();
+        $table->string('upgrade_table', 40);
+        $table->unsignedBigInteger('upgrade_id');
+        $table->unsignedBigInteger('collection_id');
+        $table->decimal('amount', 12, 2);
+        $table->string('status', 20)->default('ACTIVO');
         $table->timestamps();
     });
 
@@ -440,4 +451,122 @@ it('la modal pinta el recálculo con su detalle', function (): void {
         ->toContain('Afiliación TDEC-IND-00010')
         ->toContain('US$ 1.000,00 → <span class="font-bold">US$ 1.040,00</span>')
         ->toContain('AC-0100');
+});
+
+it('repartido con la misma frecuencia: el upgrade completo se reparte entre los avisos pendientes y se descuenta exacto al quitarlo', function (): void {
+    $result = IndividualAffiliateUpgradeManager::add(individualOwner(), [1, 2], [10], null, upgradeVouchersFor([1, 2]), 'TRIMESTRAL');
+    $owner = individualOwner();
+    $rows = AffiliateUpgrade::query()->orderBy('affiliate_id')->get();
+
+    expect($result['upgrades_created'])->toBe(2)
+        ->and($result['collections_adjusted'])->toBe(2)
+        ->and($owner->upgrade_billing_frequency)->toBe('TRIMESTRAL')
+        ->and($rows->pluck('billing_mode')->unique()->all())->toBe([App\Support\Upgrades\UpgradeFirstPaymentBilling::MODE_INSTALLMENTS])
+        ->and($rows->pluck('charged_collection_id')->filter()->all())->toBe([])
+        ->and((float) $owner->fee_anual)->toBe(1100.0)
+        ->and((float) $owner->total_amount)->toBe(275.0)
+        ->and((float) Affiliate::query()->findOrFail(1)->total_amount)->toBe(160.0)
+        ->and(individualCollection(100))->toBe(300.0)
+        ->and(individualCollection(101))->toBe(133.33)
+        ->and(individualCollection(102))->toBe(250.0)
+        ->and(DB::table('upgrade_installment_charges')->where('status', 'ACTIVO')->sum('amount'))->toEqual(100)
+        ->and(DB::table('collection_observations')->where('collection_id', 100)->value('observation'))->toContain('se reparte')
+        ->and(App\Support\Upgrades\UpgradeFirstPaymentBilling::chargedOnCollections('affiliate_upgrades', [100, 101]))->toBe([100 => 50.0, 101 => 50.0]);
+
+    IndividualAffiliateUpgradeManager::deactivate(individualOwner(), $rows->modelKeys());
+
+    expect(individualCollection(100))->toBe(250.0)
+        ->and(individualCollection(101))->toBe(83.33)
+        ->and((float) individualOwner()->fee_anual)->toBe(1000.0)
+        ->and((float) individualOwner()->total_amount)->toBe(250.0)
+        ->and(DB::table('upgrade_installment_charges')->where('status', 'ACTIVO')->count())->toBe(0)
+        ->and(DB::table('upgrade_installment_charges')->where('status', 'LIBERADO')->count())->toBe(4);
+});
+
+it('reparte los céntimos sin perder ninguno', function (): void {
+    DB::table('collections')->insert(['id' => 103, 'collection_invoice_number' => 'AC-0103', 'affiliation_code' => 'TDEC-IND-00010', 'payment_frequency' => 'TRIMESTRAL', 'next_payment_date' => '01/06/2027', 'filter_next_payment_date' => '2027-06-01', 'total_amount' => 250, 'status' => 'POR PAGAR']);
+
+    IndividualAffiliateUpgradeManager::add(individualOwner(), [1], [10], null, upgradeVouchersFor([1]), 'TRIMESTRAL');
+
+    expect(individualCollection(100))->toBe(263.33)
+        ->and(individualCollection(101))->toBe(96.66)
+        ->and(individualCollection(103))->toBe(263.34)
+        ->and(round(individualCollection(100) + individualCollection(101) + individualCollection(103) - 250 - 83.33 - 250, 2))->toBe(40.0);
+});
+
+it('una frecuencia distinta de la de la afiliación bloquea sin escribir nada', function (): void {
+    expect(fn () => IndividualAffiliateUpgradeManager::add(individualOwner(), [1], [10], null, upgradeVouchersFor([1]), 'SEMESTRAL'))
+        ->toThrow(RuntimeException::class, 'debe ser igual a la frecuencia de pago de la afiliación (Trimestral)');
+
+    expect(AffiliateUpgrade::query()->count())->toBe(0)
+        ->and(individualOwner()->upgrade_billing_frequency)->toBeNull()
+        ->and(individualCollection(100))->toBe(250.0)
+        ->and(IndividualAffiliateUpgradeManager::preview(individualOwner(), [1], 10, 'SEMESTRAL')['blockers'])->toContain('La frecuencia de pago del upgrade (Semestral) debe ser igual a la frecuencia de pago de la afiliación (Trimestral). Elija Trimestral o Anual.');
+});
+
+it('una afiliación tiene una sola forma de cobro mientras tenga upgrades activos', function (): void {
+    IndividualAffiliateUpgradeManager::add(individualOwner(), [1], [10], null, upgradeVouchersFor([1]), 'ANUAL');
+
+    expect(individualOwner()->upgrade_billing_frequency)->toBe('ANUAL')
+        ->and(fn () => IndividualAffiliateUpgradeManager::add(individualOwner(), [2], [10], null, upgradeVouchersFor([2]), 'TRIMESTRAL'))
+        ->toThrow(RuntimeException::class, 'ya cobra sus upgrades anual');
+
+    IndividualAffiliateUpgradeManager::add(individualOwner(), [2], [10], null, upgradeVouchersFor([2]), null);
+
+    expect(AffiliateUpgrade::query()->where('status', 'ACTIVO')->pluck('billing_mode')->unique()->all())->toBe([App\Support\Upgrades\UpgradeFirstPaymentBilling::MODE])
+        ->and(IndividualAffiliateUpgradeManager::preview(individualOwner(), [2], 10, 'TRIMESTRAL')['owner']['billing_choice_locked'])->toBeTrue();
+
+    IndividualAffiliateUpgradeManager::deactivate(individualOwner(), AffiliateUpgrade::query()->where('status', 'ACTIVO')->pluck('id')->all());
+
+    IndividualAffiliateUpgradeManager::add(individualOwner(), [1], [10], null, upgradeVouchersFor([1]), 'TRIMESTRAL');
+
+    expect(individualOwner()->upgrade_billing_frequency)->toBe('TRIMESTRAL');
+});
+
+it('repartido antes del primer pago: sube la cuota y no toca avisos ni el comprobante', function (): void {
+    DB::table('affiliations')->where('id', 10)->update(['activated_at' => null]);
+
+    $result = IndividualAffiliateUpgradeManager::add(individualOwner(), [1, 2], [10], null, upgradeVouchersFor([1, 2]), 'TRIMESTRAL');
+    $owner = individualOwner();
+
+    expect($result['collections_adjusted'])->toBe(0)
+        ->and((float) $owner->total_amount)->toBe(275.0)
+        ->and(individualCollection(100))->toBe(250.0)
+        ->and(App\Support\Upgrades\UpgradeFirstPaymentBilling::individualOneTimeTotal($owner))->toBe(0.0)
+        ->and(App\Support\Upgrades\UpgradeFirstPaymentBilling::suggestedProofAmount($owner))->toBe(275.0)
+        ->and(App\Support\Upgrades\UpgradeFirstPaymentBilling::proofUpgradesAmount($owner, 275))->toBeNull();
+});
+
+it('la vista previa del reparto coincide con lo que se escribe', function (): void {
+    $preview = IndividualAffiliateUpgradeManager::preview(individualOwner(), [1, 2], 10, 'TRIMESTRAL');
+
+    expect($preview['blockers'])->toBe([])
+        ->and(collect($preview['collections'])->pluck('after', 'invoice')->all())->toBe(['AC-0100' => 300.0, 'AC-0101' => 133.33])
+        ->and($preview['owner']['period_after'])->toBe(275.0)
+        ->and($preview['owner']['note'])->toContain('se reparte entre las 2 cuota(s)')
+        ->and(collect($preview['rows'])->firstWhere('id', 1)['period_after'])->toBe(160.0);
+});
+
+it('mover avisos arrastra las partes repartidas', function (): void {
+    IndividualAffiliateUpgradeManager::add(individualOwner(), [1], [10], null, upgradeVouchersFor([1]), 'TRIMESTRAL');
+
+    App\Support\Upgrades\UpgradeFirstPaymentBilling::moveCharges('affiliate_upgrades', [100, 101], 900);
+
+    expect(DB::table('upgrade_installment_charges')->pluck('collection_id')->unique()->values()->all())->toBe([900])
+        ->and(App\Support\Upgrades\UpgradeFirstPaymentBilling::chargedOnCollections('affiliate_upgrades', [900]))->toBe([900 => 40.0]);
+});
+
+it('al renovar conserva el reparto si la frecuencia sigue igual y vuelve a Anual si cambió', function (): void {
+    IndividualAffiliateUpgradeManager::add(individualOwner(), [1], [10], null, upgradeVouchersFor([1]), 'TRIMESTRAL');
+    $affiliate = Affiliate::query()->findOrFail(1);
+
+    App\Support\Upgrades\UpgradeRenewalRepricer::reprice($affiliate, now(), null, 'TRIMESTRAL');
+
+    expect(AffiliateUpgrade::query()->where('affiliate_id', 1)->where('status', 'ACTIVO')->value('billing_mode'))->toBe(App\Support\Upgrades\UpgradeFirstPaymentBilling::MODE_INSTALLMENTS)
+        ->and(individualOwner()->upgrade_billing_frequency)->toBe('TRIMESTRAL');
+
+    App\Support\Upgrades\UpgradeRenewalRepricer::reprice(Affiliate::query()->findOrFail(1), now(), null, 'MENSUAL');
+
+    expect(AffiliateUpgrade::query()->where('affiliate_id', 1)->where('status', 'ACTIVO')->value('billing_mode'))->toBe(App\Support\Upgrades\UpgradeFirstPaymentBilling::MODE)
+        ->and(individualOwner()->upgrade_billing_frequency)->toBe('ANUAL');
 });

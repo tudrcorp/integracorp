@@ -975,9 +975,9 @@ class AffiliatesRelationManager extends RelationManager
      * @param  list<int>  $affiliateIds
      * @return array<string, mixed>
      */
-    protected function upgradeManagerPreview(array $affiliateIds, mixed $coverageId): array
+    protected function upgradeManagerPreview(array $affiliateIds, mixed $coverageId, ?string $billingChoice = null): array
     {
-        return IndividualAffiliateUpgradeManager::preview($this->getOwnerRecord(), $affiliateIds, $coverageId);
+        return IndividualAffiliateUpgradeManager::preview($this->getOwnerRecord(), $affiliateIds, $coverageId, $billingChoice);
     }
 
     /**
@@ -985,9 +985,9 @@ class AffiliatesRelationManager extends RelationManager
      * @param  array<int, array<string, mixed>>  $vouchers
      * @return array{affiliates_updated: int, upgrades_created: int, annual_delta: float, collections_adjusted: int, skipped: list<array<string, string>>}
      */
-    protected function upgradeManagerAdd(array $affiliateIds, mixed $coverageId, array $vouchers): array
+    protected function upgradeManagerAdd(array $affiliateIds, mixed $coverageId, array $vouchers, ?string $billingChoice = null): array
     {
-        return IndividualAffiliateUpgradeManager::add($this->getOwnerRecord(), $affiliateIds, [$coverageId], null, $vouchers);
+        return IndividualAffiliateUpgradeManager::add($this->getOwnerRecord(), $affiliateIds, [$coverageId], null, $vouchers, $billingChoice);
     }
 
     protected function upgradeAffiliateLabel(Model $affiliate): string

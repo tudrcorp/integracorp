@@ -134,6 +134,7 @@ final class PlanGeneratorPreAffiliationOptions
             $columns,
             $rateRows,
             PlanGeneratorUpgrades::quote(PlanGeneratorUpgrades::linesFromModel($plan), $rateRows)['annual_total'],
+            $plan->upgradeBillingFrequencies(),
         );
 
         $rows = [];
