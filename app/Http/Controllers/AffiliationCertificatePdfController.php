@@ -8,6 +8,8 @@ use App\Models\AffiliationCertificateIssue;
 use App\Models\User;
 use App\Services\AffiliationCertificateGeneratorService;
 use App\Support\Affiliations\Certificates\AffiliationCertificateAccess;
+use Filament\Notifications\Notification;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use InvalidArgumentException;
@@ -23,7 +25,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  */
 class AffiliationCertificatePdfController extends Controller
 {
-    public function __invoke(Request $request, AffiliationCertificateIssue $issue, AffiliationCertificateGeneratorService $generator): Response|BinaryFileResponse
+    public function __invoke(Request $request, AffiliationCertificateIssue $issue, AffiliationCertificateGeneratorService $generator): Response|BinaryFileResponse|RedirectResponse
     {
         $user = $request->user();
 
@@ -36,11 +38,24 @@ class AffiliationCertificatePdfController extends Controller
         try {
             $path = $preview ? $generator->previewFile($issue) : $generator->pdfFile($issue);
         } catch (InvalidArgumentException) {
+            $message = $issue->pdf_status === AffiliationCertificateIssue::PDF_FAILED
+                ? 'No se pudo generar este certificado. Vuelva a generarlo desde el panel.'
+                : 'El certificado se está generando. Recibirá una notificación cuando esté listo.';
+
+            /** Una descarga vuelve a la pantalla con el aviso; no deja al analista en una página de texto. */
+            if ($disposition === 'attachment') {
+                Notification::make()
+                    ->title($issue->pdf_status === AffiliationCertificateIssue::PDF_FAILED ? 'Certificado no disponible' : 'Certificado en preparación')
+                    ->body($message)
+                    ->warning()
+                    ->send();
+
+                return redirect()->to(url()->previous() !== url()->current() ? url()->previous() : url('/business'));
+            }
+
             // Documento grande dibujándose en cola: se avisa sin romper el iframe.
             return response(
-                $issue->pdf_status === AffiliationCertificateIssue::PDF_FAILED
-                    ? 'No se pudo generar este certificado. Vuelva a generarlo desde el panel.'
-                    : 'El certificado se está generando. Recibirá una notificación cuando esté listo.',
+                $message,
                 409,
                 ['Content-Type' => 'text/plain; charset=UTF-8', 'Cache-Control' => 'no-store'],
             );

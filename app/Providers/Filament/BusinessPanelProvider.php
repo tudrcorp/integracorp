@@ -54,6 +54,12 @@ class BusinessPanelProvider extends PanelProvider
             ->passwordReset()
             ->profile()
             ->spa()
+            /**
+             * Descargas de archivos: con SPA, Filament les pone `wire:navigate`, el PDF se trae
+             * por fetch y se pinta como página (bytes como texto, `attachment` ignorado). Estas
+             * URL siempre se abren con navegación normal del navegador.
+             */
+            ->spaUrlExceptions(fn (): array => \App\Support\Filament\SpaDownloadExceptions::patterns())
             ->globalSearch(position: GlobalSearchPosition::Topbar)
             ->globalSearchDebounce('300ms')
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
