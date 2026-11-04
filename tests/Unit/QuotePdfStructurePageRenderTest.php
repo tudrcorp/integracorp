@@ -201,3 +201,48 @@ it('usa el logo institucional de las cotizaciones', function (): void {
     expect($pagina)->toContain("public_path('image/logoNewPdf.png')")
         ->and(file_exists(dirname(__DIR__, 2).'/public/image/logoNewPdf.png'))->toBeTrue();
 });
+
+it('deja un respiro entre las tarifas por edad y las tarifas grupales del Plan Especial', function (): void {
+    $plan = Plan::query()->find(3);
+
+    if ($plan === null || ! $plan->coverages()->exists()) {
+        $this->markTestSkipped('La base no tiene el Plan Especial (id 3) con coberturas.');
+    }
+
+    $html = renderizarPaginaDePlan($plan);
+    $columnas = 2 + Coverage::query()->where('plan_id', 3)->count();
+
+    // La fila espaciadora va dentro de la misma tabla (abarca todas las columnas)
+    // y justo antes de la primera tarifa grupal.
+    expect($html)->toContain('class="totals-gap" colspan="'.$columnas.'"')
+        ->and(strpos($html, 'totals-gap" colspan'))->toBeLessThan(strpos($html, 'TARIFA GRUPAL ANUAL'));
+});
+
+it('no deja las condiciones del Plan Ideal solas en una segunda hoja del documento local', function (): void {
+    $plan = Plan::query()->find(2);
+
+    if ($plan === null || ! $plan->coverages()->exists()) {
+        $this->markTestSkipped('La base no tiene el Plan Ideal (id 2) con coberturas.');
+    }
+
+    // Documento completo por DomPDF (la vía cuando el microservicio no atiende): portada,
+    // «acerca», página del plan y contraportada. Si las condiciones saltaran, serían 5.
+    $details = [
+        'name' => 'JUAN PEREZ',
+        'code' => 'COT-IND-0001',
+        'plan' => 2,
+        'data' => [],
+        'upgrades' => [],
+    ];
+
+    $pdf = Barryvdh\DomPDF\Facade\Pdf::loadView('documents.propuesta-economica', [
+        'details' => $details,
+        'group_collect' => datosAgrupadosDePrueba($plan),
+        'collect' => collect(),
+        'name_user' => 'AGENTE DEMO',
+        'layout' => App\Support\IndividualQuotePdfLayout::Estructura,
+    ]);
+    $pdf->output();
+
+    expect($pdf->getDomPDF()->getCanvas()->get_page_count())->toBe(4);
+});

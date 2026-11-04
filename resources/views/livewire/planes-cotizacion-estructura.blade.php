@@ -59,8 +59,12 @@
             padding-top: 15mm;
         }
 
+        /*
+         * El relleno inferior cuenta para que la última celda quepa en la hoja: con 15 mm las
+         * condiciones del Ideal saltaban solas a una segunda página dejando un hueco en la primera.
+         */
         .page-cell-last {
-            padding-bottom: 15mm;
+            padding-bottom: 8mm;
         }
 
         .is-compact .header-table {
@@ -205,7 +209,7 @@
 
         .conditions {
             font-size: 8.5pt;
-            margin: 16px 0 0 0;
+            margin: 12px 0 0 0;
             padding-left: 16px;
             line-height: 1.45;
         }
@@ -249,6 +253,25 @@
         .value-col {
             text-align: center;
             font-weight: bold;
+        }
+
+        .data-table td.totals-gap {
+            height: 8px;
+            padding: 0;
+            border: 0;
+            font-size: 1px;
+            line-height: 1px;
+            background-color: transparent;
+        }
+
+        .is-compact .data-table td.totals-gap {
+            height: 5px;
+            padding: 0;
+        }
+
+        .is-fit .data-table td.totals-gap {
+            height: 3px;
+            padding: 0;
         }
 
         .total-label {
@@ -452,6 +475,12 @@
                                     @endforeach
                                 </tr>
                             @endforeach
+
+                            {{-- Respiro entre las tarifas por edad y los totales, dentro de la misma
+                                 tabla para que las columnas sigan alineadas. --}}
+                            <tr>
+                                <td class="totals-gap" colspan="{{ 2 + count($coverageColumns) }}"></td>
+                            </tr>
 
                             @foreach ([['TARIFA GRUPAL ANUAL', 1], ['TARIFA GRUPAL SEMESTRAL', 2], ['TARIFA GRUPAL TRIMESTRAL', 4]] as [$totalLabel, $divisor])
                                 <tr>

@@ -41,6 +41,22 @@ use Illuminate\Support\Str;
 final class PlanGeneratorStructureImporter
 {
     /**
+     * Orden comercial de los beneficios por plan (ids de `benefits`), el mismo de su
+     * propuesta impresa. Los planes que no figuran aquí van en orden alfabético; un
+     * beneficio que se agregue después y no esté en la lista sale al final.
+     *
+     * @var array<int, list<int>>
+     */
+    private const COMMERCIAL_BENEFIT_ORDER = [
+        /** Plan Inicial: los ocho primeros del mismo orden comercial. */
+        1 => [1, 2, 3, 4, 5, 6, 7, 8],
+        /** Plan Ideal: mismo orden, con la asistencia médica por accidentes al final. */
+        2 => [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20],
+        /** Plan Especial: telemedicina → tratamiento → monitoreo → AMD → laboratorios → imagenología → seguimiento → traslados → especialistas → urgencias menores → emergencias por patologías listadas. */
+        3 => [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12],
+    ];
+
+    /**
      * Coberturas ofrecibles del plan, para que el analista elija cuáles entran
      * en la cotización. Un mismo plan suele cotizarse con un subconjunto.
      *
@@ -271,7 +287,22 @@ final class PlanGeneratorStructureImporter
      */
     private static function planBenefits(Plan $plan)
     {
-        return $plan->benefitPlans()->orderBy('description')->get();
+        $benefits = $plan->benefitPlans()->orderBy('description')->get();
+        $commercialOrder = self::COMMERCIAL_BENEFIT_ORDER[(int) $plan->getKey()] ?? null;
+
+        if ($commercialOrder === null) {
+            return $benefits;
+        }
+
+        $positions = array_flip($commercialOrder);
+        $fallback = count($commercialOrder);
+
+        return $benefits
+            ->sortBy(static fn (Benefit $benefit, int $index): array => [
+                $positions[(int) $benefit->getKey()] ?? $fallback,
+                $index,
+            ])
+            ->values();
     }
 
     /**

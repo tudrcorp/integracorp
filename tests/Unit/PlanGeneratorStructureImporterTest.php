@@ -197,3 +197,66 @@ it('no arma columnas si el subconjunto elegido no existe en el plan', function (
 
     expect($estructura['columns'])->toBe([]);
 });
+
+/**
+ * Planes Inicial, Ideal y Especial (ids 1, 2 y 3): los beneficios salen en el orden comercial de su propuesta,
+ * no alfabéticos. Afecta la página del plan en la cotización individual y en la
+ * corporativa con upgrades.
+ */
+function beneficiosDelPlanEnOrden(int $planId = 3): array
+{
+    return array_values(array_map(
+        static fn (array $fila): string => $fila['benefit_label'],
+        PlanGeneratorStructureImporter::build(Plan::query()->findOrFail($planId))['rows'],
+    ));
+}
+
+it('ordena los beneficios de los planes históricos en el orden comercial', function (int $planId, array $orden): void {
+    $plan = Plan::query()->find($planId);
+
+    if ($plan === null) {
+        $this->markTestSkipped("La base no tiene el plan {$planId}.");
+    }
+
+    $esperado = Benefit::query()
+        ->whereIn('id', $orden)
+        ->whereIn('id', $plan->benefitPlans()->pluck('benefits.id'))
+        ->get()
+        ->sortBy(static fn (Benefit $beneficio): int => array_search((int) $beneficio->id, $orden, true))
+        ->map(static fn (Benefit $beneficio): string => mb_strtoupper((string) $beneficio->description))
+        ->values()
+        ->all();
+
+    expect($esperado)->not->toBeEmpty()
+        ->and(beneficiosDelPlanEnOrden($planId))->toBe($esperado);
+})->with([
+    'Plan Inicial' => [1, [1, 2, 3, 4, 5, 6, 7, 8]],
+    'Plan Ideal' => [2, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20]],
+    'Plan Especial' => [3, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12]],
+]);
+
+it('deja al final del Plan Especial un beneficio que no está en el orden comercial', function (): void {
+    if (Plan::query()->find(3) === null) {
+        $this->markTestSkipped('La base no tiene el Plan Especial (id 3).');
+    }
+
+    $nuevo = beneficioImportable('AAA beneficio agregado después');
+    DB::table('benefit_plans')->insert([
+        'plan_id' => 3,
+        'benefit_id' => $nuevo->id,
+        'description' => $nuevo->description,
+    ]);
+
+    $filas = beneficiosDelPlanEnOrden();
+
+    // Alfabéticamente iría primero; fuera de la lista comercial, va al final.
+    expect(end($filas))->toBe('AAA BENEFICIO AGREGADO DESPUÉS');
+});
+
+it('mantiene el orden alfabético en los planes sin orden comercial', function (): void {
+    $plan = planConMatriz();
+
+    $filas = array_column(PlanGeneratorStructureImporter::build($plan)['rows'], 'benefit_label');
+
+    expect(array_values($filas))->toBe(['ACCIDENTE DE BAÑO', 'ACCIDENTES NATURALES']);
+});

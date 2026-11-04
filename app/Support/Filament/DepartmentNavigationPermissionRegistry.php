@@ -252,6 +252,7 @@ final class DepartmentNavigationPermissionRegistry
         BenefitResource::class => ['beneficios'],
         BenefitCoverageResource::class => ['beneficios-coberturas'],
         \App\Filament\Business\Resources\Upgrades\UpgradeResource::class => ['gestionar-upgrades'],
+        \App\Filament\Business\Resources\CapitationPlans\CapitationPlanResource::class => ['planes-de-capitado'],
         FeeResource::class => ['tarifas-costos'],
         RegionResource::class => ['regiones'],
         StateResource::class => ['estados'],
