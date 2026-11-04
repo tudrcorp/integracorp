@@ -33,6 +33,11 @@ class QualityControlCorporateResource extends QualityControlSurveyResource
         return BusinessFilamentActionPermissionRegistry::MANAGE_CORPORATE_QUALITY_CONTROL;
     }
 
+    public static function noteActionSlug(): string
+    {
+        return BusinessFilamentActionPermissionRegistry::NOTE_CORPORATE_QUALITY_CONTROL;
+    }
+
     public static function getPages(): array
     {
         return [

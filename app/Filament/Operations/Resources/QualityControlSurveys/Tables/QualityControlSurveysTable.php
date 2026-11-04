@@ -6,6 +6,7 @@ namespace App\Filament\Operations\Resources\QualityControlSurveys\Tables;
 
 use App\Enums\QualityControlRating;
 use App\Enums\QualityControlService;
+use App\Filament\Operations\Resources\QualityControlSurveys\Actions\QualityControlSurveyActions;
 use App\Filament\Operations\Resources\QualityControlSurveys\QualityControlSurveyResource;
 use App\Models\QualityControlSurvey;
 use App\Support\Operations\QualityControl\QualityControlSurveyWriter;
@@ -38,6 +39,9 @@ final class QualityControlSurveysTable
         return $table
             ->heading('Encuestas de Quality Control')
             ->description('Una fila por respuesta del paciente, de la más reciente a la más antigua. En verde las calificaciones satisfactorias, en ámbar las neutras y en rojo las insatisfechas.')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                ->withCount('notes')
+                ->withMax('notes', 'created_at'))
             ->defaultSort('responded_at', 'desc')
             ->searchPlaceholder('Buscar por paciente o cédula')
             ->searchDebounce('350ms')
@@ -87,6 +91,15 @@ final class QualityControlSurveysTable
                     array_keys(QualityControlSurvey::RATING_FIELDS),
                     ['Canales de atención', 'Tiempo de respuesta', 'Servicio médico', 'Satisfacción general'],
                 ),
+                TextColumn::make('notes_count')
+                    ->label('Seguimiento')
+                    ->badge()
+                    ->formatStateUsing(fn (int $state): string => $state === 0 ? 'Sin notas' : ($state === 1 ? '1 nota' : $state.' notas'))
+                    ->color(fn (int $state, QualityControlSurvey $record): string => $state > 0 ? 'success' : (self::hasLowRating($record) ? 'danger' : 'gray'))
+                    ->description(fn (QualityControlSurvey $record): ?string => filled($record->notes_max_created_at)
+                        ? 'Última: '.Carbon::parse($record->notes_max_created_at)->format('d/m/Y')
+                        : (self::hasLowRating($record) ? 'Requiere seguimiento' : null))
+                    ->sortable(),
                 TextColumn::make('observations')
                     ->label('Observación')
                     ->limit(60)
@@ -146,6 +159,15 @@ final class QualityControlSurveysTable
                             $query->orWhereIn($field, [QualityControlRating::Neutral->value, QualityControlRating::Dissatisfied->value]);
                         }
                     })),
+                TernaryFilter::make('follow_up')
+                    ->label('Seguimiento')
+                    ->placeholder('Todas')
+                    ->trueLabel('Con notas de seguimiento')
+                    ->falseLabel('Sin seguimiento')
+                    ->queries(
+                        true: fn (Builder $query): Builder => $query->whereHas('notes'),
+                        false: fn (Builder $query): Builder => $query->whereDoesntHave('notes'),
+                    ),
                 TernaryFilter::make('linked')
                     ->label('Enlace con el afiliado')
                     ->placeholder('Todas')
@@ -165,6 +187,12 @@ final class QualityControlSurveysTable
             ->recordActions([
                 ActionGroup::make([
                     ViewAction::make()->label('Ver encuesta'),
+                    QualityControlSurveyActions::addNote($resource),
+                    ActionGroup::make([
+                        QualityControlSurveyActions::previewPdf($resource),
+                        QualityControlSurveyActions::emailPdf($resource),
+                        QualityControlSurveyActions::whatsAppPdf($resource),
+                    ])->dropdown(false),
                     EditAction::make()->label('Editar'),
                     self::deleteAction($resource),
                 ]),
@@ -235,6 +263,19 @@ final class QualityControlSurveysTable
                     ->success()
                     ->send();
             });
+    }
+
+    private static function hasLowRating(QualityControlSurvey $record): bool
+    {
+        foreach (array_keys(QualityControlSurvey::RATING_FIELDS) as $field) {
+            $rating = $record->getAttribute($field);
+
+            if ($rating === QualityControlRating::Neutral || $rating === QualityControlRating::Dissatisfied) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

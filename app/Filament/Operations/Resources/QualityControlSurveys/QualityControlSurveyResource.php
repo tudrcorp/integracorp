@@ -53,6 +53,11 @@ abstract class QualityControlSurveyResource extends Resource
      */
     abstract public static function manageActionSlug(): string;
 
+    /**
+     * Slug del permiso de acción que habilita agregar notas de seguimiento.
+     */
+    abstract public static function noteActionSlug(): string;
+
     public static function getEloquentQuery(): Builder
     {
         $relation = static::affiliateType() === QualityControlAffiliateType::Individual
@@ -129,6 +134,47 @@ abstract class QualityControlSurveyResource extends Resource
 
             return static::canAccess() && BusinessFilamentActionAccess::userCan($slug);
         });
+    }
+
+    /**
+     * Agregar notas de seguimiento: permiso de acción propio de cada ítem.
+     */
+    public static function canAddNotes(): bool
+    {
+        $userId = Auth::id();
+
+        if ($userId === null) {
+            return false;
+        }
+
+        $panelId = Filament::getCurrentPanel()?->getId();
+        $slug = static::noteActionSlug();
+
+        return once(static function () use ($userId, $panelId, $slug): bool {
+            unset($userId, $panelId);
+
+            return static::canAccess() && BusinessFilamentActionAccess::userCan($slug);
+        });
+    }
+
+    /**
+     * Ítem de Operaciones que corresponde a cada población.
+     *
+     * @return class-string<QualityControlSurveyResource>
+     */
+    public static function forType(QualityControlAffiliateType $type): string
+    {
+        return $type === QualityControlAffiliateType::Individual
+            ? \App\Filament\Operations\Resources\QualityControlIndividuals\QualityControlIndividualResource::class
+            : \App\Filament\Operations\Resources\QualityControlCorporates\QualityControlCorporateResource::class;
+    }
+
+    /**
+     * Para el controlador del PDF (fuera de Filament): ¿puede ver esta encuesta?
+     */
+    public static function canViewSurvey(QualityControlSurvey $survey): bool
+    {
+        return static::canAccess() && static::belongsHere($survey);
     }
 
     public static function form(Schema $schema): Schema

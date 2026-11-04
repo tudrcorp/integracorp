@@ -6,16 +6,26 @@ use App\Enums\QualityControlAffiliateType;
 use App\Enums\QualityControlRating;
 use App\Enums\QualityControlService;
 use App\Jobs\ImportQualityControlSurveysJob;
+use App\Jobs\SendQualityControlPdfJob;
+use App\Mail\QualityControlPdfMail;
 use App\Models\QualityControlSurvey;
+use App\Models\User;
+use App\Services\QualityControlPdfService;
 use App\Support\Operations\QualityControl\QualityControlAffiliateLookup;
+use App\Support\Operations\QualityControl\QualityControlReportRequest;
 use App\Support\Operations\QualityControl\QualityControlSurveyFileReader;
 use App\Support\Operations\QualityControl\QualityControlSurveyImporter;
+use App\Support\Operations\QualityControl\QualityControlSurveyNotes;
 use App\Support\Operations\QualityControl\QualityControlSurveyWriter;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 
 uses(Tests\TestCase::class);
@@ -40,7 +50,13 @@ beforeEach(function (): void {
     expect(DB::connection()->getDriverName())->toBe('sqlite')
         ->and(DB::connection()->getDatabaseName())->toBe(':memory:');
 
+    /** La config cacheada usa caché y sesión en base de datos: aquí van en memoria. */
+    config()->set('cache.default', 'array');
+    config()->set('session.driver', 'array');
+    Cache::setDefaultDriver('array');
+
     (require __DIR__.'/../../database/migrations/2026_11_04_090000_create_quality_control_surveys_table.php')->up();
+    (require __DIR__.'/../../database/migrations/2026_11_04_180000_create_quality_control_survey_notes_table.php')->up();
 
     Schema::create('affiliations', function (Blueprint $table): void {
         $table->id();
@@ -467,4 +483,119 @@ it('editar y eliminar exigen el permiso de gestión, además del de menú', func
         ->toContain('BusinessFilamentActionAccess::userCan($slug)')
         ->toContain('->ofType(static::affiliateType())')
         ->toMatch('/function canForceDelete\(Model \$record\): bool\s*\{\s*return false;/');
+});
+
+it('agrega notas de seguimiento como bitácora y las valida', function (): void {
+    $survey = QualityControlSurveyWriter::create(QualityControlAffiliateType::Corporate, qcFormData(), 5);
+    $user = new User;
+    $user->forceFill(['id' => 5, 'name' => 'Analista QA']);
+
+    QualityControlSurveyNotes::add($survey, "  Se llamó a la paciente.\r\nConfirma la demora.  ", $user);
+    QualityControlSurveyNotes::add($survey, 'Se escaló a coordinación de medicamentos.', $user);
+
+    $notes = $survey->fresh()->notes;
+
+    expect($notes)->toHaveCount(2)
+        ->and($notes->last()->note)->toBe("Se llamó a la paciente.\nConfirma la demora.")
+        ->and($notes->first()->created_by_name)->toBe('Analista QA')
+        ->and(DB::table('logs')->where('action', 'AUDIT_QUALITY_CONTROL_SURVEY_NOTE_ADDED')->count())->toBe(2)
+        ->and(fn () => QualityControlSurveyNotes::add($survey, 'corta', $user))->toThrow(ValidationException::class);
+
+    $survey->delete();
+
+    expect(fn () => QualityControlSurveyNotes::add($survey, 'Nota sobre una encuesta eliminada', $user))
+        ->toThrow(ValidationException::class);
+});
+
+it('genera la ficha en PDF una sola vez por contenido y la regenera al agregar una nota', function (): void {
+    Storage::fake(QualityControlPdfService::DISK);
+    $survey = QualityControlSurveyWriter::create(QualityControlAffiliateType::Corporate, qcFormData(), 5);
+
+    $first = QualityControlPdfService::surveyDocument($survey->fresh());
+    $again = QualityControlPdfService::surveyDocument($survey->fresh());
+
+    QualityControlSurveyNotes::add($survey, 'Se llamó a la paciente y se escaló.', null);
+    $afterNote = QualityControlPdfService::surveyDocument($survey->fresh());
+
+    expect(str_starts_with($first['contents'], '%PDF'))->toBeTrue()
+        ->and($again['path'])->toBe($first['path'])
+        ->and($afterNote['fingerprint'])->not->toBe($first['fingerprint'])
+        ->and(Storage::disk(QualityControlPdfService::DISK)->exists($first['path']))->toBeFalse()
+        ->and(Storage::disk(QualityControlPdfService::DISK)->exists($afterNote['path']))->toBeTrue()
+        ->and(QualityControlPdfService::surveyHtml($survey->fresh()))->toContain('Se llamó a la paciente y se escaló.')
+        ->and($first['filename'])->toEndWith('.pdf');
+});
+
+it('el informe resume calificaciones por pregunta, servicios y neutros sin seguimiento', function (): void {
+    $low = QualityControlSurveyWriter::create(QualityControlAffiliateType::Corporate, qcFormData(), 5);
+    $good = QualityControlSurveyWriter::create(QualityControlAffiliateType::Corporate, qcFormData([
+        'patient_document' => '7822717',
+        'rating_channels' => 'SATISFECHO', 'rating_response_time' => 'SATISFECHO', 'rating_medical_service' => 'SATISFECHO', 'rating_overall' => 'SATISFECHO',
+    ]), 5);
+    $otherType = QualityControlSurveyWriter::create(QualityControlAffiliateType::Individual, qcFormData(['patient_document' => '7822717']), 5);
+
+    $html = QualityControlPdfService::reportHtml(QualityControlAffiliateType::Corporate, [$low->id, $good->id, $otherType->id], 'Servicio: Telemedicina');
+
+    expect($html)->toContain('Informe de Quality Control Corporativos')
+        ->and($html)->toContain('Filtros: Servicio: Telemedicina')
+        ->and($html)->toContain('Neutros e insatisfechos (1)')
+        ->and($html)->toContain('Sin seguimiento')
+        ->and($html)->toContain('Encuestas (2)')
+        ->and($html)->toContain('50 %');
+});
+
+it('envía el PDF por correo con el adjunto, en el job', function (): void {
+    Storage::fake(QualityControlPdfService::DISK);
+    Mail::fake();
+    $survey = QualityControlSurveyWriter::create(QualityControlAffiliateType::Corporate, qcFormData(), 5);
+
+    (new SendQualityControlPdfJob(SendQualityControlPdfJob::CHANNEL_EMAIL, ['coordinacion@example.com'], 12345, 'CORPORATIVO', surveyId: $survey->id))->handle();
+
+    Mail::assertSent(QualityControlPdfMail::class, fn (QualityControlPdfMail $mail): bool => $mail->hasTo('coordinacion@example.com')
+        && Storage::disk(QualityControlPdfService::DISK)->exists($mail->storagePath)
+        && str_ends_with($mail->attachmentName, '.pdf'));
+
+    expect(DB::table('logs')->where('action', 'AUDIT_QUALITY_CONTROL_PDF_SENT')->count())->toBe(1);
+});
+
+it('la copia para WhatsApp solo se abre con la firma vigente', function (): void {
+    Storage::fake(QualityControlPdfService::DISK);
+    $share = QualityControlPdfService::shareCopy('%PDF-1.4 contenido de prueba suficientemente largo para validar');
+
+    $this->get(URL::temporarySignedRoute('quality-control.pdf.shared', now()->addHours(48), ['share' => $share]))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'application/pdf');
+
+    $this->get(URL::temporarySignedRoute('quality-control.pdf.shared', now()->subMinute(), ['share' => $share]))->assertForbidden();
+    $this->get(route('quality-control.pdf.shared', ['share' => $share]))->assertForbidden();
+    $this->get(URL::temporarySignedRoute('quality-control.pdf.shared', now()->addHour(), ['share' => 'no-es-un-uuid']))->assertNotFound();
+});
+
+it('el token del informe solo vale para quien lo creó', function (): void {
+    $owner = new User;
+    $owner->forceFill(['id' => 71]);
+    $other = new User;
+    $other->forceFill(['id' => 72]);
+
+    Auth::setUser($owner);
+    $token = QualityControlReportRequest::store(QualityControlAffiliateType::Individual, [1, 2, 3], 'Filtro');
+
+    expect(QualityControlReportRequest::find($token))->toMatchArray(['type' => 'INDIVIDUAL', 'ids' => [1, 2, 3], 'label' => 'Filtro']);
+
+    Auth::setUser($other);
+
+    expect(QualityControlReportRequest::find($token))->toBeNull()
+        ->and(QualityControlReportRequest::find('inventado'))->toBeNull();
+});
+
+it('registra un permiso de notas por ítem y lo exige en la acción', function (): void {
+    $actions = App\Support\Filament\BusinessFilamentActionPermissionRegistry::all();
+    $source = file_get_contents(__DIR__.'/../../app/Filament/Operations/Resources/QualityControlSurveys/Actions/QualityControlSurveyActions.php');
+
+    expect($actions['notas-quality-control-individuales']['modules'])->toBe(['OPERACIONES'])
+        ->and($actions['notas-quality-control-corporativos']['modules'])->toBe(['OPERACIONES'])
+        ->and(App\Filament\Operations\Resources\QualityControlIndividuals\QualityControlIndividualResource::noteActionSlug())->toBe('notas-quality-control-individuales')
+        ->and(App\Filament\Operations\Resources\QualityControlCorporates\QualityControlCorporateResource::noteActionSlug())->toBe('notas-quality-control-corporativos')
+        ->and($source)->toContain('abort_unless($resource::canAddNotes() && $resource::canViewSurvey($record), 403);')
+        ->and($source)->toContain('->afterCommit()');
 });

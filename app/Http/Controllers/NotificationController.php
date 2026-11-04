@@ -2627,6 +2627,36 @@ TEXT;
                 return false;
             }
 
+            return self::sendWhatsAppDocumentUrl($cleanPhone, $caption, $documentUrl, $filename);
+        } catch (\Throwable $th) {
+            Log::error('WHATSAPP DOC: Fallo crítico al enviar documento', [
+                'message' => $th->getMessage(),
+                'phone' => $phone,
+                'file' => $filename,
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Envía por WhatsApp un documento que UltraMsg descarga desde `$documentUrl` (por ejemplo,
+     * un enlace firmado y temporal, para documentos con datos de pacientes).
+     */
+    public static function sendWhatsAppDocumentUrl(string $phone, string $caption, string $documentUrl, string $filename): bool
+    {
+        try {
+            $cleanPhone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone);
+
+            if ($cleanPhone === null) {
+                Log::warning('WHATSAPP DOC: Teléfono inválido para envío de documento.', [
+                    'phone' => $phone,
+                    'file' => $filename,
+                ]);
+
+                return false;
+            }
+
             $caption = RunReportMessageFormatter::truncateForWhatsAppCaption($caption);
 
             $params = [
