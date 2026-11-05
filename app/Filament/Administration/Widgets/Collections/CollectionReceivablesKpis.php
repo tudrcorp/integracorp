@@ -47,7 +47,7 @@ class CollectionReceivablesKpis extends Widget
     }
 
     /**
-     * «Recibos emitidos del mes» y «del año»: avisos de cobro por fecha de cobro, sin anulados.
+     * «Recibos generados del mes» y «del año»: avisos de cobro por fecha de cobro, sin anulados.
      *
      * @param  array{month: array<string, array{affiliations: int, count: int, amount: float}>, year: array<string, array{affiliations: int, count: int, amount: float}>}  $notices
      * @return list<array<string, mixed>>
@@ -58,8 +58,8 @@ class CollectionReceivablesKpis extends Widget
         $tiles = [];
 
         foreach ([
-            'month' => ['Recibos emitidos del mes', Str::ucfirst($today->locale('es')->translatedFormat('F Y')), 'heroicon-o-document-text', SummaryCards::BLUE],
-            'year' => ['Recibos emitidos en el '.$today->year, 'Enero a diciembre de '.$today->year, 'heroicon-o-document-duplicate', '#7c3aed'],
+            'month' => ['Recibos generados del mes', Str::ucfirst($today->locale('es')->translatedFormat('F Y')), 'heroicon-o-document-text', SummaryCards::BLUE],
+            'year' => ['Recibos generados en el '.$today->year, 'Enero a diciembre de '.$today->year, 'heroicon-o-document-duplicate', '#7c3aed'],
         ] as $period => [$label, $periodLabel, $icon, $accent]) {
             $split = $notices[$period];
             $count = $split['individual']['count'] + $split['corporate']['count'];

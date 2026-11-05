@@ -56,16 +56,16 @@ it('conserva las acciones de la tabla y carga las relaciones de una vez', functi
         ->not->toContain("->label('Número de teléfono')");
 });
 
-it('el encabezado resume por cobrar y vencido, sin la tarjeta de cobrado', function (): void {
+it('el encabezado ya no lleva el resumen: «Ver KPIs» abre el Dashboard de Gestión de Cobranza', function (): void {
     $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/Collections/Pages/ListCollections.php');
 
     expect($source)
         ->toContain("protected static ?string \$title = 'Gestión de Cobranza';")
-        ->toContain("'label' => 'Por cobrar'")
-        ->toContain("'label' => 'Vencidos'")
-        ->not->toContain("'label' => 'Cobrado'")
-        ->not->toContain('paid_amount')
-        ->toContain('getFilteredTableQuery()');
+        ->toContain("->label('Ver KPIs')")
+        ->toContain('->url(DashboardGestionCobranza::getUrl())')
+        ->toContain('DashboardGestionCobranza::canAccess()')
+        ->not->toContain('getSubheading')
+        ->not->toContain('SummaryCards::collapsible(');
 });
 
 it('las tarjetas de resumen escapan el contenido y formatean montos', function (): void {

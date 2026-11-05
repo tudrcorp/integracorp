@@ -280,6 +280,7 @@ final class DepartmentNavigationPermissionRegistry
         SaleResource::class => ['ventas'],
         CompanyPaidMembershipResource::class => ['ventas', 'comprobantes-nuevos-negocios'],
         CollectionResource::class => ['gestion-de-cobranza'],
+        \App\Filament\Administration\Pages\DashboardGestionCobranza::class => ['gestion-de-cobranza'],
         AdministrationCreditReconciliationResource::class => ['conciliacion-de-credito'],
         AnnualCollectionResource::class => ['cobranza-por-mes'],
         \App\Filament\Administration\Pages\DashboardCobranza::class => ['cobranza-por-mes'],
