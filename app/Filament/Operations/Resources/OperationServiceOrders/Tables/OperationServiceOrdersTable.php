@@ -3,6 +3,7 @@
 namespace App\Filament\Operations\Resources\OperationServiceOrders\Tables;
 
 use App\Filament\Operations\Resources\OperationServiceOrders\Actions\ServiceOrderBulkInvoiceActions;
+use App\Filament\Operations\Resources\OperationServiceOrders\Schemas\ServiceOrderCashPaymentSection;
 use App\Http\Controllers\ApiBcvController;
 use App\Http\Controllers\OperationServiceOrderExportCsvController;
 use App\Models\BusinessUnit;
@@ -12,10 +13,12 @@ use App\Models\OperationServiceOrderItem;
 use App\Models\OperationServiceOrderQuote;
 use App\Models\Supplier;
 use App\Models\TelemedicinePatient;
+use App\Models\User;
 use App\Services\OperationServiceOrderMedicationQuotePdfService;
 use App\Support\Filament\CsvExportDownloadTrigger;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Filament\Operations\SpecificBusinessUnitTableTools;
+use App\Support\Operations\CashPayments\CashPaymentService;
 use App\Support\Operations\OperationServiceOrderListDisplay;
 use App\Support\Operations\OperationServiceOrderValidity;
 use App\Support\Operations\ProviderDeletion;
@@ -53,6 +56,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\HtmlString;
+use InvalidArgumentException;
 use ZipArchive;
 
 class OperationServiceOrdersTable
@@ -506,7 +510,7 @@ class OperationServiceOrdersTable
                     ->color(fn (?string $state): string => OperationServiceOrderListDisplay::administrativeStatusColor($state))
                     ->icon(fn (?string $state): string => OperationServiceOrderListDisplay::administrativeStatusIcon($state))
                     ->description(fn (OperationServiceOrder $record): ?string => OperationServiceOrderListDisplay::hasInvoice($record)
-                        ? 'Factura '.($record->invoice_number ?: 'cargada')
+                        ? $record->invoiceDocumentLabel()
                         : null),
                 TextColumn::make('patient_specific_business_unit')
                     ->label('U.N. específica')
@@ -977,6 +981,7 @@ class OperationServiceOrdersTable
                         )
                         ->fillForm(fn (OperationServiceOrder $record): array => [
                             'invoice_number' => $record->invoice_number,
+                            'invoice_receipt_number' => $record->invoice_receipt_number,
                             'invoice_control_number' => $record->invoice_control_number,
                             'invoice_date' => $record->invoice_date,
                             'invoice_registration_date' => $record->invoice_registration_date ?? now()->startOfDay(),
@@ -1003,21 +1008,32 @@ class OperationServiceOrdersTable
                                     'class' => self::IOS_SECTION_CLASS,
                                 ]),
                             Section::make('Datos de la factura')
-                                ->description('Registra el número y el control fiscal, las fechas de emisión y de registro, y el monto facturado; luego adjunta el documento emitido por el proveedor.')
+                                ->description('Registra el N° de factura o de recibo (al menos uno) y el control fiscal, las fechas de emisión y de registro, y el monto facturado; luego adjunta el documento emitido por el proveedor.')
                                 ->icon('heroicon-m-document-currency-dollar')
                                 ->schema([
-                                    Grid::make(['default' => 1, 'lg' => 2])
+                                    Grid::make(['default' => 1, 'lg' => 3])
                                         ->schema([
                                             TextInput::make('invoice_number')
                                                 ->label('N° de factura')
                                                 ->prefixIcon('heroicon-m-hashtag')
                                                 ->placeholder('Ej. 00012345')
-                                                ->required()
+                                                ->requiredWithout('invoice_receipt_number')
                                                 ->maxLength(60)
                                                 ->helperText('Tal como aparece en el documento del proveedor.')
                                                 ->validationMessages([
-                                                    'required' => 'Indica el número de la factura.',
+                                                    'required_without' => 'Indica el N° de factura o el N° de recibo: al menos uno.',
                                                     'max' => 'El número de factura no puede superar los 60 caracteres.',
+                                                ]),
+                                            TextInput::make('invoice_receipt_number')
+                                                ->label('N° de recibo')
+                                                ->prefixIcon('heroicon-m-receipt-refund')
+                                                ->placeholder('Ej. R-004521')
+                                                ->requiredWithout('invoice_number')
+                                                ->maxLength(60)
+                                                ->helperText('Si el proveedor entrega recibo. Basta con este o con el N° de factura.')
+                                                ->validationMessages([
+                                                    'required_without' => 'Indica el N° de recibo o el N° de factura: al menos uno.',
+                                                    'max' => 'El número de recibo no puede superar los 60 caracteres.',
                                                 ]),
                                             TextInput::make('invoice_control_number')
                                                 ->label('N° de control')
@@ -1028,6 +1044,9 @@ class OperationServiceOrdersTable
                                                 ->validationMessages([
                                                     'max' => 'El número de control no puede superar los 60 caracteres.',
                                                 ]),
+                                        ]),
+                                    Grid::make(['default' => 1, 'lg' => 2])
+                                        ->schema([
                                             DatePicker::make('invoice_date')
                                                 ->label('Fecha de emisión de la factura')
                                                 ->prefixIcon('heroicon-m-calendar-days')
@@ -1152,6 +1171,7 @@ class OperationServiceOrdersTable
                                 ->extraAttributes([
                                     'class' => self::IOS_SECTION_CLASS,
                                 ]),
+                            ServiceOrderCashPaymentSection::make($record, self::IOS_SECTION_CLASS),
                         ])
                         ->successNotification(null)
                         ->action(function (OperationServiceOrder $record, array $data): void {
@@ -1186,8 +1206,42 @@ class OperationServiceOrdersTable
                                 return;
                             }
 
+                            $invoiceNumber = trim((string) ($data['invoice_number'] ?? ''));
+                            $receiptNumber = trim((string) ($data['invoice_receipt_number'] ?? ''));
+
+                            /** El formulario ya lo exige; se repite aquí porque el servidor no confía en el cliente. */
+                            if ($invoiceNumber === '' && $receiptNumber === '') {
+                                Notification::make()
+                                    ->title('Falta el número del documento')
+                                    ->body('Indica el N° de factura o el N° de recibo: al menos uno.')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+
                             $controlNumber = trim((string) ($data['invoice_control_number'] ?? ''));
                             $actor = Auth::user()?->name ?? 'sistema';
+
+                            /** Pago de contado: se valida contra el total de la factura antes de escribir nada. */
+                            $cashPayment = null;
+
+                            if ((bool) ($data['cash_paid'] ?? false) && ServiceOrderCashPaymentSection::activePayment($record) === null) {
+                                [$invoiceTotal, $invoiceCurrency] = ServiceOrderAccountsPayableRegistrar::resolveAmount(['invoice_amount_usd' => $usd, 'invoice_amount_ves' => $ves]);
+
+                                try {
+                                    $cashPayment = CashPaymentService::normalize(ServiceOrderCashPaymentSection::paymentData($data), (float) $invoiceTotal, (string) $invoiceCurrency, $data['invoice_date'] ?? null);
+                                } catch (InvalidArgumentException $exception) {
+                                    Notification::make()
+                                        ->title('Revisa el pago de contado')
+                                        ->body($exception->getMessage())
+                                        ->warning()
+                                        ->persistent()
+                                        ->send();
+
+                                    return;
+                                }
+                            }
                             $registrationDate = $data['invoice_registration_date'] ?: now()->toDateString();
 
                             /*
@@ -1195,34 +1249,62 @@ class OperationServiceOrdersTable
                              * cargada sin su cuenta por pagar dejaría a Administración sin el
                              * compromiso registrado.
                              */
-                            $payableResult = DB::transaction(function () use ($record, $data, $controlNumber, $usd, $ves, $filePath, $actor, $registrationDate): array {
-                                $record->update([
-                                    'invoice_number' => trim((string) $data['invoice_number']),
-                                    'invoice_control_number' => $controlNumber !== '' ? $controlNumber : null,
-                                    'invoice_date' => $data['invoice_date'],
-                                    'invoice_registration_date' => $registrationDate,
-                                    'invoice_amount_usd' => $usd,
-                                    'invoice_amount_ves' => $ves,
-                                    'invoice_file_path' => (string) $filePath,
-                                    'invoice_uploaded_by' => $actor,
-                                    'invoice_uploaded_at' => now(),
-                                    'administrative_status' => OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_INVOICED,
-                                    'updated_by' => $actor,
-                                ]);
+                            try {
+                                $payableResult = DB::transaction(function () use ($record, $data, $invoiceNumber, $receiptNumber, $controlNumber, $usd, $ves, $filePath, $actor, $registrationDate, $cashPayment): array {
+                                    $record->update([
+                                        'invoice_number' => $invoiceNumber !== '' ? $invoiceNumber : null,
+                                        'invoice_receipt_number' => $receiptNumber !== '' ? $receiptNumber : null,
+                                        'invoice_control_number' => $controlNumber !== '' ? $controlNumber : null,
+                                        'invoice_date' => $data['invoice_date'],
+                                        'invoice_registration_date' => $registrationDate,
+                                        'invoice_amount_usd' => $usd,
+                                        'invoice_amount_ves' => $ves,
+                                        'invoice_file_path' => (string) $filePath,
+                                        'invoice_uploaded_by' => $actor,
+                                        'invoice_uploaded_at' => now(),
+                                        'administrative_status' => OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_INVOICED,
+                                        'updated_by' => $actor,
+                                    ]);
 
-                                return ServiceOrderAccountsPayableRegistrar::register($record, [
-                                    'invoice_number' => trim((string) $data['invoice_number']),
-                                    'invoice_control_number' => $controlNumber !== '' ? $controlNumber : null,
-                                    'invoice_date' => $data['invoice_date'],
-                                    'invoice_registration_date' => $registrationDate,
-                                    'invoice_amount_usd' => $usd,
-                                    'invoice_amount_ves' => $ves,
-                                    'invoice_file_path' => (string) $filePath,
-                                    'supplier_name' => trim((string) ($data['payable_supplier_name'] ?? '')),
-                                    'supplier_rif' => trim((string) ($data['payable_supplier_rif'] ?? '')),
-                                    'business_unit_id' => $data['payable_business_unit_id'] ?? null,
-                                ], $actor);
-                            });
+                                    $result = ServiceOrderAccountsPayableRegistrar::register($record, [
+                                        'invoice_number' => $invoiceNumber !== '' ? $invoiceNumber : null,
+                                        'invoice_receipt_number' => $receiptNumber !== '' ? $receiptNumber : null,
+                                        'invoice_control_number' => $controlNumber !== '' ? $controlNumber : null,
+                                        'invoice_date' => $data['invoice_date'],
+                                        'invoice_registration_date' => $registrationDate,
+                                        'invoice_amount_usd' => $usd,
+                                        'invoice_amount_ves' => $ves,
+                                        'invoice_file_path' => (string) $filePath,
+                                        'supplier_name' => trim((string) ($data['payable_supplier_name'] ?? '')),
+                                        'supplier_rif' => trim((string) ($data['payable_supplier_rif'] ?? '')),
+                                        'business_unit_id' => $data['payable_business_unit_id'] ?? null,
+                                    ], $actor);
+
+                                    if ($cashPayment !== null) {
+                                        $user = Auth::user();
+                                        $result['cash_payment'] = CashPaymentService::register($record, $result['payable'], $cashPayment, $user instanceof User ? $user : null, $actor);
+                                    }
+
+                                    return $result;
+                                });
+                            } catch (InvalidArgumentException $exception) {
+                                Notification::make()
+                                    ->title('No se guardó la factura')
+                                    ->body($exception->getMessage())
+                                    ->warning()
+                                    ->persistent()
+                                    ->send();
+
+                                return;
+                            }
+
+                            if (isset($payableResult['cash_payment'])) {
+                                Notification::make()
+                                    ->title('Pago de contado registrado')
+                                    ->body('La cuenta por pagar quedó «Pagada» con la referencia '.$payableResult['cash_payment']->payment_reference.'. El pago está en «Pagos de contado».')
+                                    ->success()
+                                    ->send();
+                            }
 
                             if ($payableResult['payment_preserved']) {
                                 Notification::make()
@@ -1253,9 +1335,11 @@ class OperationServiceOrdersTable
                             Notification::make()
                                 ->title($payableResult['created'] ? 'Factura registrada y cuenta por pagar creada' : 'Factura actualizada')
                                 ->body('La orden #'.($record->order_number ?: $record->getKey()).' pasó a estatus administrativo «Facturado» y '
-                                    .($payableResult['created']
-                                        ? 'quedó registrada en Cuentas por pagar como «Pendiente por pagar».'
-                                        : 'su cuenta por pagar quedó actualizada.'))
+                                    .(isset($payableResult['cash_payment'])
+                                        ? 'su cuenta por pagar quedó «Pagada» con el pago de contado.'
+                                        : ($payableResult['created']
+                                            ? 'quedó registrada en Cuentas por pagar como «Pendiente por pagar».'
+                                            : 'su cuenta por pagar quedó actualizada.')))
                                 ->success()
                                 ->send();
                         }),
@@ -1409,7 +1493,7 @@ class OperationServiceOrdersTable
 
         if (OperationServiceOrderListDisplay::hasInvoice($record)) {
             $notice = '<p class="mt-3 rounded-xl bg-warning-500/10 px-3 py-2 text-xs font-medium text-warning-700 dark:text-warning-300">'
-                .'Esta orden ya tiene la factura '.e($record->invoice_number ?: 'cargada')
+                .'Esta orden ya tiene '.e(mb_strtolower($record->invoiceDocumentLabel()))
                 .(filled($record->invoice_control_number) ? ' (control '.e((string) $record->invoice_control_number).')' : '')
                 .(filled($record->invoice_uploaded_by) ? ', registrada por '.e((string) $record->invoice_uploaded_by) : '')
                 .(filled($record->invoice_uploaded_at) ? ' el '.e($record->invoice_uploaded_at->format('d/m/Y H:i')) : '')

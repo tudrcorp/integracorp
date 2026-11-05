@@ -40,7 +40,7 @@ final class AccountsPayableInvoicePreview
             ->label('Ver factura')
             ->icon('heroicon-m-document-magnifying-glass')
             ->color('info')
-            ->modalHeading(fn (OperationAccountsPayable $record): string => 'Factura '.$record->invoice_number)
+            ->modalHeading(fn (OperationAccountsPayable $record): string => $record->invoiceDocumentLabel())
             ->modalDescription(fn (OperationAccountsPayable $record): string => $record->supplier_name.' · RIF '.$record->supplier_rif)
             ->modalIcon('heroicon-m-document-magnifying-glass')
             ->modalWidth(Width::SevenExtraLarge)
@@ -89,7 +89,7 @@ final class AccountsPayableInvoicePreview
         }
 
         $safeUrl = e($url);
-        $title = e($record->invoice_number);
+        $title = e($record->invoiceDocumentLabel());
 
         if (self::isPdf($record)) {
             return new HtmlString(

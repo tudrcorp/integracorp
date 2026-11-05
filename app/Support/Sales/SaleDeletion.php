@@ -136,13 +136,13 @@ final class SaleDeletion
                 $report['credit_reconciliations'] += self::deleteCreditReconciliations($receipts, $collections);
                 $report['collections'] += CollectionModel::query()->whereKey($collections->modelKeys())->delete();
                 $report['annual_collections'] += AnnualCollection::query()->where('sale_id', $sale->getKey())->delete();
-                $report['commissions'] += Commission::query()->where('sale_id', $sale->getKey())->delete();
+                $report['commissions'] += \App\Support\Audit\DataChangeAuditor::delete('commission', Commission::query()->where('sale_id', $sale->getKey()));
 
                 if ($receipts->isNotEmpty()) {
                     $report['paid_receipts'] += $receipts->first()::query()->whereKey($receipts->modelKeys())->delete();
                 }
 
-                $report['sales'] += Sale::query()->whereKey($sale->getKey())->delete();
+                $report['sales'] += \App\Support\Audit\DataChangeAuditor::delete('sale', Sale::query()->whereKey($sale->getKey()));
 
                 if (filled($sale->invoice_number)) {
                     $files['receipts'][] = (string) $sale->invoice_number;

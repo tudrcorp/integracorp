@@ -21,7 +21,8 @@ final class ServiceOrderAccountsPayableRegistrar
 {
     /**
      * @param  array{
-     *     invoice_number: string,
+     *     invoice_number: ?string,
+     *     invoice_receipt_number?: ?string,
      *     invoice_control_number: ?string,
      *     invoice_date: mixed,
      *     invoice_registration_date: mixed,
@@ -54,7 +55,8 @@ final class ServiceOrderAccountsPayableRegistrar
             'operation_service_order_id' => $order->getKey(),
             'invoice_date' => $data['invoice_date'],
             'invoice_registration_date' => $data['invoice_registration_date'],
-            'invoice_number' => $data['invoice_number'],
+            'invoice_number' => filled($data['invoice_number'] ?? null) ? $data['invoice_number'] : null,
+            'invoice_receipt_number' => filled($data['invoice_receipt_number'] ?? null) ? $data['invoice_receipt_number'] : null,
             'invoice_control_number' => $data['invoice_control_number'] ?: null,
             'supplier_id' => $order->supplier_id,
             'supplier_name' => $data['supplier_name'],

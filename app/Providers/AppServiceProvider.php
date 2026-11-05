@@ -208,6 +208,17 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\Affiliation::observe(\App\Observers\AffiliationDropoutCollectionsObserver::class);
         \App\Models\Affiliation::observe(\App\Observers\MedicalQuestionnaireLegacyObserver::class);
         \App\Models\AffiliationCorporate::observe(\App\Observers\AffiliationDropoutCollectionsObserver::class);
+        /** Auditoría de cambios (Administración): antes y después de cada campo de las entidades vigiladas. */
+        foreach (array_keys(\App\Support\Audit\DataChangeAuditRegistry::entities()) as $auditedModel) {
+            $auditedModel::observe(\App\Observers\DataChangeAuditObserver::class);
+        }
+
+        /** En la cola, cada job es una operación propia en la auditoría. */
+        \Illuminate\Support\Facades\Queue::before(function (\Illuminate\Queue\Events\JobProcessing $event): void {
+            \App\Support\Audit\DataChangeAuditContext::startJob($event->job->resolveName());
+        });
+        \Illuminate\Support\Facades\Queue::after(fn () => \App\Support\Audit\DataChangeAuditContext::reset());
+
         /** Bitácora de altas y bajas con fecha (pre-facturación de capitado). */
         foreach ([\App\Models\Affiliate::class, \App\Models\AffiliateCorporate::class, \App\Models\CompanyAssociate::class, \App\Models\Affiliation::class, \App\Models\AffiliationCorporate::class] as $statusMovementModel) {
             $statusMovementModel::observe(\App\Observers\AffiliateStatusMovementObserver::class);

@@ -111,7 +111,7 @@ final class AccountsPayableSupplierReport
             'service_type' => self::orFallback($order !== null ? mb_strtoupper((string) $order->service_type, 'UTF-8') : null),
             'services' => self::specificServices($order),
             'order_number' => filled($order?->order_number) ? (string) $order->order_number : null,
-            'invoice_number' => self::orFallback($record->invoice_number),
+            'invoice_number' => self::orFallback(filled($record->invoice_number) ? $record->invoice_number : (filled($record->invoice_receipt_number) ? 'Recibo '.$record->invoice_receipt_number : null)),
             'control_number' => self::orFallback($record->invoice_control_number),
             'amount' => round((float) $record->invoice_amount, 2),
             'currency' => mb_strtoupper(trim((string) $record->invoice_currency), 'UTF-8') === 'VES' ? 'VES' : 'USD',

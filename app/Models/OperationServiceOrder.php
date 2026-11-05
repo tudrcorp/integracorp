@@ -50,6 +50,7 @@ class OperationServiceOrder extends Model
         'files',
         'status_payment',
         'invoice_number',
+        'invoice_receipt_number',
         'invoice_control_number',
         'invoice_date',
         'invoice_registration_date',
@@ -151,5 +152,19 @@ class OperationServiceOrder extends Model
 
             $order->administrative_status = mb_strtoupper(trim((string) $order->administrative_status));
         });
+    }
+
+    /**
+     * Número del documento del proveedor para mostrarlo: «Factura 123», «Recibo 45» o
+     * «Factura 123 · Recibo 45». Una factura puede traer uno u otro, o ambos.
+     */
+    public function invoiceDocumentLabel(string $fallback = 'cargada'): string
+    {
+        $parts = array_filter([
+            filled($this->invoice_number) ? 'Factura '.trim((string) $this->invoice_number) : null,
+            filled($this->invoice_receipt_number) ? 'Recibo '.trim((string) $this->invoice_receipt_number) : null,
+        ]);
+
+        return $parts === [] ? 'Factura '.$fallback : implode(' · ', $parts);
     }
 }

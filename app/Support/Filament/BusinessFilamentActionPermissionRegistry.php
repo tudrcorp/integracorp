@@ -96,6 +96,10 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const CAPITATION_BILLING_REPORT = 'prefacturacion-capitado';
 
+    public const REVERT_DATA_CHANGES = 'revertir-cambios-auditados';
+
+    public const REVERSE_CASH_PAYMENTS = 'reversar-pagos-de-contado';
+
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
      */
@@ -290,6 +294,16 @@ final class BusinessFilamentActionPermissionRegistry
             self::VIEW_HR_AMOUNTS => [
                 'name' => 'Ver sueldos y costo de nómina en el Escritorio',
                 'group' => 'RRHH',
+                'modules' => ['ADMINISTRACION'],
+            ],
+            self::REVERSE_CASH_PAYMENTS => [
+                'name' => 'Pagos de contado: reversar el pago de contado de una factura de proveedor (con razón obligatoria)',
+                'group' => 'CUENTAS POR PAGAR',
+                'modules' => ['OPERACIONES', 'ADMINISTRACION'],
+            ],
+            self::REVERT_DATA_CHANGES => [
+                'name' => 'Auditoría de cambios: revertir un cambio de afiliaciones, cotizaciones, agencias, agentes, ventas, cobranza, comisiones, planes, tarifas o Nuevos Negocios (con razón obligatoria)',
+                'group' => 'SISTEMA',
                 'modules' => ['ADMINISTRACION'],
             ],
             self::CAPITATION_BILLING_REPORT => [

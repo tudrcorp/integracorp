@@ -341,7 +341,7 @@ final class ServiceOrderBulkInvoice
         foreach ($records as $record) {
             $already = OperationServiceOrderListDisplay::hasInvoice($record)
                 ? '<div style="margin-top:0.2rem;font-size:0.7rem;opacity:0.75;">Ya facturada'
-                    .(filled($record->invoice_number) ? ' · '.e((string) $record->invoice_number) : '')
+                    .(filled($record->invoice_number) || filled($record->invoice_receipt_number) ? ' · '.e($record->invoiceDocumentLabel()) : '')
                     .'</div>'
                 : '';
 

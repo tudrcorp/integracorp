@@ -37,7 +37,7 @@ final class AccountsPayablePaymentReceiptActions
                 ->modalHeading(fn (OperationAccountsPayable $record): string => $record->hasPaymentReceipt()
                     ? 'Actualizar comprobante de pago'
                     : 'Cargar comprobante de pago')
-                ->modalDescription(fn (OperationAccountsPayable $record): string => 'Factura '.$record->invoice_number
+                ->modalDescription(fn (OperationAccountsPayable $record): string => $record->invoiceDocumentLabel()
                     .' · '.$record->supplier_name
                     .' · '.self::money($record->invoice_amount, $record->invoice_currency))
                 ->fillForm(fn (OperationAccountsPayable $record): array => self::fillFromRecord($record))

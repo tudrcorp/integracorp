@@ -152,9 +152,8 @@ final class CorporatePaymentFrequencyChanger
             \App\Support\Upgrades\UpgradeBillingChoice::followFrequency($locked, $previousRaw);
             $locked->save();
 
-            AffiliateCorporate::query()
-                ->where('affiliation_corporate_id', $locked->getKey())
-                ->update([
+            \App\Support\Audit\DataChangeAuditor::update('affiliate_corporate', AffiliateCorporate::query()
+                ->where('affiliation_corporate_id', $locked->getKey()), [
                     'payment_frequency' => $target,
                     'subtotal_payment_frequency' => DB::raw('ROUND(COALESCE(fee, 0) / '.CorporatePaymentFrequency::installmentsPerYear($target).'.0, 2)'),
                 ]);

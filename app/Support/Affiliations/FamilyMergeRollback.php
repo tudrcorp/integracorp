@@ -367,9 +367,8 @@ final class FamilyMergeRollback
         $renovations = $created('renovations');
 
         return [
-            'collections' => $collections === [] ? 0 : (int) Collection::query()
-                ->whereIn('id', $collections)
-                ->update(['status' => MergeIndividualAffiliationsService::COLLECTION_CANCELLED_STATUS]),
+            'collections' => $collections === [] ? 0 : (int) \App\Support\Audit\DataChangeAuditor::update('collection', Collection::query()
+                ->whereIn('id', $collections), ['status' => MergeIndividualAffiliationsService::COLLECTION_CANCELLED_STATUS]),
             'renovations' => $renovations === [] ? 0 : (int) DB::table('renovations')
                 ->whereIn('id', $renovations)
                 ->update(['status' => MergeIndividualAffiliationsService::RENOVATION_CANCELLED_STATUS, 'updated_by' => $actorName, 'updated_at' => now()]),

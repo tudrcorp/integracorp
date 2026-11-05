@@ -234,7 +234,7 @@ class ValidateDateToRenew implements ShouldQueue
                 if ($effectiveDate < $today) {
                     // dd('es menor');
                     // Actualizo el estatus
-                    DB::table('affiliations')->where('code', $dates[$i]->code)->update([
+                    \App\Support\Audit\DataChangeAuditor::update('affiliation', DB::table('affiliations')->where('code', $dates[$i]->code), [
                         'status' => 'VENCIDA-POR-RENOVAR',
                     ]);
                 }

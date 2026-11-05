@@ -16,9 +16,8 @@ final class AffiliationAffiliateTypeSynchronizer
             throw new InvalidArgumentException('Debe definir el tipo de afiliación antes de sincronizar.');
         }
 
-        return Affiliate::query()
-            ->where('affiliation_id', $affiliation->id)
-            ->update([
+        return \App\Support\Audit\DataChangeAuditor::update('affiliate', Affiliate::query()
+            ->where('affiliation_id', $affiliation->id), [
                 'affiliation_type' => (string) $affiliationType,
             ]);
     }

@@ -37,7 +37,7 @@ final class AccountsPayablePaymentReceiptPreview
             ->label('Ver comprobante')
             ->icon('heroicon-m-banknotes')
             ->color('success')
-            ->modalHeading(fn (OperationAccountsPayable $record): string => 'Comprobante de pago · factura '.$record->invoice_number)
+            ->modalHeading(fn (OperationAccountsPayable $record): string => 'Comprobante de pago · '.mb_strtolower($record->invoiceDocumentLabel()))
             ->modalDescription(fn (OperationAccountsPayable $record): string => trim(
                 $record->supplier_name
                 .' · '.($record->payment_reference ?: 'Sin referencia')
@@ -84,7 +84,7 @@ final class AccountsPayablePaymentReceiptPreview
         }
 
         $safeUrl = e($url);
-        $title = e((string) ($record->payment_reference ?: $record->invoice_number));
+        $title = e((string) ($record->payment_reference ?: $record->invoiceDocumentLabel()));
 
         if (self::isPdf($record)) {
             return new HtmlString(

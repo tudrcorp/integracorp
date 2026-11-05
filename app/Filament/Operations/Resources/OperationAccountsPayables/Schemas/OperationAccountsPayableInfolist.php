@@ -25,7 +25,8 @@ class OperationAccountsPayableInfolist
                     ->columns(2)
                     ->columnSpanFull()
                     ->schema([
-                        TextEntry::make('invoice_number')->label('Número de factura')->badge()->color('primary'),
+                        TextEntry::make('invoice_number')->label('Número de factura')->placeholder('—')->badge()->color('primary'),
+                        TextEntry::make('invoice_receipt_number')->label('Número de recibo')->placeholder('—')->badge()->color('primary'),
                         TextEntry::make('invoice_control_number')->label('Número de control')->placeholder('—')->badge()->color('warning'),
                         TextEntry::make('invoice_date')->label('Fecha de la factura')->date('d/m/Y'),
                         TextEntry::make('invoice_registration_date')->label('Fecha de registro')->date('d/m/Y'),

@@ -78,7 +78,7 @@ final class CorporateBillingDocumentBackfill
                     continue;
                 }
 
-                DB::table('sales')->where('id', $row['id'])->update(['affiliate_ci_rif' => $row['after'], 'updated_at' => now()]);
+                \App\Support\Audit\DataChangeAuditor::update('sale', DB::table('sales')->where('id', $row['id']), ['affiliate_ci_rif' => $row['after'], 'updated_at' => now()]);
             }
 
             SecurityAudit::log('AUDIT_ADMIN_CORPORATE_BILLING_RIF_BACKFILLED', 'artisan.corporates.backfill-billing-rif', [

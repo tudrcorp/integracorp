@@ -17,21 +17,19 @@ final class AffiliationCorporateAffiliateBusinessContextSynchronizer
             throw new InvalidArgumentException('Debe definir la unidad de negocio y la línea de servicio antes de sincronizar.');
         }
 
-        $updated = AffiliateCorporate::query()
-            ->where('affiliation_corporate_id', $affiliationCorporate->id)
-            ->update([
+        $updated = \App\Support\Audit\DataChangeAuditor::update('affiliate_corporate', AffiliateCorporate::query()
+            ->where('affiliation_corporate_id', $affiliationCorporate->id), [
                 'business_unit_id' => (int) $businessUnitId,
                 'business_line_id' => (int) $businessLineId,
             ]);
 
         // La unidad específica fijada a mano por un analista no se pisa.
-        $specificUpdated = AffiliateCorporate::query()
+        $specificUpdated = \App\Support\Audit\DataChangeAuditor::update('affiliate_corporate', AffiliateCorporate::query()
             ->where('affiliation_corporate_id', $affiliationCorporate->id)
             ->when(
                 AffiliateSpecificBusinessUnitChanger::lockColumnExists('affiliate_corporates'),
                 static fn ($query) => $query->whereNull('specific_business_unit_locked_at'),
-            )
-            ->update(['specific_business_unit' => AffiliationAffiliateBusinessContextSynchronizer::normalizeSpecificBusinessUnit($specificBusinessUnit)]);
+            ), ['specific_business_unit' => AffiliationAffiliateBusinessContextSynchronizer::normalizeSpecificBusinessUnit($specificBusinessUnit)]);
 
         return max($updated, $specificUpdated);
     }

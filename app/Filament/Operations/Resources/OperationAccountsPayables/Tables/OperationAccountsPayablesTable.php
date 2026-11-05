@@ -124,7 +124,9 @@ class OperationAccountsPayablesTable
                     )),
                 TextColumn::make('invoice_number')
                     ->label('N.º factura')
-                    ->searchable()
+                    ->placeholder('—')
+                    ->description(fn (OperationAccountsPayable $record): ?string => filled($record->invoice_receipt_number) ? 'Recibo '.$record->invoice_receipt_number : null)
+                    ->searchable(['invoice_number', 'invoice_receipt_number'])
                     ->sortable()
                     ->badge()
                     ->color('primary')
