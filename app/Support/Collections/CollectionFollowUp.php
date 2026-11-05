@@ -135,7 +135,7 @@ final class CollectionFollowUp
                 return ['status' => $current, 'changed' => false, 'conflict' => false];
             }
 
-            Collection::query()->whereKey($collection->getKey())->update(['follow_up_status' => $status]);
+            \App\Support\Audit\DataChangeAuditor::update('collection', Collection::query()->whereKey($collection->getKey()), ['follow_up_status' => $status]);
 
             CollectionFollowUpEvent::query()->create([
                 'collection_id' => $collection->getKey(),

@@ -301,3 +301,9 @@ Schedule::command('user-activity:purge')
     ->name('user-activity-purge')
     ->withoutOverlapping(60)
     ->runInBackground();
+
+/** Retención de la auditoría de cambios: 24 meses (Administración → Auditoría de cambios). */
+Schedule::command('audit:purge-data-changes')
+    ->dailyAt('03:15')
+    ->withoutOverlapping()
+    ->onOneServer();

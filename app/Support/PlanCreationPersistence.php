@@ -307,14 +307,14 @@ class PlanCreationPersistence
         }
 
         if ($createFees) {
-            Fee::query()
+            \App\Support\Audit\DataChangeAuditor::delete('fee', Fee::query()
                 ->where('coverage_id', $coverage->id)
                 ->when(
                     $desiredAgeRangeIds !== [],
                     static fn ($query) => $query->whereNotIn('age_range_id', $desiredAgeRangeIds),
                     static fn ($query) => $query,
                 )
-                ->delete();
+            );
         }
 
         return $coverage;
@@ -349,7 +349,7 @@ class PlanCreationPersistence
             ->get();
 
         foreach ($staleCoverages as $staleCoverage) {
-            Fee::query()->where('coverage_id', $staleCoverage->id)->delete();
+            \App\Support\Audit\DataChangeAuditor::delete('fee', Fee::query()->where('coverage_id', $staleCoverage->id));
             $staleCoverage->plan_id = null;
             $staleCoverage->save();
         }

@@ -25,6 +25,7 @@ class OperationAccountsPayable extends Model
         'invoice_date',
         'invoice_registration_date',
         'invoice_number',
+        'invoice_receipt_number',
         'invoice_control_number',
         'supplier_id',
         'supplier_name',
@@ -98,5 +99,19 @@ class OperationAccountsPayable extends Model
     public function supplierLabel(): string
     {
         return trim($this->supplier_name) !== '' ? $this->supplier_name : '—';
+    }
+
+    /**
+     * Número del documento del proveedor para mostrarlo: «Factura 123», «Recibo 45» o
+     * «Factura 123 · Recibo 45». Una factura puede traer uno u otro, o ambos.
+     */
+    public function invoiceDocumentLabel(string $fallback = 'cargada'): string
+    {
+        $parts = array_filter([
+            filled($this->invoice_number) ? 'Factura '.trim((string) $this->invoice_number) : null,
+            filled($this->invoice_receipt_number) ? 'Recibo '.trim((string) $this->invoice_receipt_number) : null,
+        ]);
+
+        return $parts === [] ? 'Factura '.$fallback : implode(' · ', $parts);
     }
 }

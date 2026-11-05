@@ -162,7 +162,7 @@ it('los mensajes de validación del formulario de factura están en español', f
     $src = invoiceUploadTableSource();
 
     expect($src)
-        ->toContain("'required' => 'Indica el número de la factura.'")
+        ->toContain("'required_without' => 'Indica el N° de factura o el N° de recibo: al menos uno.'")
         ->and($src)->toContain("'max' => 'El número de control no puede superar los 60 caracteres.'")
         ->and($src)->toContain("'required' => 'Indica la fecha en que registras la factura.'")
         ->and($src)->toContain("'after_or_equal' => 'La fecha de registro no puede ser anterior a la fecha de emisión de la factura.'")

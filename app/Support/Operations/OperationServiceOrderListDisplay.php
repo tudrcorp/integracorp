@@ -188,7 +188,7 @@ final class OperationServiceOrderListDisplay
 
     public static function hasInvoice(OperationServiceOrder $record): bool
     {
-        return filled($record->invoice_number) || filled($record->invoice_file_path);
+        return filled($record->invoice_number) || filled($record->invoice_receipt_number) || filled($record->invoice_file_path);
     }
 
     public static function invoiceAmountUsd(OperationServiceOrder $record): ?float

@@ -72,7 +72,15 @@ class OperationAccountsPayableForm
                         TextInput::make('invoice_number')
                             ->label('Número de factura')
                             ->maxLength(60)
-                            ->required()
+                            ->requiredWithout('invoice_receipt_number')
+                            ->validationMessages(['required_without' => 'Indica el número de factura o el de recibo: al menos uno.'])
+                            ->autocomplete(false),
+                        TextInput::make('invoice_receipt_number')
+                            ->label('Número de recibo')
+                            ->helperText('Si el proveedor entrega recibo. Basta con este o con el número de factura.')
+                            ->maxLength(60)
+                            ->requiredWithout('invoice_number')
+                            ->validationMessages(['required_without' => 'Indica el número de recibo o el de factura: al menos uno.'])
                             ->autocomplete(false),
                         TextInput::make('invoice_control_number')
                             ->label('Número de control')
