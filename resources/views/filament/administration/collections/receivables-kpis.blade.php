@@ -52,7 +52,7 @@
         <section class="flex flex-col gap-2">
             <span class="inline-flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 <x-filament::icon icon="heroicon-m-document-text" class="size-4" />
-                Recibos emitidos
+                Recibos generados
             </span>
 
             @if (($noticeTiles ?? []) !== [])
