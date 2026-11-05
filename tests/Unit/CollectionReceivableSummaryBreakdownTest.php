@@ -63,6 +63,10 @@ it('el vencido cuenta solo los últimos 30 días y aparte lo más viejo; ambos s
         ->and($summary['overdue_recent_count'])->toBe(2)
         ->and($summary['overdue_older_amount'])->toBe(80.0)
         ->and($summary['overdue_older_count'])->toBe(2)
+        ->and($summary['overdue_by_type'])->toBe([
+            'individual' => ['affiliations' => 1, 'count' => 2, 'amount' => 150.0],
+            'corporate' => ['affiliations' => 1, 'count' => 2, 'amount' => 230.0],
+        ])
         ->and($summary['overdue_recent_by_type'])->toBe([
             'individual' => ['affiliations' => 1, 'count' => 1, 'amount' => 100.0],
             'corporate' => ['affiliations' => 1, 'count' => 1, 'amount' => 200.0],
@@ -100,17 +104,17 @@ it('los KPIs viven en el Dashboard de Cobranza con las tarjetas de los dashboard
     expect($widget)
         ->toContain('protected static bool $isDiscovered = false;')
         ->toContain('CollectionReceivableReport::summary(AnnualCollectionResource::getEloquentQuery())')
-        ->toContain("'label' => 'Vencido · últimos '.\$days.' días'")
-        ->toContain("'split' => \$summary['pending_by_type']")
-        ->toContain("'split' => \$summary['overdue_recent_by_type']")
+        ->toContain("'label' => 'Vencido',")
+        ->toContain('self::tableUrl(null, CollectionReceivableReport::STATUS_OVERDUE)')
+        ->not->toContain("'label' => 'Total por cobrar'")
+        ->toContain("'split' => \$summary['overdue_by_type']")
         ->toContain("'split' => \$summary['due_soon_by_type']")
-        ->toContain('self::tableUrl(CollectionReceivableReport::AGING_OVERDUE_1_30)')
         ->toContain('self::tableUrl(CollectionReceivableReport::AGING_DUE_SOON)')
         ->not->toContain('Además, con más de')
         ->and($view)
         ->toContain('<x-filament-widgets::widget class="cxc-receivables-kpis">')
         ->toContain('Por vencer · desde hoy')
-        ->toContain('sm:grid-cols-2 xl:grid-cols-4')
+        ->toContain('md:grid-cols-3')
         ->toContain("'compact' => true")
         ->toContain('Recibos emitidos')
         ->not->toContain('wire:click')
@@ -121,8 +125,11 @@ it('los KPIs viven en el Dashboard de Cobranza con las tarjetas de los dashboard
         ->toContain("'afiliación', 'afiliaciones'");
 
     /** Primera fila: los plazos; después las cuentas por cobrar y los recibos emitidos. */
-    expect(strpos($view, 'icon="heroicon-m-calendar-days"'))->toBeLessThan(strpos($view, 'icon="heroicon-m-banknotes"'))
-        ->and(strpos($view, 'icon="heroicon-m-banknotes"'))->toBeLessThan(strpos($view, 'icon="heroicon-m-document-text"'));
+    /** Primera fila: vencido, 7 y 15 días; segunda: 30, 45 y 60; al final, los recibos emitidos. */
+    expect(strpos($view, 'icon="heroicon-m-banknotes"'))->toBeLessThan(strpos($view, 'icon="heroicon-m-calendar-days"'))
+        ->and(strpos($view, 'icon="heroicon-m-calendar-days"'))->toBeLessThan(strpos($view, 'icon="heroicon-m-document-text"'))
+        ->and($widget)->toContain("'tiles' => [...self::tiles(\$summary), ...array_slice(\$windows, 0, 1)]")
+        ->and($widget)->toContain("'windows' => array_slice(\$windows, 1)");
 
     expect(CollectionReceivableReport::agingOptions())
         ->toHaveKeys([CollectionReceivableReport::AGING_OVERDUE_1_30, CollectionReceivableReport::AGING_DUE_SOON, ...CollectionReceivableReport::DUE_WINDOWS]);

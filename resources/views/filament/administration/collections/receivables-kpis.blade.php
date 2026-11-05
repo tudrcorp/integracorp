@@ -2,7 +2,7 @@
     /**
      * KPIs de cobranza (Dashboard de Cobranza), a hoy, en tres filas:
      *  1. lo que vence en 15, 30, 45 y 60 días;
-     *  2. total por cobrar, vencido en los últimos 30 días y lo que vence en 7 días;
+     *  2. vencido en los últimos 30 días y lo que vence en 7 días;
      *  3. recibos (avisos de cobro) emitidos del mes y del año.
      * Cada monto va separado en individuales y corporativas; los montos por cobrar abren
      * Cuentas por cobrar con su filtro de vencimiento.
@@ -18,36 +18,36 @@
 
 <x-filament-widgets::widget class="cxc-receivables-kpis">
     <div class="flex flex-col gap-4">
+        <section class="flex flex-col gap-2">
+            <div class="flex flex-wrap items-center justify-between gap-2 px-1">
+                <span class="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    <x-filament::icon icon="heroicon-m-banknotes" class="size-4" />
+                    Cuentas por cobrar
+                </span>
+                <span class="text-[11px] text-gray-400 dark:text-gray-500">Haga clic en una tarjeta para verla en Cuentas por cobrar</span>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+                @foreach ($tiles as $index => $tile)
+                    @include('filament.administration.collections.partials.money-tile', ['tile' => $tile, 'index' => $index, 'compact' => str_starts_with((string) $tile['key'], 'due-') && $tile['key'] !== 'due-soon'])
+                @endforeach
+            </div>
+        </section>
+
         @if ($windows !== [])
             <section class="flex flex-col gap-2">
-                <div class="flex flex-wrap items-center justify-between gap-2 px-1">
-                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                        <x-filament::icon icon="heroicon-m-calendar-days" class="size-4" />
-                        Por vencer · desde hoy
-                    </span>
-                    <span class="text-[11px] text-gray-400 dark:text-gray-500">Haga clic en una tarjeta para verla en Cuentas por cobrar</span>
-                </div>
+                <span class="inline-flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    <x-filament::icon icon="heroicon-m-calendar-days" class="size-4" />
+                    Por vencer · desde hoy
+                </span>
 
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
                     @foreach ($windows as $index => $tile)
-                        @include('filament.administration.collections.partials.money-tile', ['tile' => $tile, 'index' => $index, 'compact' => true])
+                        @include('filament.administration.collections.partials.money-tile', ['tile' => $tile, 'index' => $index + 3, 'compact' => true])
                     @endforeach
                 </div>
             </section>
         @endif
-
-        <section class="flex flex-col gap-2">
-            <span class="inline-flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                <x-filament::icon icon="heroicon-m-banknotes" class="size-4" />
-                Cuentas por cobrar
-            </span>
-
-            <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-                @foreach ($tiles as $index => $tile)
-                    @include('filament.administration.collections.partials.money-tile', ['tile' => $tile, 'index' => $index + 4])
-                @endforeach
-            </div>
-        </section>
 
         <section class="flex flex-col gap-2">
             <span class="inline-flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">

@@ -12,8 +12,7 @@ use Filament\Widgets\Widget;
 use Illuminate\Support\Str;
 
 /**
- * KPIs de cuentas por cobrar, a hoy: total por cobrar, vencido en los últimos 30 días y lo
- * que vence en 7 días, cada uno separado en individuales y corporativas; los recibos (avisos
+ * KPIs de cuentas por cobrar, a hoy: todo lo vencido y lo que vence en 7 días, cada uno separado en individuales y corporativas; los recibos (avisos
  * de cobro) emitidos del mes y del año; y la franja de plazos de 15, 30, 45 y 60 días. Las
  * cifras por cobrar llevan a la tabla de Cuentas por cobrar con su filtro de vencimiento.
  *
@@ -37,10 +36,13 @@ class CollectionReceivablesKpis extends Widget
     {
         $summary = CollectionReceivableReport::summary(AnnualCollectionResource::getEloquentQuery());
 
+        $windows = self::windows($summary['due_windows']);
+
+        /** Primera fila: vencido, 7 días y 15 días; segunda fila: 30, 45 y 60 días. */
         return [
-            'tiles' => self::tiles($summary),
+            'tiles' => [...self::tiles($summary), ...array_slice($windows, 0, 1)],
             'noticeTiles' => self::noticeTiles(CollectionReceivableReport::issuedNotices()),
-            'windows' => self::windows($summary['due_windows']),
+            'windows' => array_slice($windows, 1),
         ];
     }
 
@@ -84,30 +86,17 @@ class CollectionReceivablesKpis extends Widget
      */
     public static function tiles(array $summary): array
     {
-        $days = CollectionReceivableReport::OVERDUE_RECENT_DAYS;
-
         return [
             [
-                'key' => 'pending',
-                'label' => 'Total por cobrar',
-                'icon' => 'heroicon-o-banknotes',
-                'accent' => SummaryCards::BLUE,
-                'amount' => $summary['pending_amount'],
-                'detail' => SummaryCards::count($summary['pending_count'], 'cuota', 'cuotas').' · '.SummaryCards::count($summary['rows_count'], 'afiliación', 'afiliaciones'),
-                'split' => $summary['pending_by_type'],
-                'url' => self::tableUrl(null),
-                'title' => 'Ver todas las cuentas por cobrar',
-            ],
-            [
                 'key' => 'overdue',
-                'label' => 'Vencido · últimos '.$days.' días',
+                'label' => 'Vencido',
                 'icon' => 'heroicon-o-exclamation-triangle',
                 'accent' => SummaryCards::RED,
-                'amount' => $summary['overdue_recent_amount'],
-                'detail' => SummaryCards::count($summary['overdue_recent_count'], 'cuota', 'cuotas'),
-                'split' => $summary['overdue_recent_by_type'],
-                'url' => self::tableUrl(CollectionReceivableReport::AGING_OVERDUE_1_30),
-                'title' => 'Ver en la tabla lo vencido en los últimos '.$days.' días',
+                'amount' => $summary['overdue_amount'],
+                'detail' => SummaryCards::count($summary['overdue_count'], 'cuota', 'cuotas'),
+                'split' => $summary['overdue_by_type'],
+                'url' => self::tableUrl(null, CollectionReceivableReport::STATUS_OVERDUE),
+                'title' => 'Ver en la tabla todo lo vencido',
             ],
             [
                 'key' => 'due-soon',
@@ -160,10 +149,15 @@ class CollectionReceivablesKpis extends Widget
     /**
      * Cuentas por cobrar con el filtro «Vencimiento» aplicado (o sin filtro).
      */
-    public static function tableUrl(?string $aging): string
+    public static function tableUrl(?string $aging, ?string $collectionStatus = null): string
     {
-        return $aging === null
+        $filters = array_filter([
+            'aging' => $aging !== null ? ['value' => $aging] : null,
+            'collection_status' => $collectionStatus !== null ? ['value' => $collectionStatus] : null,
+        ]);
+
+        return $filters === []
             ? AnnualCollectionResource::getUrl('index')
-            : AnnualCollectionResource::getUrl('index', ['filters' => ['aging' => ['value' => $aging]]]);
+            : AnnualCollectionResource::getUrl('index', ['filters' => $filters]);
     }
 }
