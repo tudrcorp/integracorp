@@ -529,7 +529,7 @@ final class CollectionReceivableReport
      * la consulta (no solo la próxima), calculados en la base sin cargar filas. Recibe
      * la consulta de la tabla para respetar filtros y búsqueda.
      *
-     * @return array{rows_count: int, pending_count: int, pending_amount: float, overdue_count: int, overdue_amount: float, due_soon_count: int, due_soon_amount: float, due_windows: array<int, array{count: int, amount: float, by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}}>, overdue_recent_count: int, overdue_recent_amount: float, overdue_recent_by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}, overdue_older_count: int, overdue_older_amount: float, due_soon_by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}, pending_by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}}
+     * @return array{rows_count: int, pending_count: int, pending_amount: float, overdue_count: int, overdue_amount: float, due_soon_count: int, due_soon_amount: float, due_windows: array<int, array{count: int, amount: float, by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}}>, overdue_recent_count: int, overdue_recent_amount: float, overdue_recent_by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}, overdue_older_count: int, overdue_older_amount: float, due_soon_by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}, pending_by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}, overdue_by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}}
      */
     public static function summary(?Builder $query = null, ?CarbonImmutable $today = null): array
     {
@@ -561,6 +561,7 @@ final class CollectionReceivableReport
         $corporate = self::CORPORATE_TYPE_SQL;
         $ranges = [
             'pending_all' => ['1 = 1', []],
+            'overdue_all' => ['filter_next_payment_date < ?', [$todayString]],
             'overdue_recent' => ['filter_next_payment_date >= ? AND filter_next_payment_date < ?', [$recentFromString, $todayString]],
             'overdue_older' => ['filter_next_payment_date < ?', [$recentFromString]],
             'due_soon' => ['filter_next_payment_date BETWEEN ? AND ?', [$todayString, $soonString]],
@@ -624,6 +625,7 @@ final class CollectionReceivableReport
             'overdue_older_amount' => (float) ($totals->overdue_older_amount ?? 0),
             'due_soon_by_type' => $byType('due_soon'),
             'pending_by_type' => $byType('pending_all'),
+            'overdue_by_type' => $byType('overdue_all'),
         ];
     }
 
