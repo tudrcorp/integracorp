@@ -29,7 +29,7 @@
             $part = $tile['split'][$type];
             $parts[] = [
                 'label' => $typeLabel,
-                'detail' => $plural($part['affiliations'], 'afiliación', 'afiliaciones').(($compact ?? false) ? '' : ' · '.$plural($part['count'], 'cuota', 'cuotas')),
+                'detail' => $plural($part['affiliations'], 'afiliación', 'afiliaciones').(($compact ?? false) ? '' : ' · '.$plural($part['count'], ...($tile['count_noun'] ?? ['cuota', 'cuotas']))),
                 'amount' => (float) $part['amount'],
                 'shade' => $shade,
             ];

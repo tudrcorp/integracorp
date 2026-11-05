@@ -131,8 +131,8 @@ it('los KPIs viven en el Dashboard de Cobranza con las tarjetas de los dashboard
         ->toContain('href="{{ $tile[\'url\'] }}" wire:navigate')
         ->toContain("'afiliación', 'afiliaciones'");
 
-    /** Primera fila: los plazos; después las cuentas por cobrar y los recibos emitidos. */
-    /** Primera fila: vencido, 7 y 15 días; segunda: 30, 45 y 60; al final, los recibos emitidos. */
+    /** Primera fila: los plazos; después las cuentas por cobrar y los recibos generados. */
+    /** Primera fila: vencido, 7 y 15 días; segunda: 30, 45 y 60; al final, los recibos generados. */
     expect(strpos($view, 'icon="heroicon-m-banknotes"'))->toBeLessThan(strpos($view, 'icon="heroicon-m-calendar-days"'))
         ->and(strpos($view, 'icon="heroicon-m-calendar-days"'))->toBeLessThan(strpos($view, 'icon="heroicon-m-document-text"'))
         ->and($widget)->toContain("'tiles' => [...self::tiles(\$summary), ...array_slice(\$windows, 0, 1)]")
@@ -211,7 +211,7 @@ it('cada plazo de 15, 30, 45 y 60 días separa individuales y corporativas, y la
         ->and($tiles[1]['url'])->toContain('vence_30');
 });
 
-it('los recibos emitidos cuentan los avisos por fecha de cobro del mes y del año, pagados o no, sin anulados', function (): void {
+it('los recibos generados cuentan los avisos por fecha de cobro del mes y del año, pagados o no, sin anulados', function (): void {
     $suffix = uniqid();
     $codes = ['PEST-R-IND-'.$suffix, 'PEST-R-COR-'.$suffix, 'PEST-R-IND2-'.$suffix];
     $base = CollectionReceivableReport::issuedNotices(CarbonImmutable::parse('2026-11-05'));
@@ -259,7 +259,7 @@ it('los recibos emitidos cuentan los avisos por fecha de cobro del mes y del añ
         ->and(round($after['year']['corporate']['amount'] - $base['year']['corporate']['amount'], 2))->toBe(300.0);
 });
 
-it('las tarjetas de recibos emitidos dicen el mes en español y separan avisos ind. y corp.', function (): void {
+it('las tarjetas de recibos generados dicen el mes en español y separan avisos ind. y corp.', function (): void {
     $notices = [
         'month' => ['individual' => ['affiliations' => 4, 'count' => 41, 'amount' => 10.0], 'corporate' => ['affiliations' => 2, 'count' => 6, 'amount' => 20.0]],
         'year' => ['individual' => ['affiliations' => 90, 'count' => 150, 'amount' => 100.0], 'corporate' => ['affiliations' => 9, 'count' => 20, 'amount' => 200.0]],
@@ -267,10 +267,10 @@ it('las tarjetas de recibos emitidos dicen el mes en español y separan avisos i
 
     $tiles = \App\Filament\Administration\Widgets\Collections\CollectionReceivablesKpis::noticeTiles($notices, CarbonImmutable::parse('2026-11-05'));
 
-    expect($tiles[0]['label'])->toBe('Recibos emitidos del mes')
+    expect($tiles[0]['label'])->toBe('Recibos generados del mes')
         ->and($tiles[0]['count'])->toBe(47)
         ->and($tiles[0]['detail'])->toBe('Noviembre 2026 · US$ 30,00')
-        ->and($tiles[1]['label'])->toBe('Recibos emitidos en el 2026')
+        ->and($tiles[1]['label'])->toBe('Recibos generados en el 2026')
         ->and($tiles[1]['count'])->toBe(170)
         ->and($tiles[1]['split']['corporate']['count'])->toBe(20);
 });

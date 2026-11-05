@@ -217,16 +217,21 @@ it('el resumen se puede colapsar, empieza cerrado y usa el diseño de los panele
         ->toContain('DashboardCobranza::getUrl()');
 });
 
-it('Gestión de Cobranza usa el resumen colapsable con el orden por cobrar, vence en 7 días, vencidos', function (): void {
-    $page = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/Collections/Pages/ListCollections.php');
+it('los KPIs de Gestión de Cobranza viven en su dashboard: cobrado, morosidad, vencido y plazos', function (): void {
+    $root = dirname(__DIR__, 2);
+    $widget = (string) file_get_contents($root.'/app/Filament/Administration/Widgets/Collections/CollectionManagementKpis.php');
+    $view = (string) file_get_contents($root.'/resources/views/filament/administration/collections/management-kpis.blade.php');
 
-    expect($page)->toContain('SummaryCards::collapsible(')
-        ->toContain('as due_soon_amount", [$today, $soon]');
+    expect($widget)
+        ->toContain('CollectionManagementMetrics::portfolio($today)')
+        ->toContain('CollectionManagementMetrics::collected($today)')
+        ->toContain("'label' => 'Cobrado en el mes'")
+        ->toContain('CollectionsTable::STATUS_OVERDUE')
+        ->and($view)
+        ->toContain('Índice de morosidad')
+        ->toContain("\$yearTile['months']");
 
-    $positions = array_map(
-        fn (string $label): int|false => strpos($page, "'label' => '{$label}'"),
-        ['Por cobrar', 'Vence en 7 días', 'Vencidos'],
-    );
+    $positions = array_map(fn (string $text): int|false => strpos($view, $text), ['Cobrado', 'Cuentas por cobrar', 'Por vencer · desde hoy']);
 
     expect($positions)->each->toBeInt()
         ->and($positions)->toBe(collect($positions)->sort()->values()->all());

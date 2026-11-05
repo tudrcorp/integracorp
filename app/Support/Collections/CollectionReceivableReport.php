@@ -36,7 +36,7 @@ final class CollectionReceivableReport
     /** Cuota de afiliación corporativa («AFILIACIÓN CORPORATIVA», con o sin tilde). */
     public const CORPORATE_TYPE_SQL = "UPPER(COALESCE(type, '')) LIKE '%CORPORATIV%'";
 
-    /** Avisos de cobro que no cuentan como recibos emitidos. */
+    /** Avisos de cobro que no cuentan como recibos generados. */
     public const VOIDED_NOTICE_STATUSES = ['ANULADO', 'CANCELADO'];
 
     public const STATUS_PENDING = CollectionDueDate::PENDING_STATUS;
