@@ -14,7 +14,8 @@ use Filament\Widgets\Widget;
 
 /**
  * KPIs de Gestión de Cobranza, a hoy:
- *  1. lo cobrado en el mes, el resumen de lo cobrado en el año (mes a mes) y la morosidad;
+ *  1. lo cobrado en el mes, el resumen de lo cobrado en el año (mes a mes) y la morosidad del
+ *     mes, comparable con otro mes;
  *  2. todo lo vencido por antigüedad, lo que vence en 7 días y en 15 días;
  *  3. lo que vence en 30, 45 y 60 días.
  *
@@ -32,6 +33,19 @@ class CollectionManagementKpis extends Widget
 
     protected static bool $isLazy = false;
 
+    /** Mes cuya morosidad se muestra (`Y-m`); por defecto, el mes en curso. */
+    public string $rateMonth = '';
+
+    /** Mes con el que se compara; por defecto, el anterior. */
+    public string $compareMonth = '';
+
+    public function mount(): void
+    {
+        $today = CarbonImmutable::today();
+        $this->rateMonth = $today->format('Y-m');
+        $this->compareMonth = $today->subMonthNoOverflow()->format('Y-m');
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -48,7 +62,8 @@ class CollectionManagementKpis extends Widget
         return [
             'collectedTile' => self::collectedTile($collected, $today),
             'yearTile' => self::yearTile($collected, $today),
-            'rateTile' => self::rateTile($portfolio),
+            'rateTile' => self::rateTile($this->month($this->rateMonth, $today), $this->month($this->compareMonth, $today->subMonthNoOverflow()), $today),
+            'monthOptions' => CollectionManagementMetrics::delinquencyMonthOptions($today),
             'tiles' => array_slice($receivables, 0, 3),
             'windows' => array_slice($receivables, 3),
         ];
@@ -96,31 +111,42 @@ class CollectionManagementKpis extends Widget
     }
 
     /**
-     * @param  array<string, mixed>  $portfolio
+     * Morosidad del mes elegido frente al de comparación, con la diferencia en puntos.
+     *
      * @return array<string, mixed>
      */
-    public static function rateTile(array $portfolio): array
+    public static function rateTile(CarbonImmutable $month, CarbonImmutable $compare, ?CarbonImmutable $today = null): array
     {
+        $current = CollectionManagementMetrics::monthlyDelinquency($month, $today);
+        $previous = CollectionManagementMetrics::monthlyDelinquency($compare, $today);
         $byType = [];
 
         foreach (['individual' => 'Individuales', 'corporate' => 'Corporativas'] as $type => $label) {
-            $overdue = (float) $portfolio['overdue_by_type'][$type]['amount'];
-            $pending = (float) $portfolio['pending_by_type'][$type]['amount'];
-
             $byType[] = [
                 'label' => $label,
-                'rate' => CollectionManagementMetrics::delinquencyRate($overdue, $pending),
-                'overdue' => $overdue,
-                'pending' => $pending,
+                'rate' => $current['by_type'][$type]['rate'],
+                'compare_rate' => $previous['by_type'][$type]['rate'],
+                'unpaid' => $current['by_type'][$type]['unpaid_amount'],
+                'due' => $current['by_type'][$type]['due_amount'],
             ];
         }
 
         return [
-            'rate' => CollectionManagementMetrics::delinquencyRate((float) $portfolio['overdue_amount'], (float) $portfolio['pending_amount']),
-            'overdue' => (float) $portfolio['overdue_amount'],
-            'pending' => (float) $portfolio['pending_amount'],
+            'current' => $current,
+            'compare' => $previous,
+            'delta' => round($current['rate'] - $previous['rate'], 2),
             'by_type' => $byType,
         ];
+    }
+
+    /**
+     * Mes elegido en la tarjeta de morosidad; si llega algo que no está en la lista, el de respaldo.
+     */
+    private function month(string $value, CarbonImmutable $fallback): CarbonImmutable
+    {
+        return array_key_exists($value, CollectionManagementMetrics::delinquencyMonthOptions())
+            ? CarbonImmutable::createFromFormat('!Y-m', $value)->startOfMonth()
+            : $fallback->startOfMonth();
     }
 
     /**

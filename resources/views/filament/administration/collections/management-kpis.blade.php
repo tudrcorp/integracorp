@@ -1,13 +1,14 @@
 @php
     /**
      * KPIs de Gestión de Cobranza (Dashboard de Gestión de Cobranza), a hoy, en tres filas:
-     *  1. cobrado en el mes, resumen de cobrado del año y morosidad;
+     *  1. cobrado en el mes, resumen de cobrado del año y morosidad del mes (comparable con otro);
      *  2. todo lo vencido por antigüedad, lo que vence en 7 días y en 15 días;
      *  3. lo que vence en 30, 45 y 60 días.
      *
      * @var array<string, mixed> $collectedTile
      * @var array<string, mixed> $yearTile
      * @var array<string, mixed> $rateTile
+     * @var array<string, string> $monthOptions
      * @var list<array<string, mixed>> $tiles
      * @var list<array<string, mixed>> $windows
      */
@@ -65,7 +66,9 @@
 
                     <div class="mt-2 space-y-1.5">
                         @foreach (['individual' => ['Individuales', '100%'], 'corporate' => ['Corporativas', '45%']] as $type => [$typeLabel, $shade])
-                            @php($part = $yearTile['split'][$type])
+                            @php
+                                $part = $yearTile['split'][$type];
+                            @endphp
                             <div class="flex items-center justify-between gap-3 text-xs leading-4">
                                 <span class="flex min-w-0 items-center gap-1.5">
                                     <span class="inline-block size-2 shrink-0 rounded-full" style="background: color-mix(in srgb, {{ $yearAccent }} {{ $shade }}, transparent);"></span>
@@ -80,22 +83,50 @@
                     </div>
                 </div>
 
-                {{-- Morosidad: vencido ÷ por cobrar, general y por tipo. --}}
-                <div class="{{ $card }}" style="border-top: 3px solid {{ $rateAccent }};" title="Porcentaje de la cartera por cobrar que ya está vencido">
+                {{-- Morosidad del mes elegido, comparable con otro mes. --}}
+                @php
+                    $current = $rateTile['current'];
+                    $compare = $rateTile['compare'];
+                    $delta = $rateTile['delta'];
+                    $deltaColor = $delta > 0 ? '#be123c' : ($delta < 0 ? '#15803d' : '#64748b');
+                    $range = $current['to'] === null
+                        ? 'Aún no hay cuotas vencidas este mes'
+                        : 'Cuotas con vencimiento del '.\Carbon\CarbonImmutable::parse($current['from'])->format('d/m').' al '.\Carbon\CarbonImmutable::parse($current['to'])->format('d/m/Y');
+                    $select = 'rounded-lg border-0 bg-gray-50 py-1 pl-2 text-xs font-medium text-gray-700 ring-1 ring-gray-950/10 focus:ring-2 dark:bg-white/5 dark:text-gray-200 dark:ring-white/10';
+                @endphp
+                <div class="{{ $card }}" style="border-top: 3px solid {{ $rateAccent }};" wire:loading.class="opacity-60" wire:target="rateMonth,compareMonth">
                     <div class="flex items-center justify-between gap-2">
-                        <span class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Índice de morosidad</span>
+                        <span class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400" title="De las cuotas que vencían en el mes, qué parte del monto sigue sin pagar">Índice de morosidad</span>
                         <span class="inline-flex size-7 shrink-0 items-center justify-center rounded-lg" style="color: {{ $rateAccent }}; background: color-mix(in srgb, {{ $rateAccent }} 14%, transparent);">
                             <x-filament::icon icon="heroicon-o-arrow-trending-up" class="size-4" />
                         </span>
                     </div>
 
-                    <div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                        <span class="text-2xl font-semibold tracking-tight text-gray-950 dark:text-white" style="font-variant-numeric: tabular-nums;">{{ $percent($rateTile['rate']) }}</span>
-                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ $money($rateTile['overdue']) }} vencido de {{ $money($rateTile['pending']) }}</span>
+                    <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                        <select wire:model.live="rateMonth" class="{{ $select }}" style="padding-right: 1.75rem;" aria-label="Mes de la morosidad">
+                            @foreach ($monthOptions as $value => $label)
+                                <option value="{{ $value }}" @selected($value === $current['month'])>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        <span>vs</span>
+                        <select wire:model.live="compareMonth" class="{{ $select }}" style="padding-right: 1.75rem;" aria-label="Mes de comparación">
+                            @foreach ($monthOptions as $value => $label)
+                                <option value="{{ $value }}" @selected($value === $compare['month'])>{{ $label }}</option>
+                            @endforeach
+                        </select>
                     </div>
 
+                    <div class="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                        <span class="text-2xl font-semibold tracking-tight text-gray-950 dark:text-white" style="font-variant-numeric: tabular-nums;">{{ $percent($current['rate']) }}</span>
+                        <span class="text-xs font-semibold" style="color: {{ $deltaColor }};" title="{{ $compare['label'] }}: {{ $percent($compare['rate']) }}">
+                            {{ $delta > 0 ? '▲ +' : ($delta < 0 ? '▼ ' : '= ') }}{{ number_format($delta, 2, ',', '.') }} pts
+                            <span class="font-normal text-gray-400 dark:text-gray-500">vs {{ $compare['label'] }} ({{ $percent($compare['rate']) }})</span>
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-gray-500 dark:text-gray-400">{{ $money($current['unpaid_amount']) }} sin pagar de {{ $money($current['due_amount']) }} · {{ $range }}</p>
+
                     <div class="mt-2 flex h-1 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10" aria-hidden="true">
-                        <div class="h-full" style="width: {{ min(100, $rateTile['rate']) }}%; background: {{ $rateAccent }};"></div>
+                        <div class="h-full" style="width: {{ min(100, $current['rate']) }}%; background: {{ $rateAccent }};"></div>
                     </div>
 
                     <div class="mt-2 space-y-1.5">
@@ -105,10 +136,13 @@
                                     <span class="inline-block size-2 shrink-0 rounded-full" style="background: color-mix(in srgb, {{ $rateAccent }} {{ $position === 0 ? '100%' : '45%' }}, transparent);"></span>
                                     <span class="min-w-0">
                                         <span class="block font-medium text-gray-600 dark:text-gray-300">{{ $part['label'] }}</span>
-                                        <span class="block text-[11px] text-gray-400 dark:text-gray-500">{{ $money($part['overdue']) }} vencido de {{ $money($part['pending']) }}</span>
+                                        <span class="block text-[11px] text-gray-400 dark:text-gray-500">{{ $money($part['unpaid']) }} sin pagar de {{ $money($part['due']) }}</span>
                                     </span>
                                 </span>
-                                <span class="shrink-0 font-semibold text-gray-950 dark:text-white" style="font-variant-numeric: tabular-nums; white-space: nowrap;">{{ $percent($part['rate']) }}</span>
+                                <span class="shrink-0 text-right" style="font-variant-numeric: tabular-nums; white-space: nowrap;">
+                                    <span class="block font-semibold text-gray-950 dark:text-white">{{ $percent($part['rate']) }}</span>
+                                    <span class="block text-[11px] text-gray-400 dark:text-gray-500">vs {{ $percent($part['compare_rate']) }}</span>
+                                </span>
                             </div>
                         @endforeach
                     </div>

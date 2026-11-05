@@ -54,21 +54,62 @@ it('lo cobrado sale de los pagos registrados: mes, año, mes a mes e individual 
         ->and($collected['months'][0]['label'])->toStartWith('Ene');
 });
 
-it('la morosidad es lo vencido entre el total por cobrar, general y por tipo', function (): void {
-    expect(CollectionManagementMetrics::delinquencyRate(3767.25, 454440.91))->toBe(0.83)
-        ->and(CollectionManagementMetrics::delinquencyRate(50, 200))->toBe(25.0)
-        ->and(CollectionManagementMetrics::delinquencyRate(10, 0))->toBe(0.0);
-
-    $tile = CollectionManagementKpis::rateTile([
-        'overdue_amount' => 30.0,
-        'pending_amount' => 120.0,
-        'overdue_by_type' => ['individual' => ['amount' => 30.0], 'corporate' => ['amount' => 0.0]],
-        'pending_by_type' => ['individual' => ['amount' => 60.0], 'corporate' => ['amount' => 60.0]],
+function managementInstallment(string $code, string $due, float $amount, string $status, string $type = 'AFILIACION INDIVIDUAL'): void
+{
+    App\Models\Collection::query()->forceCreate([
+        'include_date' => '01/01/2031', 'owner_code' => 'TDG-100', 'code_agency' => 'TDG-100',
+        'collection_invoice_number' => 'PEST-MOR-'.uniqid(), 'quote_number' => 'PEST-Q', 'persons' => '1',
+        'type' => $type, 'affiliation_code' => $code, 'affiliate_status' => 'ACTIVA', 'payment_frequency' => 'MENSUAL',
+        'next_payment_date' => $due, 'filter_next_payment_date' => $due, 'total_amount' => $amount, 'status' => $status,
     ]);
+}
 
-    expect($tile['rate'])->toBe(25.0)
-        ->and(array_column($tile['by_type'], 'rate'))->toBe([50.0, 0.0])
-        ->and(array_column($tile['by_type'], 'label'))->toBe(['Individuales', 'Corporativas']);
+it('la morosidad del mes es lo que vencía en el mes y sigue sin pagar; en el mes en curso, solo hasta ayer', function (): void {
+    $today = CarbonImmutable::parse('2031-03-10');
+    managementInstallment('PEST-MOR-A', '2031-02-05', 100, 'PAGADO');
+    managementInstallment('PEST-MOR-A', '2031-02-20', 100, 'POR PAGAR');
+    managementInstallment('PEST-MOR-B', '2031-02-25', 200, 'POR PAGAR', 'AFILIACIÓN CORPORATIVA');
+    managementInstallment('PEST-MOR-C', '2031-02-26', 999, 'ANULADO');
+    managementInstallment('PEST-MOR-A', '2031-03-03', 50, 'POR PAGAR');
+    managementInstallment('PEST-MOR-A', '2031-03-05', 150, 'PAGADO');
+    managementInstallment('PEST-MOR-A', '2031-03-10', 400, 'POR PAGAR');
+
+    $february = CollectionManagementMetrics::monthlyDelinquency(CarbonImmutable::parse('2031-02-01'), $today);
+    $march = CollectionManagementMetrics::monthlyDelinquency(CarbonImmutable::parse('2031-03-01'), $today);
+    $april = CollectionManagementMetrics::monthlyDelinquency(CarbonImmutable::parse('2031-04-01'), $today);
+
+    expect($february)->toMatchArray(['from' => '2031-02-01', 'to' => '2031-02-28', 'due_amount' => 400.0, 'unpaid_amount' => 300.0, 'rate' => 75.0, 'due_count' => 3, 'unpaid_count' => 2])
+        ->and($february['by_type']['individual'])->toBe(['rate' => 50.0, 'due_amount' => 200.0, 'unpaid_amount' => 100.0])
+        ->and($february['by_type']['corporate'])->toBe(['rate' => 100.0, 'due_amount' => 200.0, 'unpaid_amount' => 200.0])
+        ->and($march)->toMatchArray(['to' => '2031-03-09', 'due_amount' => 200.0, 'unpaid_amount' => 50.0, 'rate' => 25.0])
+        ->and($april['to'])->toBeNull()
+        ->and($april['rate'])->toBe(0.0);
+
+    $tile = CollectionManagementKpis::rateTile(CarbonImmutable::parse('2031-03-01'), CarbonImmutable::parse('2031-02-01'), $today);
+
+    expect($tile['delta'])->toBe(-50.0)
+        ->and($tile['current']['label'])->toBe('Marzo 2031')
+        ->and($tile['compare']['label'])->toBe('Febrero 2031')
+        ->and(array_column($tile['by_type'], 'compare_rate'))->toBe([50.0, 100.0])
+        ->and(CollectionManagementMetrics::delinquencyRate(3767.25, 454440.91))->toBe(0.83)
+        ->and(CollectionManagementMetrics::delinquencyRate(10, 0))->toBe(0.0);
+});
+
+it('el analista elige el mes y el de comparación; por defecto, el mes en curso contra el anterior', function (): void {
+    Filament::setCurrentPanel('administration');
+    test()->actingAs(App\Models\User::factory()->make(['id' => 999_999_105, 'name' => 'QA', 'email' => 'qa.mora@tudrencasa.com', 'status' => 'ACTIVO', 'departament' => ['SUPERADMIN', 'ADMINISTRACION']]));
+
+    $today = CarbonImmutable::today();
+    $component = Livewire\Livewire::test(CollectionManagementKpis::class)
+        ->assertSet('rateMonth', $today->format('Y-m'))
+        ->assertSet('compareMonth', $today->subMonthNoOverflow()->format('Y-m'))
+        ->assertSee('Índice de morosidad')
+        ->set('compareMonth', $today->subMonthsNoOverflow(3)->format('Y-m'))
+        ->assertSee('vs '.ucfirst($today->subMonthsNoOverflow(3)->locale('es')->translatedFormat('F Y')))
+        ->set('rateMonth', 'cualquier-cosa');
+
+    $component->assertSee(ucfirst($today->locale('es')->translatedFormat('F Y')));
+    expect(array_keys(CollectionManagementMetrics::delinquencyMonthOptions($today)))->toHaveCount(18);
 });
 
 it('las tarjetas de cartera abren Gestión de Cobranza con el filtro de vencidas o de próximo pago', function (): void {
