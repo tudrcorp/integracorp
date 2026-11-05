@@ -94,7 +94,12 @@ class CollectionReceivablesKpis extends Widget
                 'accent' => SummaryCards::RED,
                 'amount' => $summary['overdue_amount'],
                 'detail' => SummaryCards::count($summary['overdue_count'], 'cuota', 'cuotas'),
-                'split' => $summary['overdue_by_type'],
+                'split' => null,
+                'buckets' => [
+                    ['label' => '1 a 15 días', ...$summary['overdue_aging']['1_15']],
+                    ['label' => '16 a 30 días', ...$summary['overdue_aging']['16_30']],
+                    ['label' => 'Más de 30 días', ...$summary['overdue_aging']['31_plus']],
+                ],
                 'url' => self::tableUrl(null, CollectionReceivableReport::STATUS_OVERDUE),
                 'title' => 'Ver en la tabla todo lo vencido',
             ],

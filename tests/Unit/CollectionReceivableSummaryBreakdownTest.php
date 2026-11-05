@@ -63,6 +63,11 @@ it('el vencido cuenta solo los últimos 30 días y aparte lo más viejo; ambos s
         ->and($summary['overdue_recent_count'])->toBe(2)
         ->and($summary['overdue_older_amount'])->toBe(80.0)
         ->and($summary['overdue_older_count'])->toBe(2)
+        ->and($summary['overdue_aging'])->toBe([
+            '1_15' => ['count' => 1, 'amount' => 100.0],
+            '16_30' => ['count' => 1, 'amount' => 200.0],
+            '31_plus' => ['count' => 2, 'amount' => 80.0],
+        ])
         ->and($summary['overdue_by_type'])->toBe([
             'individual' => ['affiliations' => 1, 'count' => 2, 'amount' => 150.0],
             'corporate' => ['affiliations' => 1, 'count' => 2, 'amount' => 230.0],
@@ -107,7 +112,9 @@ it('los KPIs viven en el Dashboard de Cobranza con las tarjetas de los dashboard
         ->toContain("'label' => 'Vencido',")
         ->toContain('self::tableUrl(null, CollectionReceivableReport::STATUS_OVERDUE)')
         ->not->toContain("'label' => 'Total por cobrar'")
-        ->toContain("'split' => \$summary['overdue_by_type']")
+        ->toContain("['label' => '1 a 15 días', ...\$summary['overdue_aging']['1_15']]")
+        ->toContain("['label' => '16 a 30 días', ...\$summary['overdue_aging']['16_30']]")
+        ->toContain("['label' => 'Más de 30 días', ...\$summary['overdue_aging']['31_plus']]")
         ->toContain("'split' => \$summary['due_soon_by_type']")
         ->toContain('self::tableUrl(CollectionReceivableReport::AGING_DUE_SOON)')
         ->not->toContain('Además, con más de')
@@ -116,7 +123,7 @@ it('los KPIs viven en el Dashboard de Cobranza con las tarjetas de los dashboard
         ->toContain('Por vencer · desde hoy')
         ->toContain('md:grid-cols-3')
         ->toContain("'compact' => true")
-        ->toContain('Recibos emitidos')
+        ->toContain('Recibos generados')
         ->not->toContain('wire:click')
         ->and($tile)
         ->toContain('rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-gray-950/5 dark:bg-white/5 dark:ring-white/10')

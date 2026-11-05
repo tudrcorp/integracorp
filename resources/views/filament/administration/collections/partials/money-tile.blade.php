@@ -1,20 +1,42 @@
 @php
     /**
      * Tarjeta de un monto del Dashboard de Cobranza: rótulo e icono, cifra con conteo animado,
-     * barra de la parte individual frente a la corporativa y el detalle de cada una. Si trae
+     * barra repartida entre sus partes y el detalle de cada una: individuales y corporativas
+     * (`split`) o tramos de antigüedad (`buckets`, en «Vencido»). Si trae
      * `url`, toda la tarjeta lleva a Cuentas por cobrar con su filtro.
      *
-     * @var array{key: string, label: string, icon: string, accent: string, amount: float, detail: string, split: array<string, array{affiliations: int, count: int, amount: float}>, url?: ?string, title?: ?string} $tile
+     * @var array{key: string, label: string, icon: string, accent: string, amount: float, detail: string, split: ?array<string, array{affiliations: int, count: int, amount: float}>, buckets?: list<array{label: string, count: int, amount: float}>, url?: ?string, title?: ?string} $tile
      * @var int $index
      * @var bool|null $compact  solo las afiliaciones en el detalle (tarjetas angostas)
      */
     $money = static fn (float $amount): string => 'US$ '.number_format($amount, 2, ',', '.');
     $plural = static fn (int $count, string $one, string $many): string => $count === 1 ? '1 '.$one : number_format($count, 0, ',', '.').' '.$many;
     $formatted = $money($tile['amount']);
-    $individual = $tile['split']['individual'];
-    $corporate = $tile['split']['corporate'];
-    $sum = $individual['amount'] + $corporate['amount'];
-    $individualShare = $sum > 0 ? round($individual['amount'] * 100 / $sum, 1) : 0;
+    /** Las partes de la tarjeta: tramos de antigüedad (`buckets`) o individuales/corporativas (`split`). */
+    $parts = [];
+
+    if (! empty($tile['buckets'])) {
+        foreach (array_values($tile['buckets']) as $position => $bucket) {
+            $parts[] = [
+                'label' => $bucket['label'],
+                'detail' => $plural((int) $bucket['count'], 'cuota', 'cuotas'),
+                'amount' => (float) $bucket['amount'],
+                'shade' => ['100%', '65%', '35%'][$position] ?? '25%',
+            ];
+        }
+    } else {
+        foreach (['individual' => ['Individuales', '100%'], 'corporate' => ['Corporativas', '45%']] as $type => [$typeLabel, $shade]) {
+            $part = $tile['split'][$type];
+            $parts[] = [
+                'label' => $typeLabel,
+                'detail' => $plural($part['affiliations'], 'afiliación', 'afiliaciones').(($compact ?? false) ? '' : ' · '.$plural($part['count'], 'cuota', 'cuotas')),
+                'amount' => (float) $part['amount'],
+                'shade' => $shade,
+            ];
+        }
+    }
+
+    $sum = array_sum(array_column($parts, 'amount'));
     $tag = filled($tile['url'] ?? null) ? 'a' : 'div';
 @endphp
 
@@ -60,22 +82,20 @@
 
     <div class="mt-2 flex h-1 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-white/10" aria-hidden="true">
         @if ($sum > 0)
-            <div class="h-full" x-bind:style="'width: ' + (shown ? {{ $individualShare }} : 0) + '%; background: {{ $tile['accent'] }}; transition: width .9s ease;'"></div>
-            <div class="h-full" x-bind:style="'width: ' + (shown ? {{ 100 - $individualShare }} : 0) + '%; background: color-mix(in srgb, {{ $tile['accent'] }} 45%, transparent); transition: width .9s ease;'"></div>
+            @foreach ($parts as $part)
+                <div class="h-full" x-bind:style="'width: ' + (shown ? {{ round($part['amount'] * 100 / $sum, 2) }} : 0) + '%; background: color-mix(in srgb, {{ $tile['accent'] }} {{ $part['shade'] }}, transparent); transition: width .9s ease;'"></div>
+            @endforeach
         @endif
     </div>
 
     <div class="mt-2 space-y-1.5">
-        @foreach (['individual' => ['Individuales', '100%'], 'corporate' => ['Corporativas', '45%']] as $type => [$typeLabel, $shade])
-            @php
-                $part = $tile['split'][$type];
-            @endphp
+        @foreach ($parts as $part)
             <div class="flex items-center justify-between gap-3 text-xs leading-4">
                 <span class="flex min-w-0 items-center gap-1.5">
-                    <span class="inline-block size-2 shrink-0 rounded-full" style="background: color-mix(in srgb, {{ $tile['accent'] }} {{ $shade }}, transparent);"></span>
+                    <span class="inline-block size-2 shrink-0 rounded-full" style="background: color-mix(in srgb, {{ $tile['accent'] }} {{ $part['shade'] }}, transparent);"></span>
                     <span class="min-w-0">
-                        <span class="block font-medium text-gray-600 dark:text-gray-300">{{ $typeLabel }}</span>
-                        <span class="block text-[11px] text-gray-400 dark:text-gray-500">{{ $plural($part['affiliations'], 'afiliación', 'afiliaciones') }}@unless ($compact ?? false) · {{ $plural($part['count'], 'cuota', 'cuotas') }}@endunless</span>
+                        <span class="block font-medium text-gray-600 dark:text-gray-300">{{ $part['label'] }}</span>
+                        <span class="block text-[11px] text-gray-400 dark:text-gray-500">{{ $part['detail'] }}</span>
                     </span>
                 </span>
                 <span class="shrink-0 font-semibold text-gray-950 dark:text-white" style="font-variant-numeric: tabular-nums; white-space: nowrap;">{{ $money($part['amount']) }}</span>

@@ -529,7 +529,7 @@ final class CollectionReceivableReport
      * la consulta (no solo la próxima), calculados en la base sin cargar filas. Recibe
      * la consulta de la tabla para respetar filtros y búsqueda.
      *
-     * @return array{rows_count: int, pending_count: int, pending_amount: float, overdue_count: int, overdue_amount: float, due_soon_count: int, due_soon_amount: float, due_windows: array<int, array{count: int, amount: float, by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}}>, overdue_recent_count: int, overdue_recent_amount: float, overdue_recent_by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}, overdue_older_count: int, overdue_older_amount: float, due_soon_by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}, pending_by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}, overdue_by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}}
+     * @return array{rows_count: int, pending_count: int, pending_amount: float, overdue_count: int, overdue_amount: float, due_soon_count: int, due_soon_amount: float, due_windows: array<int, array{count: int, amount: float, by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}}>, overdue_recent_count: int, overdue_recent_amount: float, overdue_recent_by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}, overdue_older_count: int, overdue_older_amount: float, due_soon_by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}, pending_by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}, overdue_by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}, overdue_aging: array{'1_15': array{count: int, amount: float}, '16_30': array{count: int, amount: float}, '31_plus': array{count: int, amount: float}}}
      */
     public static function summary(?Builder $query = null, ?CarbonImmutable $today = null): array
     {
@@ -562,6 +562,10 @@ final class CollectionReceivableReport
         $ranges = [
             'pending_all' => ['1 = 1', []],
             'overdue_all' => ['filter_next_payment_date < ?', [$todayString]],
+            /** Antigüedad de lo vencido: días de atraso contados desde el vencimiento. */
+            'overdue_1_15' => ['filter_next_payment_date >= ? AND filter_next_payment_date < ?', [$today->subDays(15)->toDateString(), $todayString]],
+            'overdue_16_30' => ['filter_next_payment_date >= ? AND filter_next_payment_date < ?', [$today->subDays(30)->toDateString(), $today->subDays(15)->toDateString()]],
+            'overdue_31_plus' => ['filter_next_payment_date < ?', [$today->subDays(30)->toDateString()]],
             'overdue_recent' => ['filter_next_payment_date >= ? AND filter_next_payment_date < ?', [$recentFromString, $todayString]],
             'overdue_older' => ['filter_next_payment_date < ?', [$recentFromString]],
             'due_soon' => ['filter_next_payment_date BETWEEN ? AND ?', [$todayString, $soonString]],
@@ -577,7 +581,7 @@ final class CollectionReceivableReport
                 ->selectRaw("SUM(CASE WHEN {$condition} THEN 1 ELSE 0 END) as {$key}_count", $bindings)
                 ->selectRaw("COALESCE(SUM(CASE WHEN {$condition} THEN total_amount ELSE 0 END), 0) as {$key}_amount", $bindings);
 
-            if ($key === 'overdue_older') {
+            if (in_array($key, ['overdue_older', 'overdue_1_15', 'overdue_16_30', 'overdue_31_plus'], true)) {
                 continue;
             }
 
@@ -626,6 +630,10 @@ final class CollectionReceivableReport
             'due_soon_by_type' => $byType('due_soon'),
             'pending_by_type' => $byType('pending_all'),
             'overdue_by_type' => $byType('overdue_all'),
+            'overdue_aging' => collect(['1_15', '16_30', '31_plus'])->mapWithKeys(fn (string $bucket): array => [$bucket => [
+                'count' => (int) ($totals->{"overdue_{$bucket}_count"} ?? 0),
+                'amount' => (float) ($totals->{"overdue_{$bucket}_amount"} ?? 0),
+            ]])->all(),
         ];
     }
 
