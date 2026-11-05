@@ -37,3 +37,17 @@ it('en telemedicina el menú de tres puntos del ticket también va a la izquierd
         ->toContain("->icon('heroicon-c-ellipsis-vertical')")
         ->toContain('ViewAction::make()');
 });
+
+it('«Ver adjunto» va fuera del menú de tres puntos, como icono de clip con tooltip, y «Ver notas» en azul', function () {
+    $contents = file_get_contents(dirname(__DIR__, 2).'/app/Support/HelpdeskTableConfigurator.php');
+
+    expect($contents)
+        ->toContain("->label('Ver adjunto')")
+        ->toContain("->icon('heroicon-m-paper-clip')")
+        ->toContain("->modalHeading('Adjuntos del ticket')")
+        ->not->toContain("->label('Documentos')")
+        ->toContain("\$actions[] = Action::make('previewDocuments')")
+        ->toContain("->iconButton()\n            ->tooltip('Ver adjunto')")
+        ->not->toContain('$previewDocumentsAction')
+        ->and(preg_match("/->label\('Ver notas'\)\s*->icon\('heroicon-m-clipboard-document-list'\)\s*->color\('azulClaro'\)/", $contents))->toBe(1);
+});
