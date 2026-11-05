@@ -403,13 +403,15 @@ final class HelpdeskTableConfigurator
         }
 
         $actions[] = Action::make('previewDocuments')
-            ->label('Documentos')
-            ->icon('heroicon-m-document-magnifying-glass')
+            ->label('Ver adjunto')
+            ->iconButton()
+            ->tooltip('Ver adjunto')
+            ->icon('heroicon-m-paper-clip')
             ->color('info')
             ->visible(fn (HelpDesk $record): bool => count(HelpdeskDocumentPaths::paths($record)) > 0)
             ->slideOver()
             ->modalWidth(Width::ThreeExtraLarge)
-            ->modalHeading('Documentos del ticket')
+            ->modalHeading('Adjuntos del ticket')
             ->modalDescription(fn (HelpDesk $record): string => 'Vista previa de archivos · Ticket #'.$record->getKey().' · '.$record->created_by)
             ->modalContent(fn (HelpDesk $record) => view('filament.business.helpdesks.documents-preview-modal', [
                 'record' => $record,
@@ -455,7 +457,7 @@ final class HelpdeskTableConfigurator
         return Action::make('viewNotes')
             ->label('Ver notas')
             ->icon('heroicon-m-clipboard-document-list')
-            ->color('gray')
+            ->color('azulClaro')
             ->slideOver()
             ->modalWidth(Width::ThreeExtraLarge)
             ->modalHeading('Notas del ticket')
