@@ -9,9 +9,11 @@ use App\Support\HelpdeskSla;
 use App\Support\HelpdeskTableConfigurator;
 use App\Support\HelpdeskTaskStatusOptions;
 use App\Support\HelpdeskUnreadNoteTracker;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\ViewAction;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
@@ -104,8 +106,10 @@ final class HelpdesksTable
             ])
             ->deferFilters(false)
             ->recordActions([
-                ViewAction::make()
-                    ->label('Ver'),
-            ]);
+                ActionGroup::make([
+                    ViewAction::make()
+                        ->label('Ver ticket'),
+                ])->icon('heroicon-c-ellipsis-vertical')->color('azulOscuro'),
+            ], position: RecordActionsPosition::BeforeColumns);
     }
 }
