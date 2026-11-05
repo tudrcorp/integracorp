@@ -3,9 +3,11 @@
 namespace App\Filament\Exports;
 
 use App\Models\Commission;
+use App\Support\CommercialStructure\CommissionReferidorPercentage;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Number;
 use OpenSpout\Common\Entity\Style\CellAlignment;
 use OpenSpout\Common\Entity\Style\CellVerticalAlignment;
@@ -23,10 +25,21 @@ class CommissionExporter extends Exporter
                 ->label('FECHA'),
             ExportColumn::make('code')
                 ->label('Nro. Venta'),
-            ExportColumn::make('agency.name_corporative')
-                ->label('AGENCIA'),
-            ExportColumn::make('agent.name')
-                ->label('AGENTE'),
+            ExportColumn::make('master_agency')
+                ->label('AGENCIA MASTER')
+                ->state(fn (Commission $record): string => $record->masterAgencyDisplayName()),
+            ExportColumn::make('general_agency')
+                ->label('AGENCIA GENERAL')
+                ->state(fn (Commission $record): string => $record->generalAgencyDisplayName()),
+            ExportColumn::make('structure_agent')
+                ->label('AGENTE')
+                ->state(fn (Commission $record): string => $record->structureAgentName()),
+            ExportColumn::make('subagent')
+                ->label('SUBAGENTE')
+                ->state(fn (Commission $record): string => $record->subagentName()),
+            ExportColumn::make('referidor')
+                ->label('REFERIDOR')
+                ->state(fn (Commission $record): string => $record->referidorBeneficiaryLabel()),
             ExportColumn::make('affiliate_full_name')
                 ->label('AFILIADO'),
             ExportColumn::make('affiliation_code')
@@ -50,21 +63,21 @@ class CommissionExporter extends Exporter
             ExportColumn::make('porcent_agency_master')
                 ->label('% AGENCIA MASTER'),
             ExportColumn::make('commission_agency_master_usd')
-                ->label('COMISION USD'),
+                ->label('COMISION AGENCIA MASTER USD'),
             ExportColumn::make('commission_agency_master_ves')
-                ->label('COMISION VES'),
+                ->label('COMISION AGENCIA MASTER VES'),
             ExportColumn::make('porcent_agency_general')
                 ->label('% AGENCIA GENERAL'),
             ExportColumn::make('commission_agency_general_usd')
-                ->label('COMISION USD'),
+                ->label('COMISION AGENCIA GENERAL USD'),
             ExportColumn::make('commission_agency_general_ves')
-                ->label('COMISION VES'),
+                ->label('COMISION AGENCIA GENERAL VES'),
             ExportColumn::make('porcent_agente')
                 ->label('% AGENTE'),
             ExportColumn::make('commission_agent_usd')
-                ->label('COMISION USD'),
+                ->label('COMISION AGENTE USD'),
             ExportColumn::make('commission_agent_ves')
-                ->label('COMISION VES'),
+                ->label('COMISION AGENTE VES'),
             ExportColumn::make('porcent_referidor')
                 ->label('% REFERIDOR'),
             ExportColumn::make('commission_referidor_usd')
@@ -74,12 +87,27 @@ class CommissionExporter extends Exporter
         ];
     }
 
+    /**
+     * Estructura comercial completa sin una consulta por fila: agencia y su master, agente y
+     * su responsable (subagentes) y los referidores.
+     */
+    public static function modifyQuery(Builder $query): Builder
+    {
+        return $query->with([
+            'agency.masterAgency',
+            'agent.ownerAgent',
+            ...CommissionReferidorPercentage::eagerLoadRelations(),
+            'plan',
+            'coverage',
+        ]);
+    }
+
     public static function getCompletedNotificationBody(Export $export): string
     {
-        $body = 'Your commission export has completed and '.Number::format($export->successful_rows).' '.str('row')->plural($export->successful_rows).' exported.';
+        $body = 'La exportación de comisiones terminó: '.Number::format($export->successful_rows).' '.($export->successful_rows === 1 ? 'fila exportada' : 'filas exportadas').'.';
 
         if ($failedRowsCount = $export->getFailedRowsCount()) {
-            $body .= ' '.Number::format($failedRowsCount).' '.str('row')->plural($failedRowsCount).' failed to export.';
+            $body .= ' '.Number::format($failedRowsCount).' '.($failedRowsCount === 1 ? 'fila no se pudo exportar' : 'filas no se pudieron exportar').'.';
         }
 
         return $body;

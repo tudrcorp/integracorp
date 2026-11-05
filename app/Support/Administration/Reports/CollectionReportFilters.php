@@ -29,6 +29,8 @@ final readonly class CollectionReportFilters
 
     public const PERIOD_ALL = 'all';
 
+    public const PERIOD_THIS_YEAR = 'this_year';
+
     public const PERIOD_CUSTOM = 'custom';
 
     /** Prefijo de los plazos «vence en los próximos N días» (los mismos del resumen de Cuentas por cobrar). */
@@ -90,6 +92,27 @@ final readonly class CollectionReportFilters
             self::PERIOD_ALL => 'Toda la cartera',
             self::PERIOD_CUSTOM => 'Desde / hasta',
         ];
+    }
+
+    /**
+     * Periodos según el reporte: el de comisiones mira hacia atrás (fecha de cálculo); los de
+     * cobranza, hacia el vencimiento de la cuota.
+     *
+     * @return array<string, string>
+     */
+    public static function periodOptionsFor(?AdministrationReportType $type): array
+    {
+        if ($type?->isCommissions()) {
+            return [
+                self::PERIOD_THIS_MONTH => 'Este mes',
+                self::PERIOD_LAST_MONTH => 'Mes anterior',
+                self::PERIOD_THIS_YEAR => 'Este año',
+                self::PERIOD_ALL => 'Todo el historial',
+                self::PERIOD_CUSTOM => 'Desde / hasta',
+            ];
+        }
+
+        return self::periodOptions();
     }
 
     public static function nextDaysPeriod(int $days): string
@@ -159,7 +182,7 @@ final readonly class CollectionReportFilters
             type: $type,
             from: $from,
             to: $to,
-            collectionStatus: array_key_exists($status, self::collectionStatusOptions()) && $status !== self::STATUS_ALL ? $status : null,
+            collectionStatus: ! $type->isCommissions() && array_key_exists($status, self::collectionStatusOptions()) && $status !== self::STATUS_ALL ? $status : null,
             scope: $scope === '' ? null : $scope,
             agencyCode: $isStructure && $scope === self::SCOPE_AGENCY && $agencyCode !== '' ? $agencyCode : null,
             agentId: $isStructure && $scope === self::SCOPE_AGENT ? $agentId : null,
@@ -179,6 +202,7 @@ final readonly class CollectionReportFilters
 
         return match ($period) {
             self::PERIOD_ALL => [null, null],
+            self::PERIOD_THIS_YEAR => [$now->startOfYear(), $now->endOfYear()],
             self::PERIOD_NEXT_MONTH => [$now->addMonthNoOverflow()->startOfMonth(), $now->addMonthNoOverflow()->endOfMonth()],
             self::PERIOD_LAST_MONTH => [$now->subMonthNoOverflow()->startOfMonth(), $now->subMonthNoOverflow()->endOfMonth()],
             self::PERIOD_CUSTOM => [self::date($from, '«Desde»')->startOfDay(), self::date($to, '«Hasta»')->endOfDay()],
@@ -193,6 +217,14 @@ final readonly class CollectionReportFilters
      */
     public function describe(?string $scopeLabel = null): array
     {
+        if ($this->type->isCommissions()) {
+            return [
+                $this->from === null
+                    ? 'Fecha de cálculo: todo el historial'
+                    : 'Fecha de cálculo: del '.$this->from->format('d/m/Y').' al '.$this->to?->format('d/m/Y'),
+            ];
+        }
+
         $lines = [
             $this->from === null
                 ? 'Vencimiento: toda la cartera por cobrar'

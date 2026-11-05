@@ -282,6 +282,7 @@ final class DepartmentNavigationPermissionRegistry
         CollectionResource::class => ['gestion-de-cobranza'],
         AdministrationCreditReconciliationResource::class => ['conciliacion-de-credito'],
         AnnualCollectionResource::class => ['cobranza-por-mes'],
+        \App\Filament\Administration\Pages\DashboardCobranza::class => ['cobranza-por-mes'],
         CommissionResource::class => ['detallado-de-comisiones'],
         CommissionPayrollResource::class => ['reporte-de-comisiones'],
         TdevReportResource::class => ['reporte-tdev'],

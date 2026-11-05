@@ -195,6 +195,10 @@ final class CollectionReportBuilder
             return DroppedAffiliationCollectionsReport::count($filters);
         }
 
+        if ($filters->type === AdministrationReportType::CommissionsDetail) {
+            return CommissionsDetailReport::count($filters);
+        }
+
         return self::query($filters, $network)->reorder()->count();
     }
 
@@ -205,6 +209,10 @@ final class CollectionReportBuilder
     {
         if ($filters->type === AdministrationReportType::DroppedAffiliationCollections) {
             return DroppedAffiliationCollectionsReport::build($filters, $rowLimit);
+        }
+
+        if ($filters->type === AdministrationReportType::CommissionsDetail) {
+            return CommissionsDetailReport::build($filters, $rowLimit);
         }
 
         $network = self::network($filters);

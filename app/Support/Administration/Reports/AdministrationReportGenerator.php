@@ -99,6 +99,39 @@ final class AdministrationReportGenerator
         return $relativePath;
     }
 
+    /**
+     * Escribe un reporte propio (no de cobranza) en la carpeta del usuario con las mismas
+     * garantías: archivo `.part` renombrado al final y limpieza de los vencidos.
+     *
+     * @param  callable(string): void  $write  recibe la ruta absoluta donde escribir
+     */
+    public static function storeWith(int $userId, string $filename, callable $write): string
+    {
+        if (preg_match(self::FILENAME_PATTERN, $filename) !== 1) {
+            throw new \InvalidArgumentException('Nombre de archivo de reporte no válido.');
+        }
+
+        $disk = self::disk();
+        $relativePath = self::userDirectory($userId).'/'.$filename;
+        $disk->makeDirectory(self::userDirectory($userId));
+
+        $absolutePath = $disk->path($relativePath);
+        $partialPath = $absolutePath.'.part';
+
+        try {
+            $write($partialPath);
+            rename($partialPath, $absolutePath);
+        } catch (Throwable $exception) {
+            @unlink($partialPath);
+
+            throw $exception;
+        }
+
+        self::purgeExpired($userId);
+
+        return $relativePath;
+    }
+
     private static function pdfLimitNotice(CollectionReportFilters $filters): ?string
     {
         $total = CollectionReportBuilder::count($filters);

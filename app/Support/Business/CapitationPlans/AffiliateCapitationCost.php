@@ -42,7 +42,7 @@ final class AffiliateCapitationCost
     /**
      * @param  Affiliation|null  $affiliation  pásela cuando ya la tenga (relation manager) para no consultarla por fila
      */
-    public static function forAffiliate(Affiliate $affiliate, ?Affiliation $affiliation = null, bool $applyOverride = true): CapitationCostResult
+    public static function forAffiliate(Affiliate $affiliate, ?Affiliation $affiliation = null, bool $applyOverride = true, ?\DateTimeInterface $on = null): CapitationCostResult
     {
         $affiliation ??= $affiliate->affiliation;
 
@@ -55,12 +55,13 @@ final class AffiliateCapitationCost
             self::planId($affiliate->getAttribute('plan_id') ?? $affiliation->getAttribute('plan_id')),
             self::isActive($affiliate->getAttribute('status'), [self::ACTIVE_AFFILIATE])
                 && self::isActive($affiliation->getAttribute('status'), [self::ACTIVE_AFFILIATION]),
+            on: $on,
             subjectKey: self::subjectKey(CapitationSubject::AFFILIATE, $affiliate),
             applyOverride: $applyOverride,
         );
     }
 
-    public static function forAffiliateCorporate(AffiliateCorporate $affiliate, ?AffiliationCorporate $affiliation = null, bool $applyOverride = true): CapitationCostResult
+    public static function forAffiliateCorporate(AffiliateCorporate $affiliate, ?AffiliationCorporate $affiliation = null, bool $applyOverride = true, ?\DateTimeInterface $on = null): CapitationCostResult
     {
         $affiliation ??= $affiliate->affiliationCorporate;
 
@@ -73,6 +74,7 @@ final class AffiliateCapitationCost
             self::planId($affiliate->getAttribute('plan_id')),
             self::isActive($affiliate->getAttribute('status'), [self::ACTIVE_AFFILIATE])
                 && self::isActive($affiliation->getAttribute('status'), [self::ACTIVE_AFFILIATION]),
+            on: $on,
             subjectKey: self::subjectKey(CapitationSubject::AFFILIATE_CORPORATE, $affiliate),
             applyOverride: $applyOverride,
         );
@@ -82,7 +84,7 @@ final class AffiliateCapitationCost
      * Nuevos Negocios: el proveedor sale de la empresa y el plan TDEC del plan de catálogo
      * de su generador de planes (o, en su defecto, del plan base del generador).
      */
-    public static function forCompanyAssociate(CompanyAssociate $associate, bool $applyOverride = true): CapitationCostResult
+    public static function forCompanyAssociate(CompanyAssociate $associate, bool $applyOverride = true, ?\DateTimeInterface $on = null): CapitationCostResult
     {
         $company = $associate->company;
 
@@ -96,6 +98,7 @@ final class AffiliateCapitationCost
             $company->getAttribute('service_providers'),
             self::planId($generator?->getAttribute('catalog_plan_id') ?? $generator?->getAttribute('plan_id')),
             self::isActive($associate->getAttribute('status'), self::ACTIVE_ASSOCIATE_STATUSES),
+            on: $on,
             subjectKey: self::subjectKey(CapitationSubject::COMPANY_ASSOCIATE, $associate),
             applyOverride: $applyOverride,
         );

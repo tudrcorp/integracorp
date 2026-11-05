@@ -30,6 +30,15 @@ final class CollectionReceivableReport
 {
     public const PENDING_STATUS = CollectionDueDate::PENDING_STATUS;
 
+    /** Ventana de «Vencido» en el resumen: lo vencido en los últimos N días. */
+    public const OVERDUE_RECENT_DAYS = 30;
+
+    /** Cuota de afiliación corporativa («AFILIACIÓN CORPORATIVA», con o sin tilde). */
+    public const CORPORATE_TYPE_SQL = "UPPER(COALESCE(type, '')) LIKE '%CORPORATIV%'";
+
+    /** Avisos de cobro que no cuentan como recibos emitidos. */
+    public const VOIDED_NOTICE_STATUSES = ['ANULADO', 'CANCELADO'];
+
     public const STATUS_PENDING = CollectionDueDate::PENDING_STATUS;
 
     public const STATUS_OVERDUE = CollectionDueDate::STATUS_OVERDUE;
@@ -520,7 +529,7 @@ final class CollectionReceivableReport
      * la consulta (no solo la próxima), calculados en la base sin cargar filas. Recibe
      * la consulta de la tabla para respetar filtros y búsqueda.
      *
-     * @return array{rows_count: int, pending_count: int, pending_amount: float, overdue_count: int, overdue_amount: float, due_soon_count: int, due_soon_amount: float, due_windows: array<int, array{count: int, amount: float}>}
+     * @return array{rows_count: int, pending_count: int, pending_amount: float, overdue_count: int, overdue_amount: float, due_soon_count: int, due_soon_amount: float, due_windows: array<int, array{count: int, amount: float, by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}}>, overdue_recent_count: int, overdue_recent_amount: float, overdue_recent_by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}, overdue_older_count: int, overdue_older_amount: float, due_soon_by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}, pending_by_type: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}}
      */
     public static function summary(?Builder $query = null, ?CarbonImmutable $today = null): array
     {
@@ -548,16 +557,46 @@ final class CollectionReceivableReport
             ->selectRaw('SUM(CASE WHEN filter_next_payment_date BETWEEN ? AND ? THEN 1 ELSE 0 END) as due_soon_count', [$todayString, $soonString])
             ->selectRaw('COALESCE(SUM(CASE WHEN filter_next_payment_date BETWEEN ? AND ? THEN total_amount ELSE 0 END), 0) as due_soon_amount', [$todayString, $soonString]);
 
+        $recentFromString = $today->subDays(self::OVERDUE_RECENT_DAYS)->toDateString();
+        $corporate = self::CORPORATE_TYPE_SQL;
+        $ranges = [
+            'pending_all' => ['1 = 1', []],
+            'overdue_recent' => ['filter_next_payment_date >= ? AND filter_next_payment_date < ?', [$recentFromString, $todayString]],
+            'overdue_older' => ['filter_next_payment_date < ?', [$recentFromString]],
+            'due_soon' => ['filter_next_payment_date BETWEEN ? AND ?', [$todayString, $soonString]],
+        ];
+
         // Los plazos van en la misma consulta: un solo recorrido para todo el resumen.
         foreach (array_keys(self::DUE_WINDOWS) as $days) {
-            $untilString = $today->addDays($days)->toDateString();
+            $ranges["due_{$days}"] = ['filter_next_payment_date BETWEEN ? AND ?', [$todayString, $today->addDays($days)->toDateString()]];
+        }
 
+        foreach ($ranges as $key => [$condition, $bindings]) {
             $totalsQuery
-                ->selectRaw("SUM(CASE WHEN filter_next_payment_date BETWEEN ? AND ? THEN 1 ELSE 0 END) as due_{$days}_count", [$todayString, $untilString])
-                ->selectRaw("COALESCE(SUM(CASE WHEN filter_next_payment_date BETWEEN ? AND ? THEN total_amount ELSE 0 END), 0) as due_{$days}_amount", [$todayString, $untilString]);
+                ->selectRaw("SUM(CASE WHEN {$condition} THEN 1 ELSE 0 END) as {$key}_count", $bindings)
+                ->selectRaw("COALESCE(SUM(CASE WHEN {$condition} THEN total_amount ELSE 0 END), 0) as {$key}_amount", $bindings);
+
+            if ($key === 'overdue_older') {
+                continue;
+            }
+
+            foreach (['corporate' => $corporate, 'individual' => "NOT ({$corporate})"] as $type => $typeCondition) {
+                $totalsQuery
+                    ->selectRaw("SUM(CASE WHEN {$condition} AND {$typeCondition} THEN 1 ELSE 0 END) as {$key}_{$type}_count", $bindings)
+                    ->selectRaw("COALESCE(SUM(CASE WHEN {$condition} AND {$typeCondition} THEN total_amount ELSE 0 END), 0) as {$key}_{$type}_amount", $bindings)
+                    ->selectRaw("COUNT(DISTINCT CASE WHEN {$condition} AND {$typeCondition} THEN affiliation_code END) as {$key}_{$type}_affiliations", $bindings);
+            }
         }
 
         $totals = $totalsQuery->toBase()->first();
+
+        $byType = static fn (string $key): array => collect(['individual', 'corporate'])
+            ->mapWithKeys(fn (string $type): array => [$type => [
+                'affiliations' => (int) ($totals->{"{$key}_{$type}_affiliations"} ?? 0),
+                'count' => (int) ($totals->{"{$key}_{$type}_count"} ?? 0),
+                'amount' => (float) ($totals->{"{$key}_{$type}_amount"} ?? 0),
+            ]])
+            ->all();
 
         $dueWindows = [];
 
@@ -565,6 +604,7 @@ final class CollectionReceivableReport
             $dueWindows[$days] = [
                 'count' => (int) ($totals->{"due_{$days}_count"} ?? 0),
                 'amount' => (float) ($totals->{"due_{$days}_amount"} ?? 0),
+                'by_type' => $byType("due_{$days}"),
             ];
         }
 
@@ -577,7 +617,64 @@ final class CollectionReceivableReport
             'due_soon_count' => (int) ($totals->due_soon_count ?? 0),
             'due_soon_amount' => (float) ($totals->due_soon_amount ?? 0),
             'due_windows' => $dueWindows,
+            'overdue_recent_count' => (int) ($totals->overdue_recent_count ?? 0),
+            'overdue_recent_amount' => (float) ($totals->overdue_recent_amount ?? 0),
+            'overdue_recent_by_type' => $byType('overdue_recent'),
+            'overdue_older_count' => (int) ($totals->overdue_older_count ?? 0),
+            'overdue_older_amount' => (float) ($totals->overdue_older_amount ?? 0),
+            'due_soon_by_type' => $byType('due_soon'),
+            'pending_by_type' => $byType('pending_all'),
         ];
+    }
+
+    /**
+     * Recibos (avisos de cobro) emitidos en el mes y en el año de `$today`, separados en
+     * individuales y corporativos. Un aviso cuenta en el período de su **fecha de cobro**: el
+     * sistema crea de una vez todos los avisos del año al afiliar, así que la fecha de
+     * creación no dice cuándo se emiten. Entran los pagados y los por pagar; los anulados y
+     * cancelados, no. Una sola consulta acotada al año.
+     *
+     * @return array{month: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}, year: array{individual: array{affiliations: int, count: int, amount: float}, corporate: array{affiliations: int, count: int, amount: float}}}
+     */
+    public static function issuedNotices(?CarbonImmutable $today = null): array
+    {
+        $today ??= CarbonImmutable::today();
+        $yearRange = [$today->startOfYear()->toDateString(), $today->endOfYear()->toDateString()];
+        $monthRange = [$today->startOfMonth()->toDateString(), $today->endOfMonth()->toDateString()];
+        $corporate = self::CORPORATE_TYPE_SQL;
+
+        $query = Collection::query()
+            ->whereNotIn('status', self::VOIDED_NOTICE_STATUSES)
+            ->whereBetween('filter_next_payment_date', $yearRange);
+
+        $periods = [
+            'year' => ['1 = 1', []],
+            'month' => ['filter_next_payment_date BETWEEN ? AND ?', $monthRange],
+        ];
+
+        foreach ($periods as $period => [$condition, $bindings]) {
+            foreach (['corporate' => $corporate, 'individual' => "NOT ({$corporate})"] as $type => $typeCondition) {
+                $query
+                    ->selectRaw("SUM(CASE WHEN {$condition} AND {$typeCondition} THEN 1 ELSE 0 END) as {$period}_{$type}_count", $bindings)
+                    ->selectRaw("COALESCE(SUM(CASE WHEN {$condition} AND {$typeCondition} THEN total_amount ELSE 0 END), 0) as {$period}_{$type}_amount", $bindings)
+                    ->selectRaw("COUNT(DISTINCT CASE WHEN {$condition} AND {$typeCondition} THEN affiliation_code END) as {$period}_{$type}_affiliations", $bindings);
+            }
+        }
+
+        $totals = $query->toBase()->first();
+        $result = [];
+
+        foreach (array_keys($periods) as $period) {
+            foreach (['individual', 'corporate'] as $type) {
+                $result[$period][$type] = [
+                    'affiliations' => (int) ($totals->{"{$period}_{$type}_affiliations"} ?? 0),
+                    'count' => (int) ($totals->{"{$period}_{$type}_count"} ?? 0),
+                    'amount' => (float) ($totals->{"{$period}_{$type}_amount"} ?? 0),
+                ];
+            }
+        }
+
+        return ['month' => $result['month'], 'year' => $result['year']];
     }
 
     private static function individualAffiliation(Collection $collection): ?Affiliation

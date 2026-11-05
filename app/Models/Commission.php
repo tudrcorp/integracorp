@@ -17,6 +17,8 @@ class Commission extends Model
 
     private const CASA_MATRIZ_DISPLAY_NAME = 'TUDRENCASA';
 
+    private const AGENT_TYPE_SUBAGENT = 3;
+
     protected $table = 'commissions';
 
     protected $fillable = [
@@ -161,6 +163,53 @@ class Commission extends Model
         }
 
         $name = trim((string) ($agency->name_corporative ?? ''));
+
+        return $name !== '' ? $name : '-';
+    }
+
+    /**
+     * Agente de la estructura: si quien vendió es un subagente, su agente responsable
+     * (`owner_agent`); si no, el propio agente del pago.
+     */
+    public function structureAgentName(): string
+    {
+        $agent = $this->agent;
+
+        if (! $agent instanceof Agent) {
+            return '-';
+        }
+
+        $owner = $this->subagentOwner($agent);
+
+        return self::personName($owner ?? $agent);
+    }
+
+    /**
+     * Subagente que vendió, o "-" si el pago es de un agente.
+     */
+    public function subagentName(): string
+    {
+        $agent = $this->agent;
+
+        return $agent instanceof Agent && $this->subagentOwner($agent) instanceof Agent
+            ? self::personName($agent)
+            : '-';
+    }
+
+    private function subagentOwner(Agent $agent): ?Agent
+    {
+        if ((int) ($agent->agent_type_id ?? 0) !== self::AGENT_TYPE_SUBAGENT || blank($agent->owner_agent)) {
+            return null;
+        }
+
+        $owner = $agent->relationLoaded('ownerAgent') ? $agent->getRelation('ownerAgent') : $agent->ownerAgent;
+
+        return $owner instanceof Agent ? $owner : null;
+    }
+
+    private static function personName(Agent $agent): string
+    {
+        $name = trim((string) ($agent->name ?? ''));
 
         return $name !== '' ? $name : '-';
     }

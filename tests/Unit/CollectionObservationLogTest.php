@@ -169,9 +169,13 @@ it('la página solo acepta los plazos del resumen y la acción queda en la tabla
     ])
         ->and(CollectionReceivableReport::agingOptions())->toHaveKeys(CollectionReceivableReport::DUE_WINDOWS);
 
-    expect($page)
-        ->toContain('in_array($bucket, CollectionReceivableReport::DUE_WINDOWS, true)')
-        ->toContain('$this->updatedTableFilters()');
+    $widget = (string) file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Widgets/Collections/CollectionReceivablesKpis.php');
+
+    /** Los plazos pasaron al Dashboard de Cobranza: cada uno abre la tabla con su filtro. */
+    expect($widget)
+        ->toContain('foreach (CollectionReceivableReport::DUE_WINDOWS as $days => $bucket)')
+        ->toContain("'url' => self::tableUrl(\$bucket)")
+        ->and($page)->toContain("->label('Ver KPIs')");
 
     expect($action)
         ->toContain("Textarea::make('observation')")
@@ -207,8 +211,10 @@ it('el resumen se puede colapsar, empieza cerrado y usa el diseño de los panele
         // El giro de la flecha lo da el CSS por data-expanded: sin estilos enlazados.
         ->not->toContain('x-bind:style');
 
+    /** Cuentas por cobrar ya no lleva el resumen encima: se ve en el Dashboard de Cobranza. */
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Filament/Administration/Resources/AnnualCollections/Pages/ListAnnualCollections.php'))
-        ->toContain('SummaryCards::collapsible(');
+        ->not->toContain('SummaryCards::collapsible(')
+        ->toContain('DashboardCobranza::getUrl()');
 });
 
 it('Gestión de Cobranza usa el resumen colapsable con el orden por cobrar, vence en 7 días, vencidos', function (): void {
