@@ -250,6 +250,14 @@ class Agent extends Model
         return $this->belongsTo(self::class, 'referidor_agent_id');
     }
 
+    /**
+     * Agente responsable de un subagente (`owner_agent` guarda su id).
+     */
+    public function ownerAgent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'owner_agent');
+    }
+
     public function referredGeneralAgencies(): BelongsToMany
     {
         return $this->belongsToMany(Agency::class, 'referidor_assignments', 'referrer_agent_id', 'referred_agency_id')

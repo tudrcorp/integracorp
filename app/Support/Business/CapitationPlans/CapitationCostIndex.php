@@ -58,6 +58,7 @@ final class CapitationCostIndex
 
             $byAlias[$alias][] = [
                 'capitation_plan_id' => (int) $plan->getKey(),
+                'supplier_id' => (int) $supplier->getKey(),
                 'plan' => (string) $plan->name,
                 'provider' => (string) $supplier->name,
                 'cost' => round((float) $plan->cost_per_affiliate_usd, 2),

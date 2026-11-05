@@ -208,6 +208,10 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\Affiliation::observe(\App\Observers\AffiliationDropoutCollectionsObserver::class);
         \App\Models\Affiliation::observe(\App\Observers\MedicalQuestionnaireLegacyObserver::class);
         \App\Models\AffiliationCorporate::observe(\App\Observers\AffiliationDropoutCollectionsObserver::class);
+        /** Bitácora de altas y bajas con fecha (pre-facturación de capitado). */
+        foreach ([\App\Models\Affiliate::class, \App\Models\AffiliateCorporate::class, \App\Models\CompanyAssociate::class, \App\Models\Affiliation::class, \App\Models\AffiliationCorporate::class] as $statusMovementModel) {
+            $statusMovementModel::observe(\App\Observers\AffiliateStatusMovementObserver::class);
+        }
         CoordinationServiceTabCounts::registerCacheInvalidation();
 
         FilamentColor::register([

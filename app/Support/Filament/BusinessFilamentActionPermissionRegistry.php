@@ -94,6 +94,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const EDIT_CAPITATION_PER_AFFILIATE = 'editar-capitado-por-afiliado';
 
+    public const CAPITATION_BILLING_REPORT = 'prefacturacion-capitado';
+
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
      */
@@ -288,6 +290,11 @@ final class BusinessFilamentActionPermissionRegistry
             self::VIEW_HR_AMOUNTS => [
                 'name' => 'Ver sueldos y costo de nómina en el Escritorio',
                 'group' => 'RRHH',
+                'modules' => ['ADMINISTRACION'],
+            ],
+            self::CAPITATION_BILLING_REPORT => [
+                'name' => 'Centro de reportes: pre-facturación de capitado por proveedor Outsourcing (generar, cerrar y reabrir el mes con razón)',
+                'group' => 'REPORTES',
                 'modules' => ['ADMINISTRACION'],
             ],
             self::DELETE_PENDING_PAYMENT => [

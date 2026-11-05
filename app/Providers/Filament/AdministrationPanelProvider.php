@@ -119,6 +119,11 @@ class AdministrationPanelProvider extends PanelProvider
                 scopes: Dashboard::class,
             )
             ->renderHook(
+                PanelsRenderHook::PAGE_START,
+                fn () => view('filament.operations.dashboard.page-start', ['branding' => true, 'brandingLabel' => 'Administración · Cobranza']),
+                scopes: \App\Filament\Administration\Pages\DashboardCobranza::class,
+            )
+            ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn (): string => view('filament.hooks.quick-view')->render(),
             )
