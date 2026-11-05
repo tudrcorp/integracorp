@@ -19,3 +19,21 @@ it('replica el ordenamiento de tickets por status en todos los módulos', functi
         expect($contents)->toContain('HelpdeskTableConfigurator::configure');
     }
 });
+
+it('muestra el menú de acciones del ticket al lado izquierdo de la fila en todos los módulos', function () {
+    $contents = file_get_contents(dirname(__DIR__, 2).'/app/Support/HelpdeskTableConfigurator.php');
+
+    expect($contents)
+        ->toContain('use Filament\Tables\Enums\RecordActionsPosition;')
+        ->toContain('position: RecordActionsPosition::BeforeColumns')
+        ->toContain("ActionGroup::make(\$groupActions)->icon('heroicon-c-ellipsis-vertical')");
+});
+
+it('en telemedicina el menú de tres puntos del ticket también va a la izquierda de la fila', function () {
+    $contents = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Telemedicina/Resources/Helpdesks/Tables/HelpdesksTable.php');
+
+    expect($contents)
+        ->toContain('position: RecordActionsPosition::BeforeColumns')
+        ->toContain("->icon('heroicon-c-ellipsis-vertical')")
+        ->toContain('ViewAction::make()');
+});

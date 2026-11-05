@@ -17,6 +17,7 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -70,7 +71,7 @@ final class HelpdeskTableConfigurator
                 $modalActionsClass,
                 $helpdeskResourceClass,
                 $includeRecordEditAction,
-            ))
+            ), position: RecordActionsPosition::BeforeColumns)
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('toBacklog')
