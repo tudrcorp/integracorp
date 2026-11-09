@@ -6,6 +6,7 @@ namespace App\Support\Affiliations\Certificates;
 
 use App\Models\AffiliationCertificateDelivery;
 use App\Models\User;
+use App\Services\AffiliationCertificateDeliveryService;
 use Filament\Notifications\Notification;
 
 /**
@@ -22,14 +23,28 @@ final class CertificateDeliveryNotifier
         }
 
         $recipients = $delivery->delivered_to ?? [];
-        $what = $delivery->isCarnetsOnly() ? 'Los carnets de ' : 'El certificado de ';
+        $issue = $delivery->issue;
+        $what = 'Se envió '.CertificateDeliveryParts::describe(
+            $delivery->documentParts(),
+            $issue !== null ? AffiliationCertificateDeliveryService::carnetsCount($delivery, $issue) : 0,
+        ).' de ';
         $how = $delivery->delivery_method === AffiliationCertificateDelivery::METHOD_LINK
             ? ' Por su tamaño se envió como enlace de descarga, válido hasta el '.$delivery->link_expires_at?->format('d/m/Y').'.'
             : '';
 
+        $copies = '';
+
+        if ($delivery->copies_sent_at !== null && ($delivery->cc_recipients ?? []) !== []) {
+            $copies .= ' Con copia a '.implode(', ', $delivery->cc_recipients).'.';
+        }
+
+        if ($delivery->copies_sent_at !== null && ($delivery->bcc_recipients ?? []) !== []) {
+            $copies .= ' Copia oculta a '.implode(', ', $delivery->bcc_recipients).'.';
+        }
+
         Notification::make()
             ->title('Correo enviado')
-            ->body($what.self::code($delivery).' se envió a '.implode(', ', $recipients).'.'.$how)
+            ->body($what.self::code($delivery).' a '.implode(', ', $recipients).'.'.$copies.$how)
             ->success()
             ->sendToDatabase($user);
     }

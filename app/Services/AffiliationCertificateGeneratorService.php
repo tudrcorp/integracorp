@@ -11,6 +11,7 @@ use App\Models\AffiliationCertificateIssue;
 use App\Models\AffiliationCorporate;
 use App\Models\User;
 use App\Support\AffiliationCorporates\CorporateAffiliationContractedPlan;
+use App\Support\Affiliations\Certificates\CertificateDeliveryParts;
 use App\Support\Affiliations\Certificates\CertificateDocumentData;
 use App\Support\Affiliations\Certificates\CertificatePdfNotifier;
 use App\Support\Affiliations\Certificates\CertificateVerificationKey;
@@ -263,6 +264,74 @@ final class AffiliationCertificateGeneratorService
         }
 
         return CorporateCertificateDocument::build(AffiliationCorporate::query()->findOrFail($issue->affiliation_id), $issue, []);
+    }
+
+    /**
+     * Datos de un documento con solo las partes elegidas (certificado, relación
+     * de afiliados y/o carnets) para el envío por correo. Con carnets, `$carnetAffiliateIds`
+     * dice cuáles (solo los que ya lleva la emisión); sin carnets se ignora.
+     *
+     * @param  list<string>  $parts
+     * @param  list<int|string>  $carnetAffiliateIds
+     * @return array<string, mixed>
+     */
+    public function partialData(AffiliationCertificateIssue $issue, array $parts, array $carnetAffiliateIds = []): array
+    {
+        $kinds = CertificateDeliveryParts::pageKinds($parts);
+
+        if ($kinds === []) {
+            throw new InvalidArgumentException('Elija qué parte del documento desea enviar.');
+        }
+
+        $ids = [];
+
+        if (in_array(CertificateDeliveryParts::CARNETS, $parts, true)) {
+            $allowed = array_flip(array_map('intval', $issue->carnet_affiliate_ids ?? []));
+            $ids = array_values(array_filter(
+                array_values(array_unique(array_map('intval', $carnetAffiliateIds))),
+                static fn (int $id): bool => isset($allowed[$id]),
+            ));
+
+            if ($ids === []) {
+                throw new InvalidArgumentException('Elija al menos un carnet de esta emisión.');
+            }
+        }
+
+        if ($issue->isIndividual()) {
+            $affiliation = Affiliation::query()->with(IndividualCertificateDocument::eagerLoads())->findOrFail($issue->affiliation_id);
+            $data = IndividualCertificateDocument::build($affiliation, $issue, $ids);
+        } else {
+            $data = CorporateCertificateDocument::build(AffiliationCorporate::query()->findOrFail($issue->affiliation_id), $issue, $ids);
+        }
+
+        $pages = array_values(array_filter($data['pages'], static fn (array $page): bool => in_array($page['kind'], $kinds, true)));
+
+        if ($pages === []) {
+            throw new InvalidArgumentException('Las partes elegidas no tienen contenido vigente en la afiliación.');
+        }
+
+        foreach ($pages as $index => $page) {
+            $pages[$index]['num'] = $index + 1;
+        }
+
+        $data['pages'] = $pages;
+        $data['totalPaginas'] = count($pages);
+        // Sin la relación, la portada no remite a páginas que no van en el documento.
+        $data['relPaginas'] = CertificateDocumentData::relationPagesLabel($pages);
+
+        return $data;
+    }
+
+    /**
+     * Dibuja y guarda el PDF con las partes elegidas. Idempotente como el de carnets.
+     *
+     * @param  list<string>  $parts
+     * @param  list<int|string>  $carnetAffiliateIds
+     * @return string Ruta absoluta
+     */
+    public function partialFile(AffiliationCertificateIssue $issue, array $parts, array $carnetAffiliateIds, string $relative): string
+    {
+        return $this->storeDocument($relative, fn (): array => $this->partialData($issue, $parts, $carnetAffiliateIds));
     }
 
     /**

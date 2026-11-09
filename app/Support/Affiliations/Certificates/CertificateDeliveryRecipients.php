@@ -12,12 +12,74 @@ use App\Models\AffiliationCorporate;
  * Destinatarios sugeridos al enviar un certificado por correo: el dueño de la
  * afiliación (el agente; si no tiene, la agencia) y los correos de la propia
  * afiliación (titular y pagador en la individual; principal y de contacto en la
- * corporativa). El analista puede quitar o agregar antes de enviar.
+ * corporativa). El analista puede quitar o agregar antes de enviar, y sumar
+ * testigos (CC) y copias ocultas (CCO) además de la fija {@see self::MANDATORY_BCC}.
  */
 final class CertificateDeliveryRecipients
 {
     /** Tope de destinatarios por envío: evita que el generador sirva de envío masivo. */
     public const MAX_RECIPIENTS = 10;
+
+    /** Tope de correos testigos (CC) y, aparte, de copias ocultas (CCO) por envío. */
+    public const MAX_COPIES = 10;
+
+    /**
+     * Copia oculta que lleva todo envío del generador. No se puede quitar: el
+     * servicio la agrega aunque no llegue del formulario.
+     *
+     * @var list<string>
+     */
+    public const MANDATORY_BCC = ['solrodriguez@tudrencasa.com'];
+
+    /**
+     * Reparte las copias sin repetir a nadie: un correo que ya va en «Para» no
+     * se copia, y uno que va en CC no se repite en CCO. La copia oculta fija
+     * siempre queda, salvo que ya reciba el correo como destinatario o testigo.
+     *
+     * @param  list<string>  $to
+     * @param  iterable<mixed>  $cc
+     * @param  iterable<mixed>  $bcc
+     * @return array{cc: list<string>, bcc: list<string>}
+     */
+    public static function copies(array $to, iterable $cc, iterable $bcc): array
+    {
+        $taken = array_flip($to);
+        $ccClean = array_values(array_filter(self::clean($cc), static fn (string $email): bool => ! isset($taken[$email])));
+
+        $taken += array_flip($ccClean);
+        $bccClean = array_values(array_filter(
+            self::clean([...self::MANDATORY_BCC, ...self::toList($bcc)]),
+            static fn (string $email): bool => ! isset($taken[$email]),
+        ));
+
+        return ['cc' => $ccClean, 'bcc' => $bccClean];
+    }
+
+    /**
+     * La copia oculta fija al frente, seguida de lo que haya escrito el analista.
+     *
+     * @param  iterable<mixed>  $bcc
+     * @return list<string>
+     */
+    public static function withMandatoryBcc(iterable $bcc): array
+    {
+        return self::clean([...self::MANDATORY_BCC, ...self::toList($bcc)]);
+    }
+
+    /**
+     * @param  iterable<mixed>  $values
+     * @return list<mixed>
+     */
+    private static function toList(iterable $values): array
+    {
+        $list = [];
+
+        foreach ($values as $value) {
+            $list[] = $value;
+        }
+
+        return $list;
+    }
 
     /**
      * @return list<array{email: string, label: string}>
