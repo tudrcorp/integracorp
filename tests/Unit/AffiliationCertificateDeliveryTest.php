@@ -8,7 +8,9 @@ use App\Models\AffiliationCertificateDelivery;
 use App\Models\AffiliationCertificateIssue;
 use App\Models\User;
 use App\Services\AffiliationCertificateDeliveryService;
+use App\Support\Affiliations\Certificates\CertificateDeliveryParts;
 use App\Support\Affiliations\Certificates\CertificateDeliveryRecipients;
+use App\Support\Affiliations\Certificates\CertificateDeliveryRememberedCopies;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
@@ -80,6 +82,141 @@ it('registra el envío del documento completo y lo pone en cola', function (): v
     Queue::assertPushed(SendAffiliationCertificateDeliveryJob::class, fn ($job): bool => $job->deliveryId === $delivery->id);
 });
 
+it('reparte las copias sin repetir a nadie y siempre agrega la copia oculta fija', function (): void {
+    expect(CertificateDeliveryRecipients::copies(
+        ['ana@example.com'],
+        ['Testigo@Example.com', 'ana@example.com', 'malo@'],
+        ['testigo@example.com', 'oculto@example.com'],
+    ))->toBe([
+        'cc' => ['testigo@example.com'],
+        'bcc' => ['solrodriguez@tudrencasa.com', 'oculto@example.com'],
+    ])
+        ->and(CertificateDeliveryRecipients::copies(['ana@example.com'], [], [])['bcc'])->toBe(['solrodriguez@tudrencasa.com'])
+        ->and(CertificateDeliveryRecipients::copies(['solrodriguez@tudrencasa.com'], [], [])['bcc'])->toBe([])
+        ->and(CertificateDeliveryRecipients::withMandatoryBcc(['otro@example.com']))->toBe(['solrodriguez@tudrencasa.com', 'otro@example.com']);
+});
+
+it('guarda testigos y copias ocultas, con la fija aunque el formulario no la mande', function (): void {
+    $delivery = app(AffiliationCertificateDeliveryService::class)->request(
+        deliveryTestIssue(),
+        AffiliationCertificateDelivery::CONTENT_FULL,
+        [],
+        ['a@example.com'],
+        null,
+        deliveryTestUser(),
+        ['testigo@example.com'],
+        ['oculto@example.com'],
+    );
+
+    expect($delivery->cc_recipients)->toBe(['testigo@example.com'])
+        ->and($delivery->bcc_recipients)->toBe(['solrodriguez@tudrencasa.com', 'oculto@example.com'])
+        ->and($delivery->copies_sent_at)->toBeNull();
+});
+
+it('rechaza demasiados testigos o copias ocultas', function (array $cc, array $bcc, string $error): void {
+    expect(fn () => app(AffiliationCertificateDeliveryService::class)->request(
+        deliveryTestIssue(),
+        AffiliationCertificateDelivery::CONTENT_FULL,
+        [],
+        ['a@example.com'],
+        null,
+        deliveryTestUser(),
+        $cc,
+        $bcc,
+    ))->toThrow(InvalidArgumentException::class, $error);
+
+    Queue::assertNothingPushed();
+})->with([
+    'once testigos' => [array_map(fn (int $i): string => "t{$i}@example.com", range(1, 11)), [], 'hasta 10 correos testigos'],
+    'diez ocultas más la fija' => [[], array_map(fn (int $i): string => "o{$i}@example.com", range(1, 10)), 'contando la fija'],
+]);
+
+it('las copias viajan una sola vez, en el primer correo, aunque haya varios destinatarios y reintentos', function (): void {
+    $service = app(AffiliationCertificateDeliveryService::class);
+    $delivery = $service->request(deliveryTestIssue(), AffiliationCertificateDelivery::CONTENT_FULL, [], ['a@example.com', 'b@example.com'], null, deliveryTestUser(), ['testigo@example.com'], []);
+
+    $service->deliver($delivery->fresh());
+    $service->deliver($delivery->fresh());
+
+    expect($delivery->fresh()->copies_sent_at)->not->toBeNull();
+
+    Mail::assertSentCount(2);
+    Mail::assertSent(AffiliationCertificateDeliveryMail::class, fn (AffiliationCertificateDeliveryMail $mail): bool => $mail->hasTo('a@example.com')
+        && $mail->hasCc('testigo@example.com')
+        && $mail->hasBcc('solrodriguez@tudrencasa.com'));
+    Mail::assertSent(AffiliationCertificateDeliveryMail::class, fn (AffiliationCertificateDeliveryMail $mail): bool => $mail->hasTo('b@example.com')
+        && $mail->cc === []
+        && $mail->bcc === []);
+});
+
+it('si el primer correo ya salió con copias, el reintento no las repite', function (): void {
+    $service = app(AffiliationCertificateDeliveryService::class);
+    $delivery = $service->request(deliveryTestIssue(), AffiliationCertificateDelivery::CONTENT_FULL, [], ['a@example.com', 'b@example.com'], null, deliveryTestUser(), ['testigo@example.com'], []);
+    $delivery->forceFill(['delivered_to' => ['a@example.com'], 'copies_sent_at' => now()])->save();
+
+    $service->deliver($delivery->fresh());
+
+    Mail::assertSentCount(1);
+    Mail::assertSent(AffiliationCertificateDeliveryMail::class, fn (AffiliationCertificateDeliveryMail $mail): bool => $mail->hasTo('b@example.com') && $mail->bcc === []);
+});
+
+it('un envío registrado antes de las copias igual sale con la copia oculta fija', function (): void {
+    $issue = deliveryTestIssue();
+    $delivery = AffiliationCertificateDelivery::query()->create([
+        'affiliation_certificate_issue_id' => $issue->id,
+        'content' => AffiliationCertificateDelivery::CONTENT_FULL,
+        'recipients' => ['a@example.com'],
+        'delivered_to' => [],
+        'status' => AffiliationCertificateDelivery::STATUS_PENDING,
+    ]);
+
+    app(AffiliationCertificateDeliveryService::class)->deliver($delivery->fresh());
+
+    Mail::assertSent(AffiliationCertificateDeliveryMail::class, fn (AffiliationCertificateDeliveryMail $mail): bool => $mail->hasBcc('solrodriguez@tudrencasa.com'));
+});
+
+it('recuerda testigos y copias ocultas por separado, los reemplaza y los olvida al apagar el interruptor', function (): void {
+    $user = deliveryTestUser();
+    $otherPreferences = ['quick_view' => true];
+    $user->forceFill(['ui_preferences' => $otherPreferences])->saveQuietly();
+    $cc = CertificateDeliveryRememberedCopies::KIND_CC;
+    $bcc = CertificateDeliveryRememberedCopies::KIND_BCC;
+
+    expect(CertificateDeliveryRememberedCopies::for($user->fresh(), $cc))->toBe([])
+        ->and(CertificateDeliveryRememberedCopies::for($user->fresh(), $bcc))->toBe([]);
+
+    CertificateDeliveryRememberedCopies::update($user, $cc, [' Testigo@Example.com', 'malo@', 'testigo@example.com', 'otro@example.com'], true);
+    CertificateDeliveryRememberedCopies::update($user, $bcc, ['solrodriguez@tudrencasa.com', 'Oculto@Example.com'], true);
+
+    expect(CertificateDeliveryRememberedCopies::for($user->fresh(), $cc))->toBe(['testigo@example.com', 'otro@example.com'])
+        ->and(CertificateDeliveryRememberedCopies::for($user->fresh(), $bcc))->toBe(['oculto@example.com'])
+        ->and($user->fresh()->ui_preferences['quick_view'])->toBeTrue();
+
+    CertificateDeliveryRememberedCopies::update($user, $cc, ['nuevo@example.com'], true);
+    expect(CertificateDeliveryRememberedCopies::for($user->fresh(), $cc))->toBe(['nuevo@example.com'])
+        ->and(CertificateDeliveryRememberedCopies::for($user->fresh(), $bcc))->toBe(['oculto@example.com']);
+
+    CertificateDeliveryRememberedCopies::update($user, $cc, ['nuevo@example.com'], false);
+    CertificateDeliveryRememberedCopies::update($user, $bcc, ['solrodriguez@tudrencasa.com'], true);
+    expect(CertificateDeliveryRememberedCopies::for($user->fresh(), $cc))->toBe([])
+        ->and(CertificateDeliveryRememberedCopies::for($user->fresh(), $bcc))->toBe([])
+        ->and($user->fresh()->ui_preferences)->toBe($otherPreferences);
+});
+
+it('lo recordado se lee con tolerancia: sin usuario, basura, demasiados correos o tipo desconocido', function (): void {
+    $many = [...array_map(fn (int $i): string => "t{$i}@example.com", range(1, 12)), 'malo@'];
+    $user = User::factory()->make(['ui_preferences' => [
+        CertificateDeliveryRememberedCopies::preferenceKey(CertificateDeliveryRememberedCopies::KIND_CC) => $many,
+        CertificateDeliveryRememberedCopies::preferenceKey(CertificateDeliveryRememberedCopies::KIND_BCC) => $many,
+    ]]);
+
+    expect(CertificateDeliveryRememberedCopies::for(null, CertificateDeliveryRememberedCopies::KIND_CC))->toBe([])
+        ->and(CertificateDeliveryRememberedCopies::for($user, CertificateDeliveryRememberedCopies::KIND_CC))->toHaveCount(10)
+        ->and(CertificateDeliveryRememberedCopies::for($user, CertificateDeliveryRememberedCopies::KIND_BCC))->toHaveCount(9)
+        ->and(CertificateDeliveryRememberedCopies::for(User::factory()->make(['ui_preferences' => ['certificate_delivery_cc' => 'texto']]), CertificateDeliveryRememberedCopies::KIND_CC))->toBe([])
+        ->and(fn () => CertificateDeliveryRememberedCopies::for($user, 'otro'))->toThrow(InvalidArgumentException::class);
+});
+
 it('rechaza envíos sin correos válidos, con demasiados destinatarios o sin carnets', function (string $content, array $carnets, array $emails, string $error): void {
     $issue = deliveryTestIssue();
 
@@ -94,13 +231,86 @@ it('rechaza envíos sin correos válidos, con demasiados destinatarios o sin car
     'contenido desconocido' => ['otro', [], ['a@example.com'], 'qué desea enviar'],
 ]);
 
+it('ofrece solo las partes que tiene la emisión y las nombra en el correo', function (): void {
+    $issue = deliveryTestIssue();
+    $single = deliveryTestIssue(carnets: []);
+    $single->forceFill(['affiliates_count' => 1])->save();
+
+    expect(CertificateDeliveryParts::availableFor($issue))->toBe(CertificateDeliveryParts::ORDER)
+        ->and(CertificateDeliveryParts::optionsFor($issue))->toBe([
+            'certificate' => 'Certificado',
+            'affiliates' => 'Lista de afiliados (3)',
+            'carnets' => 'Carnets (3)',
+        ])
+        ->and(CertificateDeliveryParts::availableFor($single))->toBe([CertificateDeliveryParts::CERTIFICATE])
+        ->and(CertificateDeliveryParts::clean(['carnets', 'certificate', 'certificate', 'otro', 5], $issue))->toBe(['certificate', 'carnets'])
+        ->and(CertificateDeliveryParts::clean(['carnets'], $single))->toBe([])
+        ->and(CertificateDeliveryParts::pageKinds(['certificate', 'carnets']))->toBe(['cert', 'cont', 'carnet'])
+        ->and(CertificateDeliveryParts::describe(CertificateDeliveryParts::ORDER, 3))->toBe('el certificado de afiliación, la relación de afiliados y los 3 carnets de afiliado')
+        ->and(CertificateDeliveryParts::describe(['affiliates'], 0))->toBe('la relación de afiliados')
+        ->and(CertificateDeliveryParts::subject(['affiliates', 'carnets'], 2))->toBe('Documentos de afiliación')
+        ->and(CertificateDeliveryParts::subject(['carnets'], 1))->toBe('Carnet de afiliado')
+        ->and(CertificateDeliveryParts::subject(['affiliates'], 0))->toBe('Relación de afiliados');
+});
+
+it('todo junto con todos los carnets es el documento completo; cualquier otra combinación arma un PDF aparte', function (array $parts, ?array $carnets, string $content, ?array $storedCarnets): void {
+    $delivery = app(AffiliationCertificateDeliveryService::class)->request(deliveryTestIssue(), $parts, $carnets, ['a@example.com'], null, deliveryTestUser());
+
+    expect($delivery->content)->toBe($content)
+        ->and($delivery->parts)->toBe(array_values(array_intersect(CertificateDeliveryParts::ORDER, $parts)))
+        ->and($delivery->carnet_affiliate_ids)->toBe($storedCarnets);
+})->with([
+    'todo, todos los carnets' => [CertificateDeliveryParts::ORDER, null, AffiliationCertificateDelivery::CONTENT_FULL, null],
+    'todo, carnets elegidos que son todos' => [CertificateDeliveryParts::ORDER, [13, 12, 11], AffiliationCertificateDelivery::CONTENT_FULL, null],
+    'todo, algunos carnets' => [CertificateDeliveryParts::ORDER, [12], AffiliationCertificateDelivery::CONTENT_CUSTOM, [12]],
+    'certificado y carnets, sin lista' => [['carnets', 'certificate'], null, AffiliationCertificateDelivery::CONTENT_CUSTOM, [11, 12, 13]],
+    'solo la lista' => [['affiliates'], [11], AffiliationCertificateDelivery::CONTENT_CUSTOM, null],
+    'solo algunos carnets' => [['carnets'], [11, 999], AffiliationCertificateDelivery::CONTENT_CUSTOM, [11]],
+]);
+
+it('rechaza partes vacías o una elección de carnets sin carnets válidos', function (array $parts, ?array $carnets, string $error): void {
+    expect(fn () => app(AffiliationCertificateDeliveryService::class)->request(deliveryTestIssue(), $parts, $carnets, ['a@example.com'], null, deliveryTestUser()))
+        ->toThrow(InvalidArgumentException::class, $error);
+
+    Queue::assertNothingPushed();
+})->with([
+    'sin partes' => [[], null, 'qué desea enviar'],
+    'partes desconocidas' => [['otra'], null, 'qué desea enviar'],
+    'elegir carnets sin elegir' => [['carnets'], [], 'al menos un carnet'],
+    'carnets ajenos' => [['certificate', 'carnets'], [500], 'al menos un carnet'],
+]);
+
+it('el correo nombra las partes enviadas y el archivo lleva su nombre', function (): void {
+    $issue = deliveryTestIssue();
+    $mail = new AffiliationCertificateDeliveryMail(1, 'TDEC-IND-TEST', 'PLAN', false, 2, null, null, 'x.pdf', null, null, ['certificate', 'carnets']);
+    $html = $mail->render();
+    $list = app(AffiliationCertificateDeliveryService::class)->request($issue, ['affiliates'], null, ['a@example.com'], null, deliveryTestUser());
+
+    expect($html)->toContain('el certificado de afiliación y los 2 carnets de afiliado')
+        ->toContain('conservar estos documentos')
+        ->and($mail->envelope()->subject)->toBe('Certificado de afiliación TDEC-IND-TEST — Tu Doctor en Casa')
+        ->and(AffiliationCertificateDeliveryService::fileName($list, $issue))->toStartWith('Relacion-afiliados-')
+        ->and(AffiliationCertificateDeliveryService::carnetsCount($list, $issue))->toBe(0);
+});
+
+it('los envíos anteriores a la elección por partes se leen desde su contenido', function (): void {
+    $legacy = fn (string $content): AffiliationCertificateDelivery => new AffiliationCertificateDelivery(['content' => $content]);
+
+    expect($legacy(AffiliationCertificateDelivery::CONTENT_FULL)->documentParts())->toBe(CertificateDeliveryParts::ORDER)
+        ->and($legacy(AffiliationCertificateDelivery::CONTENT_CERTIFICATE)->documentParts())->toBe(['certificate', 'affiliates'])
+        ->and($legacy(AffiliationCertificateDelivery::CONTENT_CARNETS)->isCarnetsOnly())->toBeTrue()
+        ->and($legacy(AffiliationCertificateDelivery::CONTENT_FULL)->usesOwnFile())->toBeFalse()
+        ->and($legacy(AffiliationCertificateDelivery::CONTENT_CERTIFICATE)->usesOwnFile())->toBeTrue();
+});
+
 it('acepta «solo el certificado» aun mientras el completo se dibuja en cola', function (): void {
     $issue = deliveryTestIssue();
     $issue->forceFill(['pdf_status' => AffiliationCertificateIssue::PDF_PROCESSING])->save();
 
     $delivery = app(AffiliationCertificateDeliveryService::class)->request($issue, AffiliationCertificateDelivery::CONTENT_CERTIFICATE, [11], ['a@example.com'], null, deliveryTestUser());
 
-    expect($delivery->content)->toBe(AffiliationCertificateDelivery::CONTENT_CERTIFICATE)
+    expect($delivery->content)->toBe(AffiliationCertificateDelivery::CONTENT_CUSTOM)
+        ->and($delivery->documentParts())->toBe([CertificateDeliveryParts::CERTIFICATE, CertificateDeliveryParts::AFFILIATES])
         ->and($delivery->carnet_affiliate_ids)->toBeNull()
         ->and($delivery->isCertificateOnly())->toBeTrue()
         ->and($delivery->usesOwnFile())->toBeTrue();
@@ -225,5 +435,16 @@ it('el generador individual y el corporativo muestran «Enviar por correo» junt
         ->and(file_get_contents($root.'/app/Filament/Business/Resources/Affiliations/Concerns/SendsAffiliationCertificateByEmail.php'))
         ->toContain('CertificateDeliveryRecipients::defaultsFor($issue)')
         ->toContain("->nestedRecursiveRules(['email:filter', 'max:150'])")
-        ->toContain("'Solo el certificado (sin carnets)'");
+        ->toContain("CheckboxList::make('parts')")
+        ->toContain("Radio::make('carnets_scope')")
+        ->toContain("Section::make('Copias y mensaje')")
+        ->toContain('->collapsible()')
+        ->toContain("TagsInput::make('cc_recipients')")
+        ->toContain("TagsInput::make('bcc_recipients')")
+        ->toContain('CertificateDeliveryRecipients::withMandatoryBcc(')
+        ->toContain("Toggle::make('remember_cc')")
+        ->toContain("Toggle::make('remember_bcc')")
+        ->toContain("'cc_recipients' => \$rememberedCc,")
+        ->toContain("'bcc_recipients' => CertificateDeliveryRecipients::withMandatoryBcc(\$rememberedBcc),")
+        ->toContain('CertificateDeliveryRememberedCopies::KIND_BCC, (array) ($data[\'bcc_recipients\']');
 });

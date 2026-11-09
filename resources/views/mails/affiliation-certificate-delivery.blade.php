@@ -15,6 +15,13 @@
             ? ($carnetsCount === 1 ? 'el carnet de afiliado' : 'los '.$carnetsCount.' carnets de afiliado')
             : 'el certificado de afiliación'.($carnetsCount > 0 ? ' con '.($carnetsCount === 1 ? 'su carnet' : 'sus '.$carnetsCount.' carnets') : '');
         $plural = $carnetsOnly && $carnetsCount > 1;
+        $keepAdvice = $carnetsOnly ? ($plural ? 'Le recomendamos conservar los carnets en su teléfono o impresos.' : 'Le recomendamos conservar el carnet en su teléfono o impreso.') : ($carnetsCount > 0 ? 'Le recomendamos conservar el certificado y los carnets en su teléfono o impresos.' : 'Le recomendamos conservar el certificado en su teléfono o impreso.');
+
+        if (! empty($parts)) {
+            $document = \App\Support\Affiliations\Certificates\CertificateDeliveryParts::describe($parts, $carnetsCount);
+            $plural = count($parts) > 1 || ($carnetsOnly && $carnetsCount > 1);
+            $keepAdvice = $plural ? 'Le recomendamos conservar estos documentos en su teléfono o impresos.' : 'Le recomendamos conservar este documento en su teléfono o impreso.';
+        }
     @endphp
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f6fb; padding:24px 12px;">
@@ -63,7 +70,7 @@
                             @endif
 
                             <p style="margin:0 0 12px 0;">
-                                {{ $carnetsOnly ? ($plural ? 'Le recomendamos conservar los carnets en su teléfono o impresos.' : 'Le recomendamos conservar el carnet en su teléfono o impreso.') : ($carnetsCount > 0 ? 'Le recomendamos conservar el certificado y los carnets en su teléfono o impresos.' : 'Le recomendamos conservar el certificado en su teléfono o impreso.') }}
+                                {{ $keepAdvice }}
                                 Con el código QR podrá verificar la vigencia y acceder a los contactos de atención las 24 horas.
                             </p>
 

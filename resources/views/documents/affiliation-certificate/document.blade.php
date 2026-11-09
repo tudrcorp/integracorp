@@ -132,7 +132,7 @@
                 <td style="width:100px; padding:12px 0 12px 18px; white-space:nowrap; font-size:32px; line-height:1; font-weight:bold; color:#2D89CA;">{{ $data['nAfiliados'] }}</td>
                 <td style="width:584px; padding:12px 18px 12px 0;">
                     <div style="font-size:14px; font-weight:bold;">{{ $data['grupoTitulo'] }}</div>
-                    <div class="soft" style="font-size:11px; margin-top:2px;">La relación completa de afiliados se encuentra disponible en {{ $data['relPaginas'] }}.</div>
+                    <div class="soft" style="font-size:11px; margin-top:2px;">{{ filled($data['relPaginas']) ? 'La relación completa de afiliados se encuentra disponible en '.$data['relPaginas'].'.' : 'La relación completa de afiliados se entrega en un documento aparte.' }}</div>
                 </td>
             </tr></table>
         @endif

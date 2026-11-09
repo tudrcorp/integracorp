@@ -9,6 +9,7 @@ use App\Mail\AffiliationCertificateDeliveryMail;
 use App\Models\AffiliationCertificateDelivery;
 use App\Models\AffiliationCertificateIssue;
 use App\Models\User;
+use App\Support\Affiliations\Certificates\CertificateDeliveryParts;
 use App\Support\Affiliations\Certificates\CertificateDeliveryRecipients;
 use App\Support\SecurityAudit;
 use Illuminate\Support\Facades\DB;
@@ -19,10 +20,16 @@ use InvalidArgumentException;
 
 /**
  * Envío por correo de un certificado del generador: el documento completo o
- * solo algunos carnets. Hasta {@see self::MAX_ATTACHMENT_BYTES} va adjunto; por
+ * solo las partes elegidas (certificado, lista de afiliados y/o carnets,
+ * todos o algunos). Hasta {@see self::MAX_ATTACHMENT_BYTES} va adjunto; por
  * encima (corporativos grandes), un enlace de descarga firmado que vence a los
  * {@see self::LINK_DAYS} días, porque la mayoría de los buzones rechaza adjuntos
  * de más de 10–25 MB.
+ *
+ * Cada destinatario recibe su propio correo. Los testigos (CC) y las copias
+ * ocultas (CCO, siempre con {@see CertificateDeliveryRecipients::MANDATORY_BCC})
+ * viajan una sola vez, en el primer correo que sale, para que no reciban una
+ * copia por cada destinatario.
  */
 final class AffiliationCertificateDeliveryService
 {
@@ -31,7 +38,7 @@ final class AffiliationCertificateDeliveryService
 
     public const LINK_DAYS = 30;
 
-    /** Carnets por envío de «solo carnets»: ~15 hojas, se dibujan en segundos. */
+    /** Carnets elegidos uno a uno por envío: ~15 hojas, se dibujan en segundos. */
     public const MAX_CARNETS_PER_DELIVERY = 60;
 
     public const FILE_DIRECTORY = 'certificados-generador/envios';
@@ -41,16 +48,25 @@ final class AffiliationCertificateDeliveryService
     /**
      * Registra el envío y lo pone en cola.
      *
-     * @param  list<int|string>  $carnetAffiliateIds
+     * `$what` son las partes ({@see CertificateDeliveryParts}) o, por compatibilidad,
+     * un `CONTENT_*`. Con carnets, `$carnetAffiliateIds` nulo envía todos los de la
+     * emisión y una lista, solo esos.
+     *
+     * @param  string|list<string>  $what
+     * @param  list<int|string>|null  $carnetAffiliateIds
      * @param  iterable<mixed>  $recipients
+     * @param  iterable<mixed>  $ccRecipients  correos testigos (copia visible)
+     * @param  iterable<mixed>  $bccRecipients  copias ocultas adicionales a la fija
      */
     public function request(
         AffiliationCertificateIssue $issue,
-        string $content,
-        array $carnetAffiliateIds,
+        string|array $what,
+        ?array $carnetAffiliateIds,
         iterable $recipients,
         ?string $message,
         User $user,
+        iterable $ccRecipients = [],
+        iterable $bccRecipients = [],
     ): AffiliationCertificateDelivery {
         $emails = CertificateDeliveryRecipients::clean($recipients);
 
@@ -62,40 +78,68 @@ final class AffiliationCertificateDeliveryService
             throw new InvalidArgumentException('Puede enviar a un máximo de '.CertificateDeliveryRecipients::MAX_RECIPIENTS.' correos por envío.');
         }
 
-        $carnets = [];
+        $copies = CertificateDeliveryRecipients::copies($emails, $ccRecipients, $bccRecipients);
 
-        if ($content === AffiliationCertificateDelivery::CONTENT_FULL) {
+        if (count($copies['cc']) > CertificateDeliveryRecipients::MAX_COPIES) {
+            throw new InvalidArgumentException('Puede agregar hasta '.CertificateDeliveryRecipients::MAX_COPIES.' correos testigos (CC) por envío.');
+        }
+
+        if (count($copies['bcc']) > CertificateDeliveryRecipients::MAX_COPIES) {
+            throw new InvalidArgumentException('Puede agregar hasta '.CertificateDeliveryRecipients::MAX_COPIES.' copias ocultas (CCO) por envío, contando la fija.');
+        }
+
+        [$parts, $carnetAffiliateIds] = self::resolveParts($issue, $what, $carnetAffiliateIds);
+
+        if ($parts === []) {
+            throw new InvalidArgumentException('Elija qué desea enviar.');
+        }
+
+        $carnets = [];
+        $allCarnets = array_values(array_map('intval', $issue->carnet_affiliate_ids ?? []));
+
+        if (in_array(CertificateDeliveryParts::CARNETS, $parts, true)) {
+            if ($carnetAffiliateIds === null) {
+                $carnets = $allCarnets;
+            } else {
+                $allowed = array_flip($allCarnets);
+                $carnets = array_values(array_filter(
+                    array_values(array_unique(array_map('intval', $carnetAffiliateIds))),
+                    static fn (int $id): bool => isset($allowed[$id]),
+                ));
+
+                if ($carnets === []) {
+                    throw new InvalidArgumentException('Elija al menos un carnet para enviar.');
+                }
+
+                if (count($carnets) > self::MAX_CARNETS_PER_DELIVERY) {
+                    throw new InvalidArgumentException('Puede elegir hasta '.self::MAX_CARNETS_PER_DELIVERY.' carnets uno a uno. Para más, marque «Todos los carnets».');
+                }
+            }
+        }
+
+        // Todas las partes con todos los carnets es el documento ya dibujado de la emisión.
+        $isFull = $parts === CertificateDeliveryParts::availableFor($issue) && array_diff($allCarnets, $carnets) === [];
+        $content = $isFull ? AffiliationCertificateDelivery::CONTENT_FULL : AffiliationCertificateDelivery::CONTENT_CUSTOM;
+
+        if ($isFull) {
             if ($issue->isQueued() && $issue->pdf_status !== AffiliationCertificateIssue::PDF_READY) {
                 throw new InvalidArgumentException('El certificado todavía se está generando. Podrá enviarlo cuando esté listo.');
             }
-        } elseif ($content === AffiliationCertificateDelivery::CONTENT_CERTIFICATE) {
-            // Se dibuja aparte, sin carnets: no depende de que el completo esté listo.
-        } elseif ($content === AffiliationCertificateDelivery::CONTENT_CARNETS) {
-            $allowed = array_flip(array_map('intval', $issue->carnet_affiliate_ids ?? []));
-            $carnets = array_values(array_filter(
-                array_values(array_unique(array_map('intval', $carnetAffiliateIds))),
-                static fn (int $id): bool => isset($allowed[$id]),
-            ));
 
-            if ($carnets === []) {
-                throw new InvalidArgumentException('Elija al menos un carnet para enviar.');
-            }
-
-            if (count($carnets) > self::MAX_CARNETS_PER_DELIVERY) {
-                throw new InvalidArgumentException('Puede enviar hasta '.self::MAX_CARNETS_PER_DELIVERY.' carnets por correo. Para más, envíe el documento completo.');
-            }
-        } else {
-            throw new InvalidArgumentException('Elija qué desea enviar.');
+            $carnets = [];
         }
 
         $message = filled($message) ? mb_substr(trim((string) $message), 0, 2000) : null;
 
-        $delivery = DB::transaction(function () use ($issue, $content, $carnets, $emails, $message, $user): AffiliationCertificateDelivery {
+        $delivery = DB::transaction(function () use ($issue, $content, $parts, $carnets, $emails, $copies, $message, $user): AffiliationCertificateDelivery {
             $delivery = AffiliationCertificateDelivery::query()->create([
                 'affiliation_certificate_issue_id' => $issue->id,
                 'content' => $content,
+                'parts' => $parts,
                 'carnet_affiliate_ids' => $carnets === [] ? null : $carnets,
                 'recipients' => $emails,
+                'cc_recipients' => $copies['cc'],
+                'bcc_recipients' => $copies['bcc'],
                 'delivered_to' => [],
                 'message' => $message,
                 'status' => AffiliationCertificateDelivery::STATUS_PENDING,
@@ -113,8 +157,11 @@ final class AffiliationCertificateDeliveryService
             'affiliation_certificate_issue_id' => $issue->id,
             'affiliation_code' => $issue->affiliation_code,
             'content' => $content,
+            'parts' => $parts,
             'carnets' => count($carnets),
             'recipients' => $emails,
+            'cc' => $copies['cc'],
+            'bcc' => $copies['bcc'],
         ], $user);
 
         return $delivery;
@@ -123,7 +170,8 @@ final class AffiliationCertificateDeliveryService
     /**
      * Arma el archivo y envía a cada destinatario pendiente. Idempotente ante
      * reintentos: quien ya recibió el correo queda en `delivered_to` y no se le
-     * repite; el archivo de carnets tampoco se vuelve a dibujar.
+     * repite; las copias (CC/CCO) van en el primer correo que sale y quedan
+     * marcadas en `copies_sent_at`; el archivo de carnets tampoco se vuelve a dibujar.
      */
     public function deliver(AffiliationCertificateDelivery $delivery): void
     {
@@ -155,25 +203,43 @@ final class AffiliationCertificateDeliveryService
                 continue;
             }
 
-            Mail::to($email)->send(new AffiliationCertificateDeliveryMail(
+            $withCopies = $delivery->copies_sent_at === null;
+            $pending = Mail::to($email);
+
+            if ($withCopies) {
+                $cc = $delivery->cc_recipients ?? [];
+                // Un envío registrado antes de existir las copias igual lleva la oculta fija.
+                $bcc = $delivery->bcc_recipients
+                    ?? CertificateDeliveryRecipients::copies($delivery->recipients ?? [], $cc, [])['bcc'];
+
+                if ($cc !== []) {
+                    $pending->cc($cc);
+                }
+
+                if ($bcc !== []) {
+                    $pending->bcc($bcc);
+                }
+            }
+
+            $pending->send(new AffiliationCertificateDeliveryMail(
                 deliveryId: $delivery->id,
                 affiliationCode: (string) $issue->affiliation_code,
                 planName: $issue->plan_name,
                 carnetsOnly: $delivery->isCarnetsOnly(),
-                carnetsCount: match (true) {
-                    $delivery->isCarnetsOnly() => count($delivery->carnet_affiliate_ids ?? []),
-                    $delivery->isCertificateOnly() => 0,
-                    default => (int) $issue->carnets_count,
-                },
+                carnetsCount: self::carnetsCount($delivery, $issue),
                 analystMessage: $delivery->message,
                 attachmentPath: $downloadUrl === null ? $path : null,
                 attachmentName: self::fileName($delivery, $issue),
                 downloadUrl: $downloadUrl,
                 linkExpiresAt: $delivery->link_expires_at?->format('d/m/Y'),
+                parts: $delivery->documentParts(),
             ));
 
             $delivered[] = $email;
-            $delivery->forceFill(['delivered_to' => $delivered])->save();
+            $delivery->forceFill([
+                'delivered_to' => $delivered,
+                'copies_sent_at' => $withCopies ? now() : $delivery->copies_sent_at,
+            ])->save();
         }
 
         $delivery->forceFill([
@@ -200,9 +266,7 @@ final class AffiliationCertificateDeliveryService
         }
 
         $relative = $delivery->file_path ?: self::FILE_DIRECTORY.'/'.$issue->verification_key.'-envio-'.$delivery->id.'.pdf';
-        $path = $delivery->isCarnetsOnly()
-            ? $this->generator->carnetsOnlyFile($issue, $delivery->carnet_affiliate_ids ?? [], $relative)
-            : $this->generator->certificateOnlyFile($issue, $relative);
+        $path = $this->generator->partialFile($issue, $delivery->documentParts(), $delivery->carnet_affiliate_ids ?? [], $relative);
 
         if ($delivery->file_path !== $relative) {
             $delivery->forceFill(['file_path' => $relative])->save();
@@ -224,6 +288,44 @@ final class AffiliationCertificateDeliveryService
     {
         $base = AffiliationCertificateGeneratorService::fileName($issue);
 
-        return $delivery->isCarnetsOnly() ? str_replace('Certificado-', 'Carnets-', $base) : $base;
+        return match ($delivery->documentParts()) {
+            [CertificateDeliveryParts::CARNETS] => str_replace('Certificado-', 'Carnets-', $base),
+            [CertificateDeliveryParts::AFFILIATES] => str_replace('Certificado-', 'Relacion-afiliados-', $base),
+            default => $base,
+        };
+    }
+
+    /**
+     * Carnets que lleva el envío: los elegidos, todos los de la emisión o ninguno.
+     */
+    public static function carnetsCount(AffiliationCertificateDelivery $delivery, AffiliationCertificateIssue $issue): int
+    {
+        if (! $delivery->includesCarnets()) {
+            return 0;
+        }
+
+        return $delivery->usesOwnFile() ? count($delivery->carnet_affiliate_ids ?? []) : (int) $issue->carnets_count;
+    }
+
+    /**
+     * Partes pedidas y carnets elegidos, desde la lista de partes o desde un
+     * `CONTENT_*` de los envíos anteriores a la elección por partes.
+     *
+     * @param  string|list<string>  $what
+     * @param  list<int|string>|null  $carnetAffiliateIds
+     * @return array{0: list<string>, 1: list<int|string>|null}
+     */
+    private static function resolveParts(AffiliationCertificateIssue $issue, string|array $what, ?array $carnetAffiliateIds): array
+    {
+        if (is_array($what)) {
+            return [CertificateDeliveryParts::clean($what, $issue), $carnetAffiliateIds];
+        }
+
+        return match ($what) {
+            AffiliationCertificateDelivery::CONTENT_FULL => [CertificateDeliveryParts::availableFor($issue), null],
+            AffiliationCertificateDelivery::CONTENT_CERTIFICATE => [CertificateDeliveryParts::clean([CertificateDeliveryParts::CERTIFICATE, CertificateDeliveryParts::AFFILIATES], $issue), null],
+            AffiliationCertificateDelivery::CONTENT_CARNETS => [CertificateDeliveryParts::clean([CertificateDeliveryParts::CARNETS], $issue), $carnetAffiliateIds ?? []],
+            default => [[], null],
+        };
     }
 }

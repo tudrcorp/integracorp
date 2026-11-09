@@ -212,7 +212,7 @@ final class CertificateDocumentData
     /**
      * @param  list<array<string, mixed>>  $pages
      */
-    private static function relationPagesLabel(array $pages): string
+    public static function relationPagesLabel(array $pages): string
     {
         $relation = array_values(array_filter($pages, static fn (array $page): bool => $page['kind'] === 'rel'));
 

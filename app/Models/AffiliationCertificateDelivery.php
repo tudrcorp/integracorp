@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\Affiliations\Certificates\CertificateDeliveryParts;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -21,6 +22,9 @@ class AffiliationCertificateDelivery extends Model
     /** Solo el certificado (portada, beneficios y relación), sin carnets, en un PDF aparte. */
     public const CONTENT_CERTIFICATE = 'certificate';
 
+    /** Las partes elegidas en `parts`, en un PDF aparte (no el documento completo de la emisión). */
+    public const CONTENT_CUSTOM = 'custom';
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_SENT = 'sent';
@@ -34,9 +38,13 @@ class AffiliationCertificateDelivery extends Model
     protected $fillable = [
         'affiliation_certificate_issue_id',
         'content',
+        'parts',
         'carnet_affiliate_ids',
         'recipients',
+        'cc_recipients',
+        'bcc_recipients',
         'delivered_to',
+        'copies_sent_at',
         'message',
         'status',
         'delivery_method',
@@ -55,9 +63,13 @@ class AffiliationCertificateDelivery extends Model
     protected function casts(): array
     {
         return [
+            'parts' => 'array',
             'carnet_affiliate_ids' => 'array',
             'recipients' => 'array',
+            'cc_recipients' => 'array',
+            'bcc_recipients' => 'array',
             'delivered_to' => 'array',
+            'copies_sent_at' => 'datetime',
             'file_size' => 'integer',
             'link_expires_at' => 'datetime',
             'sent_at' => 'datetime',
@@ -80,20 +92,44 @@ class AffiliationCertificateDelivery extends Model
         return $this->belongsTo(User::class, 'sent_by');
     }
 
+    /**
+     * Partes del documento que lleva el envío. Los envíos anteriores a la
+     * elección por partes se leen desde `content`.
+     *
+     * @return list<string>
+     */
+    public function documentParts(): array
+    {
+        if (is_array($this->parts) && $this->parts !== []) {
+            return array_values(array_intersect(CertificateDeliveryParts::ORDER, $this->parts));
+        }
+
+        return match ($this->content) {
+            self::CONTENT_CARNETS => [CertificateDeliveryParts::CARNETS],
+            self::CONTENT_CERTIFICATE => [CertificateDeliveryParts::CERTIFICATE, CertificateDeliveryParts::AFFILIATES],
+            default => CertificateDeliveryParts::ORDER,
+        };
+    }
+
+    public function includesCarnets(): bool
+    {
+        return in_array(CertificateDeliveryParts::CARNETS, $this->documentParts(), true);
+    }
+
     public function isCarnetsOnly(): bool
     {
-        return $this->content === self::CONTENT_CARNETS;
+        return $this->documentParts() === [CertificateDeliveryParts::CARNETS];
     }
 
     public function isCertificateOnly(): bool
     {
-        return $this->content === self::CONTENT_CERTIFICATE;
+        return ! $this->includesCarnets();
     }
 
     /** Si el envío lleva un PDF propio (no el documento completo de la emisión). */
     public function usesOwnFile(): bool
     {
-        return $this->isCarnetsOnly() || $this->isCertificateOnly();
+        return $this->content !== self::CONTENT_FULL;
     }
 
     public function linkIsActive(): bool

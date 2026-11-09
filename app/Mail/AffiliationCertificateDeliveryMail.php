@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
+use App\Support\Affiliations\Certificates\CertificateDeliveryParts;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
@@ -26,14 +27,18 @@ class AffiliationCertificateDeliveryMail extends Mailable
         public string $attachmentName,
         public ?string $downloadUrl,
         public ?string $linkExpiresAt,
+        /** @var list<string> Partes enviadas; vacío en los envíos anteriores a la elección por partes. */
+        public array $parts = [],
     ) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: ($this->carnetsOnly
-                ? ($this->carnetsCount === 1 ? 'Carnet de afiliado' : 'Carnets de afiliado')
-                : 'Certificado de afiliación').' '.$this->affiliationCode.' — Tu Doctor en Casa',
+            subject: ($this->parts !== []
+                ? CertificateDeliveryParts::subject($this->parts, $this->carnetsCount)
+                : ($this->carnetsOnly
+                    ? ($this->carnetsCount === 1 ? 'Carnet de afiliado' : 'Carnets de afiliado')
+                    : 'Certificado de afiliación')).' '.$this->affiliationCode.' — Tu Doctor en Casa',
         );
     }
 
