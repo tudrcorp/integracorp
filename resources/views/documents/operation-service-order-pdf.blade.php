@@ -421,11 +421,12 @@
                     <div class="value-muted">{{ $providerAddress }}</div>
                 </td>
             </tr>
-            @if(filled($order->observations))
+            @php($documentObservations = \App\Support\Operations\OperationServiceOrderInternalPricingNote::strip($order->observations))
+            @if(filled($documentObservations))
                 <tr>
                     <td colspan="2">
                         <div class="label">Observaciones</div>
-                        <div class="value-muted">{{ $order->observations }}</div>
+                        <div class="value-muted">{{ $documentObservations }}</div>
                     </td>
                 </tr>
             @endif

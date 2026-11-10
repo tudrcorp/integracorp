@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Support\ClinicalEntitlements;
 
 use App\Enums\SystemNotificationKey;
+use App\Enums\SystemOtpCodeKind;
 use App\Jobs\SendNotificacionWhatsApp;
 use App\Mail\ClinicalServiceOverrideOtpMail;
 use App\Models\ClinicalServiceOverrideChallenge;
 use App\Models\TelemedicinePatient;
 use App\Models\User;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\Otp\SystemOtpCodeRegistry;
 use App\Support\SecurityAudit;
 use App\Support\SystemNotificationRecipients;
 use App\Support\Telemedicine\TelemedicinePatientPlanBridge;
@@ -238,6 +240,7 @@ final class ClinicalServiceOverrideOtp
     public static function markConsumed(ClinicalServiceOverrideChallenge $challenge): void
     {
         $challenge->forceFill(['consumed_at' => now()])->save();
+        SystemOtpCodeRegistry::markUsed($challenge);
 
         SecurityAudit::log('AUDIT_CLINICAL_LIMIT_OVERRIDE_OTP_USED', 'telemedicina.clinical-limit.otp', [
             'challenge_public_id' => $challenge->public_id,
@@ -311,6 +314,23 @@ final class ClinicalServiceOverrideOtp
             'emails_sent' => $emailsSent,
             'phones_sent' => $phonesSent,
         ])->save();
+
+        SystemOtpCodeRegistry::record(
+            SystemOtpCodeKind::ClinicalLimitOverride,
+            $challenge,
+            (string) ($payload['otp_code'] ?? ''),
+            (int) $challenge->user_id,
+            isset($payload['doctor_name']) ? (string) $payload['doctor_name'] : null,
+            'Paciente: '.($payload['patient_name'] ?? '—'),
+            [
+                'Beneficio' => $payload['benefit'] ?? null,
+                'Servicio' => $payload['service_name'] ?? null,
+                'Canal' => $payload['channel'] ?? null,
+            ],
+            $emailsSent,
+            $phonesSent,
+            $challenge->expires_at,
+        );
 
         SecurityAudit::log($auditEvent, 'telemedicina.clinical-limit.otp', [
             'challenge_public_id' => $challenge->public_id,

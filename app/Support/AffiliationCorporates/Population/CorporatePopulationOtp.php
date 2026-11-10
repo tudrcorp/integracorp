@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Support\AffiliationCorporates\Population;
 
 use App\Enums\SystemNotificationKey;
+use App\Enums\SystemOtpCodeKind;
 use App\Jobs\SendNotificacionWhatsApp;
 use App\Mail\CorporatePopulationOtpMail;
 use App\Models\CorporatePopulationOtpChallenge;
 use App\Models\CorporatePopulationUpdate;
 use App\Models\User;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\Otp\SystemOtpCodeRegistry;
 use App\Support\SecurityAudit;
 use App\Support\SystemNotificationRecipients;
 use Illuminate\Support\Facades\Hash;
@@ -117,6 +119,7 @@ final class CorporatePopulationOtp
         }
 
         $challenge->forceFill(['consumed_at' => now()])->save();
+        SystemOtpCodeRegistry::markUsed($challenge);
 
         SecurityAudit::log('AUDIT_CORPORATE_POPULATION_OTP_USED', 'business.corporate-population.otp', [
             'challenge_public_id' => $challenge->public_id,
@@ -228,6 +231,22 @@ final class CorporatePopulationOtp
         }
 
         $challenge->forceFill(['emails_sent' => $emailsSent, 'phones_sent' => $phonesSent])->save();
+
+        SystemOtpCodeRegistry::record(
+            $isRollback ? SystemOtpCodeKind::PopulationRollback : SystemOtpCodeKind::PopulationApply,
+            $challenge,
+            $code,
+            (int) $user->getKey(),
+            (string) $user->name,
+            $payload['company'].' · '.$payload['affiliation_code'],
+            [
+                'Archivo' => $payload['file_name'],
+                ...array_map(static fn (int $count): string => (string) $count, $payload['counts']),
+            ],
+            $emailsSent,
+            $phonesSent,
+            $challenge->expires_at,
+        );
 
         SecurityAudit::log($auditEvent, 'business.corporate-population.otp', [
             'challenge_public_id' => $challenge->public_id,
