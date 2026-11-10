@@ -56,7 +56,7 @@ class AffiliationCorporateFichaPdfController extends Controller
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'inline; filename="'.$filename.'"');
     }
-
+  
     /**
      * 403 si quien pide la ficha no puede abrir la afiliación en el panel de la ruta.
      */

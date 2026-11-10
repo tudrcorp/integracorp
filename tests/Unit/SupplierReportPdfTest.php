@@ -72,7 +72,22 @@ test('el filtro del reporte no deja que el OR del convenio escape al resto de co
     expect($wheres[0]['type'])->toBe('Nested')
         ->and($wheres[0]['boolean'])->toBe('and')
         ->and(collect($wheres)->skip(1)->pluck('boolean')->unique()->all())->toBe(['and'])
-        ->and($query->getBindings())->toBe(['GENERAL', '%PREFERENCIAL%', '', 'AFILIADO', 'ACTIVO AFILIADO']);
+        ->and($query->getBindings())->toBe([
+            'GENERAL',
+            '%PREFERENCIAL%',
+            '',
+            'AFILIADO',
+            'ACTIVO AFILIADO',
+            'CLINICA CERRADA',
+        ]);
+});
+
+test('el filtro del reporte excluye CLINICA CERRADA', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Services/SupplierReportPdfService.php');
+
+    expect($source)
+        ->toContain("->where('suppliers.status_sistema', '<>', SupplierEstatusSistemaOptions::CLINICA_CERRADA)")
+        ->and(SupplierReportPdfService::ELIGIBLE_SYSTEM_STATUSES)->not->toContain('CLINICA CERRADA');
 });
 
 test('reportRows aplica el filtro de elegibilidad e invalida la caché anterior', function (): void {
@@ -80,7 +95,7 @@ test('reportRows aplica el filtro de elegibilidad e invalida la caché anterior'
 
     expect($source)
         ->toContain('->tap(static fn (Builder $query): Builder => self::applyEligibilityFilter($query))')
-        ->toContain("private const LAYOUT_VERSION = 'v5';")
+        ->toContain("private const LAYOUT_VERSION = 'v6';")
         ->and(SupplierReportPdfService::ELIGIBLE_SYSTEM_STATUSES)->toBe(['AFILIADO', 'ACTIVO AFILIADO']);
 });
 

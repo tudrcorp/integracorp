@@ -54,7 +54,7 @@ class SupplierInfolist
         return match (strtoupper((string) $state)) {
             'ACTIVO', 'ACTIVA', 'VIGENTE', 'APROBADO' => 'success',
             'PENDIENTE', 'POR REVISION', 'EN REVISIÓN' => 'warning',
-            'INACTIVO', 'SUSPENDIDO', 'RECHAZADO' => 'danger',
+            'INACTIVO', 'SUSPENDIDO', 'RECHAZADO', 'CLINICA CERRADA' => 'danger',
             default => 'gray',
         };
     }

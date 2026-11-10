@@ -57,11 +57,13 @@ it('el correo muestra la tarjeta y el clic abre la animación del cumpleañero',
 
     expect($html)
         ->toContain('href="'.$animationUrl.'"')
-        ->toContain('https://integracorp.tudrgroup.com/animacion-cumpleanos/assets/tarjeta-cumpleanos.jpg')
-        ->toContain('¡Haz clic aquí para ver tus regalos!')
+        ->toContain('https://integracorp.tudrgroup.com/animacion-cumpleanos/assets/tarjeta-cumpleanos-email.png')
+        ->toContain('Haz clic aquí para ver tus cupones')
+        ->not->toContain('tarjeta-cumpleanos.jpg')
         ->not->toContain('otra-imagen.jpg')
         ->not->toContain('Abrir animación y cupones');
 
+    expect(file_exists(public_path('animacion-cumpleanos/assets/tarjeta-cumpleanos-email.png')))->toBeTrue();
     expect(file_exists(public_path('animacion-cumpleanos/assets/tarjeta-cumpleanos.jpg')))->toBeTrue();
 });
 
