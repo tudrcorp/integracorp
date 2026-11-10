@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\OperationInventoryProductCategories\Schemas;
 
+use App\Support\Operations\OperationInventoryProductPricing;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -55,6 +56,33 @@ class OperationInventoryProductCategoryForm
                                                     ->placeholder('Describa el alcance de esta categoría de productos.')
                                                     ->helperText('Opcional. Ayuda a distinguir categorías similares.')
                                                     ->columnSpanFull(),
+                                            ])
+                                            ->columns(1)
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columns(1)
+                                    ->columnSpanFull(),
+                                Fieldset::make('Precio de venta')
+                                    ->extraAttributes(['class' => self::SECTION_CARD])
+                                    ->schema([
+                                        Fieldset::make('Utilidad')
+                                            ->extraAttributes(['class' => self::INNER_CARD])
+                                            ->schema([
+                                                TextInput::make('profit_percentage')
+                                                    ->label('Porcentaje de utilidad')
+                                                    ->numeric()
+                                                    ->minValue(0)
+                                                    ->maxValue(OperationInventoryProductPricing::MAX_PROFIT_PERCENTAGE)
+                                                    ->step(0.01)
+                                                    ->suffix('%')
+                                                    ->prefixIcon('heroicon-m-receipt-percent')
+                                                    ->placeholder('Ej. 30')
+                                                    ->helperText('Se aplica sobre el costo de cada producto de esta categoría. Ej.: costo US$ 100 con 30 % = precio final US$ 130. Déjelo vacío si aún no está definido.')
+                                                    ->validationMessages([
+                                                        'numeric' => 'Ingrese un número válido.',
+                                                        'min' => 'El porcentaje no puede ser negativo.',
+                                                        'max' => 'El porcentaje no puede superar '.OperationInventoryProductPricing::MAX_PROFIT_PERCENTAGE.' %.',
+                                                    ]),
                                             ])
                                             ->columns(1)
                                             ->columnSpanFull(),

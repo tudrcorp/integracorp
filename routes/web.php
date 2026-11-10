@@ -569,6 +569,22 @@ Route::get('business/plan-generators/{planGenerator}/pdf/download', [BusinessPla
     ->middleware(['web', 'auth'])
     ->name('business.plan-generators.pdf.download');
 
+Route::get('business/affiliation-corporates/{affiliationCorporate}/ficha/preview', [AffiliationCorporateFichaPdfController::class, 'preview'])
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-corporates.ficha.preview');
+
+Route::get('business/affiliation-corporates/{affiliationCorporate}/ficha/download', [AffiliationCorporateFichaPdfController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliation-corporates.ficha.download');
+
+Route::get('business/affiliations/{affiliation}/ficha/preview', [AffiliationFichaPdfController::class, 'preview'])
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliations.ficha.preview');
+
+Route::get('business/affiliations/{affiliation}/ficha/download', [AffiliationFichaPdfController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('business.affiliations.ficha.download');
+
 Route::get('administration/affiliation-corporates/{affiliationCorporate}/ficha/preview', [AffiliationCorporateFichaPdfController::class, 'preview'])
     ->middleware(['web', 'auth'])
     ->name('administration.affiliation-corporates.ficha.preview');

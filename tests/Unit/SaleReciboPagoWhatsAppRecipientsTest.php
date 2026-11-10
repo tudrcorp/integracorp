@@ -10,6 +10,24 @@ use App\Support\Filament\Administration\SaleReciboPagoWhatsAppRecipients;
 
 uses(Tests\TestCase::class);
 
+/**
+ * Los testigos salen del Centro de notificaciones: leerlos crea su fila la primera vez. Todo va en
+ * una transacción revertida y parte del valor inicial, sin importar lo configurado en la base.
+ */
+beforeEach(function (): void {
+    Illuminate\Support\Facades\DB::beginTransaction();
+    App\Models\SystemNotificationRecipientSetting::query()
+        ->whereIn('notification_key', [
+            App\Enums\SystemNotificationKey::SaleReceiptWitnessCopy->value,
+            App\Enums\SystemNotificationKey::CollectionNoticeWitnessCopy->value,
+        ])
+        ->delete();
+});
+
+afterEach(function (): void {
+    Illuminate\Support\Facades\DB::rollBack();
+});
+
 it('resuelve telefonos del agente agencia y sol rodriguez', function (): void {
     $sale = new Sale([
         'agent_id' => 10,

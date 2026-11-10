@@ -13,7 +13,7 @@ it('el formulario de gestión de ítems define paso de cotización para ítems n
         ->toContain('manage_quote_line_items')
         ->toContain('unit_price_usd')
         ->toContain('unit_price_ves')
-        ->toContain('buildManageQuoteLineItemsDefault')
+        ->toContain('syncMedicationInventoryState')
         ->toContain('syncManageQuoteAggregates')
         ->toContain('manageQuoteSummaryPanel')
         ->toContain('Precios unitarios por ítem')

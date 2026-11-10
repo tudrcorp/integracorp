@@ -162,7 +162,7 @@ class LoadProductExistenceAction
             })
             ->after(function ($livewire): void {
                 $livewire->record->refresh();
-                $livewire->record->load(['category', 'stocks.ubication']);
+                $livewire->record->load(['category', 'stocks.ubication', 'latestInventoryEntry.ubication', 'latestInventoryOutflow.ubication']);
             });
     }
 

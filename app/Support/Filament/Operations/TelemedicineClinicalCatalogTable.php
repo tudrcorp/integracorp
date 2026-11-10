@@ -68,6 +68,28 @@ final class TelemedicineClinicalCatalogTable
                         default => 'heroicon-m-question-mark-circle',
                     })
                     ->extraCellAttributes(['class' => 'py-3']),
+                TextColumn::make('cost')
+                    ->label('Costo')
+                    ->money('USD')
+                    ->placeholder('Sin definir')
+                    ->sortable()
+                    ->toggleable(),
+                TextColumn::make('profit_percentage')
+                    ->label('% utilidad')
+                    ->numeric(decimalPlaces: 2)
+                    ->suffix(' %')
+                    ->placeholder('Sin definir')
+                    ->sortable()
+                    ->toggleable(),
+                TextColumn::make('final_price')
+                    ->label('Precio al paciente')
+                    ->state(fn (Model $record): ?float => \App\Support\Operations\ClinicalServiceCatalog::price($record))
+                    ->money('USD')
+                    ->weight(FontWeight::SemiBold)
+                    ->color('success')
+                    ->placeholder('Sin definir')
+                    ->tooltip('Costo + % de utilidad. Se usa al facturar al paciente lo no cubierto.')
+                    ->toggleable(),
                 TextColumn::make('created_at')
                     ->label('Creado')
                     ->dateTime('d/m/Y H:i')

@@ -12,10 +12,13 @@ use App\Models\TelemedicinePriority;
 use App\Support\Operations\CoordinationServiceItemsManager;
 use App\Support\Operations\ManageQuoteSupplierCreator;
 use App\Support\Operations\MedicalAppointmentManager;
+use App\Support\Operations\MedicationInvoiceWizard;
 use App\Support\Operations\OperationServiceOrderCoveredPricingFormFields;
 use App\Support\Operations\OperationServiceOrderProviderContacts;
 use App\Support\Operations\OperationServiceOrderProviderFormFields;
 use App\Support\Operations\OperationServiceOrderUnregisteredProviderFormFields;
+use App\Support\Operations\QuoteInvoiceFormFields;
+use App\Support\Operations\QuoteLineProfitField;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
@@ -107,17 +110,8 @@ final class ManageCoordinationServiceItemsForm
                             ->bulkToggleable()
                             ->searchable()
                             ->live()
-                            ->afterStateUpdated(function (ManageCoordinationServiceItems $livewire, Get $get, Set $set, mixed $state): void {
-                                $set(
-                                    'manage_quote_line_items',
-                                    CoordinationServiceItemsManager::buildManageQuoteLineItemsDefault(
-                                        $livewire->getRecord(),
-                                        $state,
-                                        (array) ($get('manage_quote_line_items') ?? []),
-                                        CoordinationServiceItemsManager::coveredQuotedViaUnregisteredProvider($get)
-                                    )
-                                );
-                                CoordinationServiceItemsManager::syncManageQuoteAggregates($get, $set);
+                            ->afterStateUpdated(function (ManageCoordinationServiceItems $livewire, Get $get, Set $set): void {
+                                CoordinationServiceItemsManager::syncMedicationInventoryState($livewire->getRecord(), $get, $set);
                             })
                             ->columns(1)
                             ->required()
@@ -150,12 +144,25 @@ final class ManageCoordinationServiceItemsForm
                     ->columnSpanFull(),
             ]),
             Step::make('Orden de servicio')
-                ->description('Creación automática para ítems cubiertos')
+                ->description(fn (ManageCoordinationServiceItems $livewire, Get $get): string => CoordinationServiceItemsManager::manageQuoteInventoryInvoiceKeys($livewire->getRecord(), $get) !== [] && MedicationInvoiceWizard::isServiceKind(MedicationInvoiceWizard::kind($livewire->getRecord(), $get('managed_service_item_keys')))
+                    ? 'Para ítems cubiertos y los no cubiertos que se facturan al paciente'
+                    : 'Creación automática para ítems cubiertos')
                 ->icon(Heroicon::OutlinedDocumentPlus)
-                ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::coveredSelectedManagementItemKeys(
-                    $livewire->getRecord(),
-                    $get('managed_service_item_keys')
-                ) !== [])
+                ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::serviceOrderStepKeys($livewire->getRecord(), $get) !== [])
+                ->afterValidation(function (ManageCoordinationServiceItems $livewire, Get $get): void {
+                    // Lo facturado al paciente necesita su orden: sin proveedor no se puede seguir.
+                    $message = CoordinationServiceItemsManager::invoicedServiceOrderProviderError($livewire->getRecord(), $get);
+
+                    if ($message !== null) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('Falta el proveedor de la orden')
+                            ->body($message)
+                            ->warning()
+                            ->send();
+
+                        throw new \Filament\Support\Exceptions\Halt;
+                    }
+                })
                 ->schema([
                     Placeholder::make('manage_service_order_context')
                         ->hiddenLabel()
@@ -163,28 +170,28 @@ final class ManageCoordinationServiceItemsForm
                         ->columnSpanFull(),
                     Placeholder::make('manage_service_covered_items_notice')
                         ->hiddenLabel()
-                        ->content(fn (ManageCoordinationServiceItems $livewire, Get $get): HtmlString => CoordinationServiceItemsManager::manageServiceCoveredItemsNotice($livewire->getRecord(), $get('managed_service_item_keys')))
+                        ->content(fn (ManageCoordinationServiceItems $livewire, Get $get): HtmlString => CoordinationServiceItemsManager::manageServiceOrderStepNotice($livewire->getRecord(), $get))
                         ->columnSpanFull(),
                     Placeholder::make('manage_service_mixed_types_warning')
                         ->hiddenLabel()
                         ->content(fn (): HtmlString => CoordinationServiceItemsManager::manageServiceMixedTypesWarning())
                         ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
-                            CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
-                        ) === null && CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys')) !== [])
+                            CoordinationServiceItemsManager::serviceOrderStepKeys($livewire->getRecord(), $get)
+                        ) === null && CoordinationServiceItemsManager::serviceOrderStepKeys($livewire->getRecord(), $get) !== [])
                         ->columnSpanFull(),
                     Section::make('Datos de la orden de servicio')
                         ->description('Complete la información operativa. Solo se incluirán ítems con cobertura confirmada.')
                         ->icon(Heroicon::OutlinedClipboardDocumentList)
                         ->iconColor('primary')
                         ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
-                            CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
+                            CoordinationServiceItemsManager::serviceOrderStepKeys($livewire->getRecord(), $get)
                         ) !== null)
                         ->schema([
                             Placeholder::make('manage_service_order_type_badge')
                                 ->label('Tipo de orden detectado')
                                 ->content(fn (ManageCoordinationServiceItems $livewire, Get $get): HtmlString => CoordinationServiceItemsManager::manageServiceOrderTypeBadge(
                                     CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
-                                        CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
+                                        CoordinationServiceItemsManager::serviceOrderStepKeys($livewire->getRecord(), $get)
                                     )
                                 )),
                             Section::make('Ítems incluidos en la orden')
@@ -193,9 +200,9 @@ final class ManageCoordinationServiceItemsForm
                                 ->schema([
                                     Placeholder::make('manage_service_covered_items_table')
                                         ->hiddenLabel()
-                                        ->content(fn (ManageCoordinationServiceItems $livewire, Get $get): HtmlString => CoordinationServiceItemsManager::manageServiceCoveredItemsTable(
+                                        ->content(fn (ManageCoordinationServiceItems $livewire, Get $get): HtmlString => CoordinationServiceItemsManager::manageServiceSelectedItemsTable(
                                             $livewire->getRecord(),
-                                            $get('managed_service_item_keys')
+                                            CoordinationServiceItemsManager::serviceOrderStepKeys($livewire->getRecord(), $get)
                                         ))
                                         ->columnSpanFull(),
                                 ])
@@ -243,12 +250,12 @@ final class ManageCoordinationServiceItemsForm
                                                         ->native(false)
                                                         ->required(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
                                                             CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
-                                                                CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
+                                                                CoordinationServiceItemsManager::serviceOrderStepKeys($livewire->getRecord(), $get)
                                                             )
                                                         ))
                                                         ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => MedicalAppointmentManager::serviceTypeRequiresAppointment(
                                                             CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
-                                                                CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
+                                                                CoordinationServiceItemsManager::serviceOrderStepKeys($livewire->getRecord(), $get)
                                                             )
                                                         ))
                                                         ->helperText('Obligatoria para servicios con asistencia presencial del paciente.')
@@ -262,7 +269,7 @@ final class ManageCoordinationServiceItemsForm
                                                 ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => OperationServiceOrderProviderContacts::hasCatalogSelection($get)
                                                     && MedicalAppointmentManager::serviceTypeRequiresAppointment(
                                                         CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
-                                                            CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
+                                                            CoordinationServiceItemsManager::serviceOrderStepKeys($livewire->getRecord(), $get)
                                                         )
                                                     )
                                                     && OperationServiceOrderProviderContacts::missingNotifyContacts($get)['email'])
@@ -274,7 +281,7 @@ final class ManageCoordinationServiceItemsForm
                                                 ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => OperationServiceOrderProviderContacts::hasCatalogSelection($get)
                                                     && MedicalAppointmentManager::serviceTypeRequiresAppointment(
                                                         CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
-                                                            CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
+                                                            CoordinationServiceItemsManager::serviceOrderStepKeys($livewire->getRecord(), $get)
                                                         )
                                                     )
                                                     && OperationServiceOrderProviderContacts::missingNotifyContacts($get)['phone'])
@@ -294,7 +301,7 @@ final class ManageCoordinationServiceItemsForm
                                                 ->preload()
                                                 ->prefixIcon(Heroicon::OutlinedMapPin)
                                                 ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::resolveServiceOrderTypeFromManagementKeys(
-                                                    CoordinationServiceItemsManager::coveredSelectedManagementItemKeys($livewire->getRecord(), $get('managed_service_item_keys'))
+                                                    CoordinationServiceItemsManager::serviceOrderStepKeys($livewire->getRecord(), $get)
                                                 ) === 'MEDICAMENTOS')
                                                 ->native(false)
                                                 ->columnSpanFull(),
@@ -323,7 +330,9 @@ final class ManageCoordinationServiceItemsForm
                     }
                 )),
             Step::make('Cotización')
-                ->description('Obligatoria para ítems no cubiertos y cubiertos con proveedor no convenido')
+                ->description(fn (ManageCoordinationServiceItems $livewire, Get $get): string => MedicationInvoiceWizard::applies($livewire->getRecord(), $get('managed_service_item_keys'))
+                    ? 'Factura desde inventario o cotización de los medicamentos no cubiertos'
+                    : 'Obligatoria para ítems no cubiertos y cubiertos con proveedor no convenido')
                 ->icon(Heroicon::OutlinedCurrencyDollar)
                 ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::shouldShowManageQuoteStep(
                     $livewire->getRecord(),
@@ -337,6 +346,20 @@ final class ManageCoordinationServiceItemsForm
                     Placeholder::make('manage_service_non_covered_items_notice')
                         ->hiddenLabel()
                         ->content(fn (): HtmlString => CoordinationServiceItemsManager::manageServiceNonCoveredItemsNotice())
+                        ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => ! MedicationInvoiceWizard::applies($livewire->getRecord(), $get('managed_service_item_keys')))
+                        ->columnSpanFull(),
+                    Placeholder::make('manage_medication_inventory_notice')
+                        ->hiddenLabel()
+                        ->content(fn (ManageCoordinationServiceItems $livewire, Get $get): HtmlString => MedicationInvoiceWizard::isServiceKind(MedicationInvoiceWizard::kind($livewire->getRecord(), $get('managed_service_item_keys')))
+                            ? new HtmlString('<div class="fi-manage-service-notice fi-manage-service-notice--amber px-5">'
+                                .'<p class="font-semibold">No cubierto: se puede facturar al paciente</p>'
+                                .'<p class="mt-1 leading-relaxed opacity-90">Cada ítem toma su precio del catálogo y se factura al paciente; la orden al proveedor que lo realiza se arma en el paso «Orden de servicio». Si prefiere cotizarlo con un proveedor, marque «Generar cotización».</p>'
+                                .'</div>')
+                            : new HtmlString('<div class="fi-manage-service-notice fi-manage-service-notice--amber px-5">'
+                                .'<p class="font-semibold">Medicamentos no cubiertos: primero el inventario</p>'
+                                .'<p class="mt-1 leading-relaxed opacity-90">Elija en el inventario el producto que corresponde a cada medicamento y se facturará al paciente. Si no está, no corresponde o no alcanza, marque «Generar cotización»: se registra como falla y pasa a la cotización.</p>'
+                                .'</div>'))
+                        ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => MedicationInvoiceWizard::applies($livewire->getRecord(), $get('managed_service_item_keys')))
                         ->columnSpanFull(),
                     Placeholder::make('manage_service_mixed_quote_types_warning')
                         ->hiddenLabel()
@@ -368,10 +391,12 @@ final class ManageCoordinationServiceItemsForm
                                         ->columnSpanFull(),
                                 ])
                                 ->columnSpanFull(),
+                            MedicationInventoryInvoiceFormSection::make(),
                             Section::make('Parámetros de cotización')
-                                ->description('Ingrese el precio unitario en USD de cada ítem. El sistema calcula bolívares con la tasa BCV y el total con la ganancia.')
+                                ->description('Ingrese el precio del proveedor en USD y el % de utilidad de cada ítem. El sistema calcula el precio de venta, los bolívares con la tasa BCV y la ganancia total.')
                                 ->icon(Heroicon::OutlinedCalculator)
                                 ->iconColor('warning')
+                                ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::shouldShowManageQuoteParameters($livewire->getRecord(), $get))
                                 ->extraAttributes(['class' => 'fi-manage-quote-params-section'])
                                 ->schema([
                                     Grid::make(1)
@@ -440,7 +465,7 @@ final class ManageCoordinationServiceItemsForm
                                         ->addable(false)
                                         ->deletable(false)
                                         ->reorderable(false)
-                                        ->columns(['default' => 1, 'md' => 3])
+                                        ->columns(['default' => 1, 'md' => 2, 'xl' => 4])
                                         ->afterStateHydrated(function (
                                             mixed $state,
                                             ManageCoordinationServiceItems $livewire,
@@ -459,7 +484,7 @@ final class ManageCoordinationServiceItemsForm
                                                 ->disabled()
                                                 ->dehydrated(),
                                             TextInput::make('unit_price_usd')
-                                                ->label('Precio unitario (USD)')
+                                                ->label('Precio del proveedor (USD)')
                                                 ->prefix('US$')
                                                 ->numeric()
                                                 ->required()
@@ -476,8 +501,9 @@ final class ManageCoordinationServiceItemsForm
                                                     );
                                                     CoordinationServiceItemsManager::syncManageQuoteAggregates($get, $set);
                                                 }),
+                                            QuoteLineProfitField::make(),
                                             TextInput::make('unit_price_ves')
-                                                ->label('Equivalente (Bs.)')
+                                                ->label('Precio del proveedor (Bs.)')
                                                 ->prefix('Bs.')
                                                 ->numeric()
                                                 ->readOnly()
@@ -485,30 +511,18 @@ final class ManageCoordinationServiceItemsForm
                                                 ->extraAttributes(['class' => 'fi-manage-quote-readonly-field']),
                                         ])
                                         ->columnSpanFull(),
-                                    Grid::make(['default' => 1, 'lg' => 5])
-                                        ->schema([
-                                            Grid::make(1)
-                                                ->columnSpan(['lg' => 3])
-                                                ->schema([
-                                                    Hidden::make('manage_quote_costo_dolares')
-                                                        ->dehydrated(),
-                                                    Hidden::make('manage_quote_costo_bolivares')
-                                                        ->dehydrated(),
-                                                    TextInput::make('manage_quote_porcentaje_ganancia')
-                                                        ->label('Porcentaje de ganancia')
-                                                        ->prefix('%')
-                                                        ->numeric()
-                                                        ->default(0)
-                                                        ->minValue(0)
-                                                        ->live(debounce: 400)
-                                                        ->afterStateUpdated(fn (Get $get, Set $set): mixed => CoordinationServiceItemsManager::syncManageQuoteAggregates($get, $set))
-                                                        ->helperText('Utilidad aplicada sobre la suma de precios unitarios en USD.'),
-                                                ]),
-                                            Placeholder::make('manage_quote_summary_panel')
-                                                ->hiddenLabel()
-                                                ->content(fn (Get $get): HtmlString => CoordinationServiceItemsManager::manageQuoteSummaryPanel($get))
-                                                ->columnSpan(['lg' => 2]),
-                                        ]),
+                                    Hidden::make('manage_quote_costo_dolares')
+                                        ->dehydrated(),
+                                    Hidden::make('manage_quote_costo_bolivares')
+                                        ->dehydrated(),
+                                    Placeholder::make('manage_quote_summary_panel')
+                                        ->hiddenLabel()
+                                        ->content(fn (Get $get): HtmlString => CoordinationServiceItemsManager::manageQuoteSummaryPanel($get))
+                                        ->columnSpanFull(),
+                                    QuoteInvoiceFormFields::make(
+                                        'manage_quote_',
+                                        fn (Get $get, mixed $livewire): bool => CoordinationServiceItemsManager::manageQuoteCanGenerateInvoice($livewire->getRecord(), $get),
+                                    ),
                                     Textarea::make('manage_quote_observations')
                                         ->label('Observaciones de la cotización')
                                         ->placeholder('Indique notas relevantes para la gestión: condiciones del proveedor, plazos, requisitos del paciente, etc.')

@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Support\Filament\Administration;
 
 use App\Models\Sale;
+use App\Support\Sales\SaleReceiptEmailDelivery;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -42,10 +44,19 @@ final class SaleReciboPagoTestDeliveryForm
      */
     public static function emailActionSchema(Sale $sale, string $fieldPrefix = ''): array
     {
+        $copyOptions = SaleReceiptEmailDelivery::options($sale);
+
         return [
             self::testModeToggle($fieldPrefix),
+            Section::make('Copys del correo')
+                ->description('Cada destinatario recibe su propio correo con el recibo adjunto. Elija «No enviar» para omitir uno.')
+                ->columns(2)
+                ->schema([
+                    self::copySelect($fieldPrefix.'affiliate_template_id', 'Copy para el afiliado', $copyOptions['affiliate']),
+                    self::copySelect($fieldPrefix.'responsible_template_id', 'Copy para el agente / agencia', $copyOptions['responsible']),
+                ]),
             Section::make('Destinatarios de producción')
-                ->description('Correos del agente y la agencia.')
+                ->description('Correos del afiliado, del agente y de la agencia.')
                 ->visible(fn (Get $get): bool => ! self::isTestMode($get, $fieldPrefix))
                 ->schema([
                     self::productionPreviewPlaceholder(
@@ -72,7 +83,7 @@ final class SaleReciboPagoTestDeliveryForm
         return [
             self::testModeToggle($fieldPrefix),
             Section::make('Destinatarios de producción')
-                ->description('Teléfonos del agente, la agencia y copia a Sol Rodriguez.')
+                ->description('Teléfonos del agente, la agencia y los testigos del Centro de notificaciones («Testigos de recibos de pago»).')
                 ->visible(fn (Get $get): bool => ! self::isTestMode($get, $fieldPrefix))
                 ->schema([
                     self::productionPreviewPlaceholder(
@@ -117,6 +128,8 @@ final class SaleReciboPagoTestDeliveryForm
         return [
             'use_test_delivery' => (bool) ($data['email_use_test_delivery'] ?? false),
             'test_email' => $data['email_test_email'] ?? null,
+            'affiliate_template_id' => $data['email_affiliate_template_id'] ?? null,
+            'responsible_template_id' => $data['email_responsible_template_id'] ?? null,
         ];
     }
 
@@ -134,6 +147,28 @@ final class SaleReciboPagoTestDeliveryForm
             'use_test_delivery' => (bool) ($data['whatsapp_use_test_delivery'] ?? false),
             'test_phone' => $data['whatsapp_test_phone'] ?? null,
         ];
+    }
+
+    /**
+     * @param  array{emails: list<string>, default_id: ?int, templates: list<array{id: int, name: string}>}  $option
+     */
+    private static function copySelect(string $name, string $label, array $option): Select
+    {
+        $options = [];
+
+        foreach ($option['templates'] as $template) {
+            $options[(string) $template['id']] = $template['name'];
+        }
+
+        return Select::make($name)
+            ->label($label)
+            ->options($options)
+            ->placeholder('No enviar')
+            ->default($option['default_id'] !== null ? (string) $option['default_id'] : null)
+            ->native(false)
+            ->helperText($option['emails'] === []
+                ? 'Sin correo válido registrado: solo puede usarse en modo prueba.'
+                : implode(', ', $option['emails']));
     }
 
     private static function testModeToggle(string $fieldPrefix = ''): Checkbox

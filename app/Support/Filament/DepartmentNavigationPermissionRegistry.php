@@ -128,6 +128,7 @@ use App\Filament\Metrics\Pages\OperacionesYSalud as MetricsOperacionesYSalud;
 use App\Filament\Metrics\Pages\Organizacion as MetricsOrganizacion;
 use App\Filament\Metrics\Pages\Proveedores as MetricsProveedores;
 use App\Filament\Metrics\Pages\Proyectos as MetricsProyectos;
+use App\Filament\Metrics\Pages\Sistema as MetricsSistema;
 use App\Filament\Metrics\Pages\Usuarios as MetricsUsuarios;
 use App\Filament\Operations\Pages\AgendaCorporativa as OperationsAgendaCorporativa;
 use App\Filament\Operations\Pages\BitacoraDeCaso;
@@ -278,6 +279,8 @@ final class DepartmentNavigationPermissionRegistry
         AdministrationTravelAgencyResource::class => ['agencias-de-viaje'],
         AdministrationWhiteCompanyResource::class => ['empresas-aliadas'],
         SaleResource::class => ['ventas'],
+        \App\Filament\Administration\Resources\SaleReceiptEmailTemplates\SaleReceiptEmailTemplateResource::class => ['copys-recibo-de-pago'],
+        \App\Filament\Administration\Resources\CollectionNoticeEmailTemplates\CollectionNoticeEmailTemplateResource::class => ['copys-aviso-de-cobro'],
         CompanyPaidMembershipResource::class => ['ventas', 'comprobantes-nuevos-negocios'],
         CollectionResource::class => ['gestion-de-cobranza'],
         \App\Filament\Administration\Pages\DashboardGestionCobranza::class => ['gestion-de-cobranza'],
@@ -353,6 +356,8 @@ final class DepartmentNavigationPermissionRegistry
         OperationServiceOrderResource::class => ['ordenes-servicios'],
         OperationMedicalAppointmentResource::class => ['citas-medicas'],
         AccountsReceivableResource::class => ['cuentas-por-cobrar'],
+        \App\Filament\Operations\Resources\OperationMedicationInvoices\OperationMedicationInvoiceResource::class => ['facturas-medicamentos'],
+        \App\Filament\Operations\Resources\OperationMedicationFailures\OperationMedicationFailureResource::class => ['fallas-medicamentos'],
         AccountsPayableResource::class => ['cuentas-por-pagar'],
         OperationAccountsPayableResource::class => ['cuentas-por-pagar-facturas'],
         \App\Filament\Operations\Resources\OperationCashPayments\OperationCashPaymentResource::class => ['pagos-de-contado'],
@@ -409,6 +414,7 @@ final class DepartmentNavigationPermissionRegistry
         MetricsOperacionesYSalud::class => ['metricas-operaciones-y-salud'],
         MetricsOrganizacion::class => ['metricas-organizacion'],
         MetricsUsuarios::class => ['metricas-usuarios'],
+        MetricsSistema::class => ['metricas-sistema'],
     ];
 
     /**

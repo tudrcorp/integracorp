@@ -4,66 +4,95 @@ declare(strict_types=1);
 
 use App\Http\Controllers\AvisoCobroController;
 use App\Http\Requests\SendAvisoCobroEmailRequest;
-use App\Mail\AvisoCobroCertificateEmail;
+use App\Mail\CollectionNoticeCopyMail;
 use App\Models\Collection;
+use App\Models\DocumentEmailTemplate;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
-use Mockery;
 
 uses(Tests\TestCase::class);
 
-it('envia al correo del afiliado con CC administracion cuando el email viene vacio', function (): void {
+beforeEach(function (): void {
+    DB::beginTransaction();
+    config(['cache.default' => 'array']);
     Mail::fake();
+    Illuminate\Support\Facades\Queue::fake();
+    App\Models\SystemNotificationRecipientSetting::query()
+        ->whereIn('notification_key', ['sale_receipt_witness_copy', 'collection_notice_witness_copy'])
+        ->delete();
+});
 
+afterEach(function (): void {
+    DB::rollBack();
+});
+
+function avisoSendCollection(string $invoice, string $email): Collection
+{
     $collection = new Collection;
-    $collection->collection_invoice_number = '001';
+    $collection->collection_invoice_number = $invoice;
     $collection->affiliate_full_name = 'John Doe';
-    $collection->affiliate_email = 'john@example.com';
+    $collection->affiliate_email = $email;
 
-    $pdfPath = public_path('storage/avisoDeCobro/ADP-001.pdf');
+    $pdfPath = public_path('storage/avisoDeCobro/ADP-'.$invoice.'.pdf');
     @mkdir(dirname($pdfPath), 0777, true);
     file_put_contents($pdfPath, 'dummy pdf');
+
+    return $collection;
+}
+
+it('envía al correo del afiliado con el copy elegido y copia a administración', function (): void {
+    $template = DocumentEmailTemplate::factory()->collectionNotice()->create();
+    $collection = avisoSendCollection('AVS-'.uniqid(), 'john@example.com');
+
+    $request = Mockery::mock(SendAvisoCobroEmailRequest::class);
+    $request->shouldReceive('validated')->andReturn(['affiliate_template_id' => $template->id]);
+
+    $response = (new AvisoCobroController)->sendEmail($request, $collection);
+
+    expect($response->getStatusCode())->toBe(200)
+        ->and($response->getData(true)['ok'])->toBeTrue()
+        ->and((string) $response->getData(true)['message'])->toContain('john@example.com');
+
+    Mail::assertQueued(CollectionNoticeCopyMail::class, fn (CollectionNoticeCopyMail $mail): bool => $mail->queue === 'default'
+        && $mail->hasTo('john@example.com')
+        && $mail->hasCc('administracion@tudrencasa.com'));
+
+    @unlink(public_path('storage/avisoDeCobro/ADP-'.$collection->collection_invoice_number.'.pdf'));
+});
+
+it('con correo de prueba envía solo a ese correo, sin copia a administración', function (): void {
+    $template = DocumentEmailTemplate::factory()->collectionNotice()->create();
+    $collection = avisoSendCollection('AVS-'.uniqid(), 'jane@example.com');
+
+    $request = Mockery::mock(SendAvisoCobroEmailRequest::class);
+    $request->shouldReceive('validated')->andReturn([
+        'affiliate_template_id' => $template->id,
+        'test_email' => 'other@example.com',
+    ]);
+
+    $response = (new AvisoCobroController)->sendEmail($request, $collection);
+
+    expect($response->getStatusCode())->toBe(200);
+
+    Mail::assertQueued(CollectionNoticeCopyMail::class, fn (CollectionNoticeCopyMail $mail): bool => $mail->hasTo('other@example.com')
+        && ! $mail->hasTo('jane@example.com')
+        && ! $mail->hasCc('administracion@tudrencasa.com'));
+
+    @unlink(public_path('storage/avisoDeCobro/ADP-'.$collection->collection_invoice_number.'.pdf'));
+});
+
+it('responde 422 con un mensaje claro si no se puede enviar', function (): void {
+    $collection = avisoSendCollection('AVS-'.uniqid(), 'john@example.com');
 
     $request = Mockery::mock(SendAvisoCobroEmailRequest::class);
     $request->shouldReceive('validated')->andReturn([]);
 
-    $controller = new AvisoCobroController;
-    $response = $controller->sendEmail($request, $collection);
+    $response = (new AvisoCobroController)->sendEmail($request, $collection);
 
-    expect($response->getStatusCode())->toBe(200);
-    $payload = $response->getData(true);
-    expect($payload['ok'])->toBeTrue();
-    expect((string) $payload['message'])->toContain('Adjuntamos');
+    expect($response->getStatusCode())->toBe(422)
+        ->and((string) $response->getData(true)['message'])->toContain('al menos un destinatario');
 
-    Mail::assertQueued(AvisoCobroCertificateEmail::class, function (AvisoCobroCertificateEmail $mail) use ($collection): bool {
-        return $mail->queue === 'default'
-            && $mail->hasTo($collection->affiliate_email)
-            && $mail->hasCc('administracion@tudrencasa.com');
-    });
-});
+    Mail::assertNothingQueued();
 
-it('envia al correo indicado (sin CC admin) cuando el email viene lleno', function (): void {
-    Mail::fake();
-
-    $collection = new Collection;
-    $collection->collection_invoice_number = '002';
-    $collection->affiliate_full_name = 'Jane Doe';
-    $collection->affiliate_email = 'jane@example.com';
-
-    $pdfPath = public_path('storage/avisoDeCobro/ADP-002.pdf');
-    @mkdir(dirname($pdfPath), 0777, true);
-    file_put_contents($pdfPath, 'dummy pdf');
-
-    $request = Mockery::mock(SendAvisoCobroEmailRequest::class);
-    $request->shouldReceive('validated')->andReturn(['email' => 'other@example.com']);
-
-    $controller = new AvisoCobroController;
-    $response = $controller->sendEmail($request, $collection);
-
-    expect($response->getStatusCode())->toBe(200);
-
-    Mail::assertQueued(AvisoCobroCertificateEmail::class, function (AvisoCobroCertificateEmail $mail): bool {
-        return $mail->queue === 'default'
-            && $mail->hasTo('other@example.com')
-            && ! $mail->hasCc('administracion@tudrencasa.com');
-    });
+    @unlink(public_path('storage/avisoDeCobro/ADP-'.$collection->collection_invoice_number.'.pdf'));
 });

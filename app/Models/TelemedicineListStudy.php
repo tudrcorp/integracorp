@@ -11,5 +11,18 @@ class TelemedicineListStudy extends Model
     protected $fillable = [
         'name',
         'type',
+        'cost',
+        'profit_percentage',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'cost' => 'decimal:2',
+            'profit_percentage' => 'decimal:2',
+        ];
+    }
 }

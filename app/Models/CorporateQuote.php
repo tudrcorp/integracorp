@@ -19,6 +19,20 @@ class CorporateQuote extends Model
 {
     protected $table = 'corporate_quotes';
 
+    /**
+     * Al borrarse queda su huella en `quote_deletion_logs` para las métricas comerciales.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (self $quote): void {
+            QuoteDeletionLog::record(
+                QuoteDeletionLog::CORPORATE,
+                $quote,
+                $quote->detailCoporateQuotes()->pluck('plan_id')->filter()->map(fn (mixed $id): int => (int) $id)->all(),
+            );
+        });
+    }
+
     protected $fillable = [
         'code',
         'code_agent',

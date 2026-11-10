@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\AccountsReceivables\Schemas;
 
+use App\Filament\Operations\Resources\OperationMedicationInvoices\OperationMedicationInvoiceResource;
 use App\Models\OperationAccountsReceivable;
 use App\Support\Operations\AccountsReceivablePresenter;
 use Filament\Infolists\Components\TextEntry;
@@ -66,6 +67,14 @@ class AccountsReceivableInfolist
                                                 TextEntry::make('service_order_number')
                                                     ->label('Número de orden de servicio')
                                                     ->state(fn (OperationAccountsReceivable $record): string => AccountsReceivablePresenter::serviceOrderNumber($record) ?? '—'),
+                                                TextEntry::make('medication_invoice_number')
+                                                    ->label('Factura a paciente')
+                                                    ->state(fn (OperationAccountsReceivable $record): string => AccountsReceivablePresenter::medicationInvoiceNumber($record) ?? '—')
+                                                    ->url(fn (OperationAccountsReceivable $record): ?string => filled($record->operation_medication_invoice_id) && OperationMedicationInvoiceResource::canViewAny()
+                                                        ? OperationMedicationInvoiceResource::getUrl('view', ['record' => $record->operation_medication_invoice_id])
+                                                        : null)
+                                                    ->color(fn (OperationAccountsReceivable $record): string => filled($record->operation_medication_invoice_id) ? 'primary' : 'gray')
+                                                    ->visible(fn (OperationAccountsReceivable $record): bool => filled($record->operation_medication_invoice_id)),
                                             ])
                                             ->columns(2),
                                     ])

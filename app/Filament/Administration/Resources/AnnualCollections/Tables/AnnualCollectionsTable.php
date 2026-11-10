@@ -6,6 +6,7 @@ namespace App\Filament\Administration\Resources\AnnualCollections\Tables;
 
 use App\Enums\CollectionFollowUpStatus;
 use App\Filament\Administration\Resources\AnnualCollections\Actions\CollectionObservationsAction;
+use App\Filament\Administration\Resources\Collections\Tables\CollectionsTable;
 use App\Models\Agency;
 use App\Models\Collection;
 use App\Support\Collections\CollectionFollowUp;
@@ -62,6 +63,7 @@ class AnnualCollectionsTable
             ])
             ->recordActions([
                 CollectionObservationsAction::make(),
+                CollectionsTable::avisoCobroAction('Aviso de cobro'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

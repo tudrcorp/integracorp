@@ -42,6 +42,13 @@ final class AccountsReceivablePresenter
         return filled($code) ? mb_strtoupper((string) $code) : '—';
     }
 
+    public static function medicationInvoiceNumber(OperationAccountsReceivable $record): ?string
+    {
+        $number = $record->operationMedicationInvoice?->invoice_number;
+
+        return filled($number) ? (string) $number : null;
+    }
+
     public static function quoteNumber(OperationAccountsReceivable $record): ?string
     {
         return filled($record->quote_number) ? (string) $record->quote_number : null;
@@ -123,6 +130,9 @@ final class AccountsReceivablePresenter
             OperationAccountsReceivable::STATUS_PENDING_TDG => 'Pendiente gestión TDG',
             OperationAccountsReceivable::STATUS_QUOTE_ASSIGNED => 'Cotización asignada',
             OperationAccountsReceivable::STATUS_COMPLETED => 'Gestión completada',
+            OperationAccountsReceivable::STATUS_PENDING_PAYMENT => 'Pendiente por cobrar',
+            OperationAccountsReceivable::STATUS_PAID => 'Cobrada',
+            OperationAccountsReceivable::STATUS_ANNULLED => 'Anulada',
             default => filled($status) ? (string) $status : '—',
         };
     }
@@ -133,6 +143,9 @@ final class AccountsReceivablePresenter
             OperationAccountsReceivable::STATUS_PENDING_TDG => 'warning',
             OperationAccountsReceivable::STATUS_QUOTE_ASSIGNED => 'info',
             OperationAccountsReceivable::STATUS_COMPLETED => 'success',
+            OperationAccountsReceivable::STATUS_PENDING_PAYMENT => 'warning',
+            OperationAccountsReceivable::STATUS_PAID => 'success',
+            OperationAccountsReceivable::STATUS_ANNULLED => 'danger',
             default => 'gray',
         };
     }

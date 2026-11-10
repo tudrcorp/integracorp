@@ -16,6 +16,13 @@ class OperationAccountsReceivable extends Model
 
     public const STATUS_COMPLETED = 'GESTION_COMPLETADA';
 
+    /** Cuenta por cobrar nacida de una factura de medicamentos al paciente. */
+    public const STATUS_PENDING_PAYMENT = 'PENDIENTE_PAGO';
+
+    public const STATUS_PAID = 'PAGADA';
+
+    public const STATUS_ANNULLED = 'ANULADA';
+
     protected $table = 'operation_accounts_receivables';
 
     protected $fillable = [
@@ -24,6 +31,7 @@ class OperationAccountsReceivable extends Model
         'telemedicine_case_id',
         'operation_quote_generator_id',
         'operation_service_order_id',
+        'operation_medication_invoice_id',
         'quote_number',
         'service_order_number',
         'quote_amount_usd',
@@ -88,6 +96,14 @@ class OperationAccountsReceivable extends Model
     public function operationServiceOrder(): BelongsTo
     {
         return $this->belongsTo(OperationServiceOrder::class);
+    }
+
+    /**
+     * @return BelongsTo<OperationMedicationInvoice, $this>
+     */
+    public function operationMedicationInvoice(): BelongsTo
+    {
+        return $this->belongsTo(OperationMedicationInvoice::class);
     }
 
     /**

@@ -15,6 +15,7 @@ final readonly class CapitationCostResult
     /**
      * @param  list<array{capitation_plan_id: int, plan: string, provider: string, cost: float, frequency: string}>  $lines
      * @param  array{amount: float, reason: string, by: string, at: string, plan_amount: float|null}|null  $override
+     * @param  array{capitation_plan_id: int, plan: string, provider: string, reason: string, by: string, at: string}|null  $assignment  plan asignado directamente (aplique o no)
      */
     public function __construct(
         public float $amount,
@@ -22,11 +23,17 @@ final readonly class CapitationCostResult
         public ?string $reason = null,
         public float $planAmount = 0.0,
         public ?array $override = null,
+        public ?array $assignment = null,
     ) {}
 
-    public static function none(string $reason): self
+    public static function none(string $reason, ?array $assignment = null): self
     {
-        return new self(0.0, [], $reason);
+        return new self(0.0, [], $reason, assignment: $assignment);
+    }
+
+    public function isAssigned(): bool
+    {
+        return $this->assignment !== null;
     }
 
     public function applies(): bool
@@ -58,7 +65,7 @@ final readonly class CapitationCostResult
             return (string) $this->reason;
         }
 
-        $plans = implode(' + ', array_map(
+        $plans = ($this->assignment !== null ? 'Asignado · ' : '').implode(' + ', array_map(
             fn (array $line): string => $line['plan'].' · '.$line['provider'].' · '.mb_strtolower($line['frequency']),
             $this->lines,
         ));

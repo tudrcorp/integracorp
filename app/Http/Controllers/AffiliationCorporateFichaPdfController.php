@@ -6,13 +6,17 @@ namespace App\Http\Controllers;
 
 use App\Models\AffiliationCorporate;
 use App\Services\AffiliationCorporateFichaPdfService;
+use App\Support\Affiliations\AffiliationFichaPdfAccess;
 use App\Support\SecurityAudit;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class AffiliationCorporateFichaPdfController extends Controller
 {
     public function download(AffiliationCorporate $affiliationCorporate): Response
     {
+        self::authorizeFicha();
+
         self::prepareLongRunningPdfResponse();
 
         $binary = AffiliationCorporateFichaPdfService::outputBinaryCached($affiliationCorporate);
@@ -33,6 +37,8 @@ class AffiliationCorporateFichaPdfController extends Controller
 
     public function preview(AffiliationCorporate $affiliationCorporate): Response
     {
+        self::authorizeFicha();
+
         self::prepareLongRunningPdfResponse();
 
         $binary = AffiliationCorporateFichaPdfService::outputBinaryCached($affiliationCorporate);
@@ -49,6 +55,18 @@ class AffiliationCorporateFichaPdfController extends Controller
         return response($binary, 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'inline; filename="'.$filename.'"');
+    }
+  
+    /**
+     * 403 si quien pide la ficha no puede abrir la afiliación en el panel de la ruta.
+     */
+    private static function authorizeFicha(): void
+    {
+        abort_unless(
+            AffiliationFichaPdfAccess::userCanAccess(Auth::user(), AffiliationFichaPdfAccess::KIND_CORPORATE, request()->route()?->getName()),
+            403,
+            'No tiene permiso para ver la ficha técnica de esta afiliación.',
+        );
     }
 
     private static function auditEvent(string $routeName, string $action): string

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Pages\Schemas;
 
+use App\Models\SystemNotificationRecipientSetting;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
@@ -79,9 +81,12 @@ final class SystemNotificationRecipientSettingsForm
                             ->collapsible()
                             ->cloneable()
                             ->live()
-                            ->itemLabel(fn (array $state): string => filled($state['email'] ?? null)
-                                ? (string) $state['email']
+                            ->itemLabel(fn (array $state, mixed $livewire): string => filled($state['email'] ?? null)
+                                ? (string) $state['email'].(self::activeKeyUsesCopyModes($livewire)
+                                    ? (($state['copy_mode'] ?? null) === SystemNotificationRecipientSetting::EMAIL_MODE_BCC ? ' · CCO' : ' · CC')
+                                    : '')
                                 : 'Nuevo correo')
+                            ->columns(fn (mixed $livewire): int => self::activeKeyUsesCopyModes($livewire) ? 3 : 1)
                             ->schema([
                                 TextInput::make('email')
                                     ->label('Correo electrónico')
@@ -90,9 +95,24 @@ final class SystemNotificationRecipientSettingsForm
                                     ->maxLength(255)
                                     ->prefixIcon(Heroicon::OutlinedAtSymbol)
                                     ->placeholder('analista@empresa.com')
-                                    ->autocomplete('off'),
+                                    ->autocomplete('off')
+                                    ->columnSpan(fn (mixed $livewire): int => self::activeKeyUsesCopyModes($livewire) ? 2 : 1),
+                                Select::make('copy_mode')
+                                    ->label('Tipo de copia')
+                                    ->options([
+                                        SystemNotificationRecipientSetting::EMAIL_MODE_CC => 'CC · copia visible',
+                                        SystemNotificationRecipientSetting::EMAIL_MODE_BCC => 'CCO · copia oculta',
+                                    ])
+                                    ->default(SystemNotificationRecipientSetting::EMAIL_MODE_CC)
+                                    ->required(fn (mixed $livewire): bool => self::activeKeyUsesCopyModes($livewire))
+                                    ->selectablePlaceholder(false)
+                                    ->native(false)
+                                    ->helperText('CC: el destinatario ve este correo. CCO: nadie más lo ve.')
+                                    ->visible(fn (mixed $livewire): bool => self::activeKeyUsesCopyModes($livewire)),
                             ])
-                            ->helperText('Puede agregar tantos correos como necesite. Se eliminan duplicados al guardar.')
+                            ->helperText(fn (mixed $livewire): string => self::activeKeyUsesCopyModes($livewire)
+                                ? 'Cada correo testigo recibe el mismo correo que el afiliado o el agente. Elija si va en copia visible (CC) u oculta (CCO). Se eliminan duplicados al guardar.'
+                                : 'Puede agregar tantos correos como necesite. Se eliminan duplicados al guardar.')
                             ->columnSpanFull(),
                     ]),
             ]);
@@ -108,6 +128,18 @@ final class SystemNotificationRecipientSettingsForm
         }
 
         return $livewire->getActiveNotificationKeyEnum()->usesEmailRecipients();
+    }
+
+    /**
+     * Las copias testigo de un envío ajeno (recibos, avisos de cobro) marcan cada correo como CC o CCO.
+     */
+    private static function activeKeyUsesCopyModes(mixed $livewire): bool
+    {
+        if (! is_object($livewire) || ! method_exists($livewire, 'getActiveNotificationKeyEnum')) {
+            return false;
+        }
+
+        return $livewire->getActiveNotificationKeyEnum()->supportsEmailCopyModes();
     }
 
     private static function phoneSection(): Section

@@ -16,6 +16,7 @@ use App\Support\Filament\Administration\SaleReciboPagoEmailRecipients;
 use App\Support\Filament\Administration\SaleReciboPagoTestDeliveryForm;
 use App\Support\Filament\Administration\SaleReciboPagoWhatsAppRecipients;
 use App\Support\Sales\SaleDeletion;
+use App\Support\Sales\SaleReceiptEmailDelivery;
 use App\Support\SecurityAudit;
 use App\Support\WhiteCompanies\WhiteCompanySaleAmountLegend;
 use Carbon\Carbon;
@@ -476,15 +477,33 @@ class SalesTable
             ->icon('heroicon-o-wrench-screwdriver')
             ->color('warning')
             ->modalHeading('Recibo de pago')
-            ->modalDescription('Indique el periodo de vigencia, genere la vista previa del PDF y confirme antes de descargar.')
+            ->modalDescription('Indique el periodo de vigencia y genere el recibo. Puede revisar la vista previa del PDF y enviarlo por correo.')
             ->modalIcon('heroicon-o-document-arrow-down')
             ->modalWidth(Width::SevenExtraLarge)
             ->modalContent(fn (Sale $record): ViewContract => View::make('filament.administration.sales.recibo-pago-preview-modal', [
                 'sale' => $record,
+                'emailOptions' => self::reciboPagoEmailOptions($record),
             ]))
             ->modalSubmitAction(false)
             ->modalCancelActionLabel('Cerrar')
             ->action(fn () => null);
+    }
+
+    /**
+     * Copys y destinatarios para enviar el recibo desde la vista previa. Si la tabla de copys
+     * aún no existe en este entorno, el modal se muestra sin la sección de envío.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function reciboPagoEmailOptions(Sale $record): ?array
+    {
+        try {
+            return SaleReceiptEmailDelivery::options($record);
+        } catch (Throwable $th) {
+            LogController::log(Auth::user()?->id, 'EXCEPTION', 'administration.sales.receipt-email-options', $th->getMessage());
+
+            return null;
+        }
     }
 
     /**
@@ -710,39 +729,34 @@ class SalesTable
     public static function sendReciboPagoEmail(Sale $record, array $data = []): void
     {
         $testMode = SaleReciboPagoTestDeliveryForm::isTestModeFromData($data);
-        $recipients = SaleReciboPagoEmailRecipients::resolve($record);
+        $affiliateTemplateId = filled($data['affiliate_template_id'] ?? null) ? (int) $data['affiliate_template_id'] : null;
+        $responsibleTemplateId = filled($data['responsible_template_id'] ?? null) ? (int) $data['responsible_template_id'] : null;
 
         self::auditSaleAction('AUDIT_ADMIN_SALES_RECEIPT_EMAIL_ATTEMPTED', 'administration.sales.send-receipt-email', $record, [
             'test_mode' => $testMode,
             'test_email' => $testMode ? ($data['test_email'] ?? null) : null,
-            'recipient_emails' => $recipients['emails'],
-            'cc_emails' => $testMode ? [] : $recipients['cc_emails'],
-            'has_recipients' => $recipients['has_recipients'],
-            'has_pdf' => $recipients['has_pdf'],
+            'affiliate_template_id' => $affiliateTemplateId,
+            'responsible_template_id' => $responsibleTemplateId,
         ]);
 
         try {
-            SaleReciboPagoEmailRecipients::send(
+            $deliveries = SaleReceiptEmailDelivery::deliver(
                 $record,
+                affiliateTemplateId: $affiliateTemplateId,
+                responsibleTemplateId: $responsibleTemplateId,
                 testMode: $testMode,
                 testEmail: $testMode ? (string) ($data['test_email'] ?? '') : null,
             );
 
-            self::auditSaleAction('AUDIT_ADMIN_SALES_RECEIPT_EMAIL_SENT', 'administration.sales.send-receipt-email', $record, [
-                'test_mode' => $testMode,
-                'recipient_emails' => $testMode
-                    ? array_filter([(string) ($data['test_email'] ?? '')])
-                    : $recipients['emails'],
-                'cc_emails' => $testMode ? [] : $recipients['cc_emails'],
-            ]);
-
             LogController::log(Auth::user()->id, 'Envío de recibo de pago por correo', 'Modulo Ventas', 'ENVIAR');
 
+            $sentTo = collect($deliveries)->flatMap(fn (array $delivery): array => $delivery['to'])->unique()->implode(', ');
+
             Notification::make()
-                ->title($testMode ? 'Correo de prueba enviado' : 'Correo enviado')
+                ->title($testMode ? 'Correo de prueba enviado' : 'Recibo enviado')
                 ->body($testMode
-                    ? 'El recibo de pago fue enviado al correo de prueba indicado.'
-                    : 'El recibo de pago fue enviado al agente, a la agencia y en copia al equipo interno.')
+                    ? 'Los copys elegidos se enviaron a '.$sentTo.'. No se notificó a nadie más.'
+                    : 'El recibo se envió a '.$sentTo.'. Los testigos configurados reciben su copia.')
                 ->success()
                 ->send();
         } catch (Throwable $th) {
@@ -755,7 +769,7 @@ class SalesTable
 
             Notification::make()
                 ->title('No se pudo enviar el correo')
-                ->body($th->getMessage())
+                ->body($th instanceof \RuntimeException ? $th->getMessage() : 'Ocurrió un error inesperado. Intente de nuevo.')
                 ->danger()
                 ->send();
         }

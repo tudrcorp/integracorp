@@ -25,6 +25,13 @@ use Carbon\CarbonImmutable;
  * Un afiliado puede tener un ajuste negociado (AffiliateCapitationOverride) que reemplaza
  * ese monto, pero solo cuando el plan le aplica: inactivo o sin plan sigue siendo 0.0.
  *
+ * Un afiliado puede tener un plan de capitado asignado directamente
+ * (AffiliateCapitationAssignment). Decisión de Gustavo (07/11/2026): reemplaza al cálculo
+ * automático; el proveedor del plan DEBE estar en los proveedores de servicio de la afiliación
+ * (no se exige que el plan cubra el plan TDEC); si el plan vence o se inactiva, o el proveedor
+ * sale de la afiliación, da 0.0 con aviso (no vuelve en silencio a lo automático). El ajuste
+ * negociado manda sobre él.
+ *
  * Única fuente de verdad: tablas, exportes y reportes deben pasar por aquí.
  */
 final class AffiliateCapitationCost
@@ -117,11 +124,17 @@ final class AffiliateCapitationCost
         ?string $subjectKey = null,
         bool $applyOverride = true,
     ): CapitationCostResult {
+        $index = self::index();
+        $assignment = $index->assignmentFor($subjectKey);
+
         if (! $isActive) {
-            return CapitationCostResult::none('Afiliado no activo');
+            return CapitationCostResult::none('Afiliado no activo', self::assignmentSummary($assignment));
         }
 
-        $index = self::index();
+        if ($assignment !== null) {
+            return self::resolveAssignment($assignment, $serviceProviders, $on ?? CarbonImmutable::now(), $index->overrideFor($subjectKey), $applyOverride);
+        }
+
         $aliases = array_values(array_filter(self::aliases($serviceProviders), fn (string $alias): bool => $index->hasAlias($alias)));
 
         if ($aliases === []) {
@@ -174,6 +187,76 @@ final class AffiliateCapitationCost
             $planAmount,
             $override,
         );
+    }
+
+    /**
+     * @param  array{capitation_plan_id: int, supplier_id: int, plan: string, provider: string, cost: float, frequency: string, alias: string, plan_model: \App\Models\CapitationPlan, usable: bool, reason: string, by: string, at: string}  $assignment
+     * @param  array{amount: float, reason: string, by: string, at: string, plan_amount: float|null}|null  $override
+     */
+    private static function resolveAssignment(array $assignment, mixed $serviceProviders, \DateTimeInterface $on, ?array $override, bool $applyOverride): CapitationCostResult
+    {
+        $summary = self::assignmentSummary($assignment);
+
+        if (! $assignment['usable'] || ! $assignment['plan_model']->isValidOn($on)) {
+            return CapitationCostResult::none('Plan asignado «'.$assignment['plan'].'» vencido o inactivo: reasígnelo', $summary);
+        }
+
+        if ($assignment['alias'] === '' || ! in_array($assignment['alias'], self::aliases($serviceProviders), true)) {
+            return CapitationCostResult::none('El proveedor del plan asignado ('.$assignment['provider'].') ya no está en la afiliación: reasígnelo', $summary);
+        }
+
+        $line = [
+            'capitation_plan_id' => $assignment['capitation_plan_id'],
+            'supplier_id' => $assignment['supplier_id'],
+            'plan' => $assignment['plan'],
+            'provider' => $assignment['provider'],
+            'cost' => $assignment['cost'],
+            'frequency' => $assignment['frequency'],
+        ];
+
+        $override = $applyOverride ? $override : null;
+
+        return new CapitationCostResult(
+            $override !== null ? $override['amount'] : $assignment['cost'],
+            [$line],
+            null,
+            $assignment['cost'],
+            $override,
+            $summary,
+        );
+    }
+
+    /**
+     * @param  array{capitation_plan_id: int, plan: string, provider: string, reason: string, by: string, at: string}|array<string, mixed>|null  $assignment
+     * @return array{capitation_plan_id: int, plan: string, provider: string, reason: string, by: string, at: string}|null
+     */
+    private static function assignmentSummary(?array $assignment): ?array
+    {
+        if ($assignment === null) {
+            return null;
+        }
+
+        return [
+            'capitation_plan_id' => (int) $assignment['capitation_plan_id'],
+            'plan' => (string) $assignment['plan'],
+            'provider' => (string) $assignment['provider'],
+            'reason' => (string) $assignment['reason'],
+            'by' => (string) $assignment['by'],
+            'at' => (string) $assignment['at'],
+        ];
+    }
+
+    /**
+     * Proveedores de servicio de la afiliación de un afiliado (en Nuevos Negocios, de su empresa).
+     */
+    public static function serviceProvidersFor(\Illuminate\Database\Eloquent\Model $record): mixed
+    {
+        return match (true) {
+            $record instanceof Affiliate => $record->affiliation?->getAttribute('service_providers'),
+            $record instanceof AffiliateCorporate => $record->affiliationCorporate?->getAttribute('service_providers'),
+            $record instanceof CompanyAssociate => $record->company?->getAttribute('service_providers'),
+            default => null,
+        };
     }
 
     /**

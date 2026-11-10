@@ -16,6 +16,7 @@ class OperationInventoryProductCategory extends Model
     protected $fillable = [
         'name',
         'description',
+        'profit_percentage',
         'is_active',
         'created_by',
     ];
@@ -26,6 +27,7 @@ class OperationInventoryProductCategory extends Model
     protected function casts(): array
     {
         return [
+            'profit_percentage' => 'decimal:2',
             'is_active' => 'boolean',
         ];
     }

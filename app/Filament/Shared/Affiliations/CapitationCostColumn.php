@@ -33,6 +33,14 @@ final class CapitationCostColumn
     }
 
     /**
+     * Acción masiva para asignar, quitar o deshacer el plan de capitado de los seleccionados.
+     */
+    public static function assignBulkAction(): \Filament\Actions\BulkAction
+    {
+        return CapitationOverrideActions::bulkAssign();
+    }
+
+    /**
      * @param  Closure(Model, mixed): CapitationCostResult  $resolver  recibe el registro y el componente Livewire
      */
     public static function make(Closure $resolver): TextColumn
@@ -60,16 +68,24 @@ final class CapitationCostColumn
             ->alignEnd()
             ->color(fn (Model $record, mixed $livewire): ?string => match (true) {
                 $result($record, $livewire)->isOverridden() => 'warning',
+                $result($record, $livewire)->isAssigned() && ! $result($record, $livewire)->applies() => 'danger',
+                $result($record, $livewire)->isAssigned() => 'info',
                 $result($record, $livewire)->applies() => null,
                 default => 'gray',
             })
-            ->icon(fn (Model $record, mixed $livewire): ?Heroicon => $result($record, $livewire)->isOverridden() ? Heroicon::OutlinedPencilSquare : null)
+            ->icon(fn (Model $record, mixed $livewire): ?Heroicon => match (true) {
+                $result($record, $livewire)->isOverridden() => Heroicon::OutlinedPencilSquare,
+                $result($record, $livewire)->isAssigned() => Heroicon::OutlinedLink,
+                default => null,
+            })
             ->iconPosition(IconPosition::After)
             ->action(CapitationOverrideActions::cell($result))
             ->description(fn (Model $record, mixed $livewire): string => $result($record, $livewire)->summary())
-            ->tooltip(fn (Model $record, mixed $livewire): string => $result($record, $livewire)->isOverridden()
-                ? 'Monto negociado para este afiliado. Pulse para ver el historial o volver al monto del plan.'
-                : 'Costo por afiliado del plan de capitado del proveedor Outsourcing de la afiliación, tal cual está configurado. Es 0,00 si el afiliado no está activo, no tiene proveedor Outsourcing o el proveedor no tiene plan vigente para su plan.')
+            ->tooltip(fn (Model $record, mixed $livewire): string => match (true) {
+                $result($record, $livewire)->isOverridden() => 'Monto negociado para este afiliado. Pulse para ver el historial o volver al monto del plan.',
+                $result($record, $livewire)->isAssigned() => 'Plan de capitado asignado directamente a este afiliado: reemplaza el cálculo automático. Pulse para cambiarlo o quitarlo.',
+                default => 'Costo por afiliado del plan de capitado del proveedor Outsourcing de la afiliación, tal cual está configurado. Es 0,00 si el afiliado no está activo, no tiene proveedor Outsourcing o el proveedor no tiene plan vigente para su plan.',
+            })
             ->toggleable();
     }
 }

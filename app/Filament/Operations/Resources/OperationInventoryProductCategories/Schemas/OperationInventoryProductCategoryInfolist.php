@@ -21,6 +21,12 @@ class OperationInventoryProductCategoryInfolist
                             ->label('Descripción')
                             ->placeholder('—')
                             ->columnSpanFull(),
+                        TextEntry::make('profit_percentage')
+                            ->label('Porcentaje de utilidad')
+                            ->numeric(decimalPlaces: 2)
+                            ->suffix(' %')
+                            ->placeholder('Sin definir')
+                            ->helperText('Se aplica sobre el costo de cada producto de la categoría.'),
                         IconEntry::make('is_active')
                             ->label('Activa')
                             ->boolean(),

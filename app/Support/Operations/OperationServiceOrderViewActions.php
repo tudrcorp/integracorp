@@ -85,6 +85,17 @@ final class OperationServiceOrderViewActions
             return 'La orden '.ServiceOrderFlowTrace::orderLabel($record).' tiene una factura registrada en Cuentas por pagar. Revierta la factura antes de anularla o cancelarla.';
         }
 
+        $patientInvoice = $record->exists
+            ? \App\Models\OperationMedicationInvoice::query()
+                ->where('operation_service_order_id', $record->getKey())
+                ->where('status', '!=', \App\Models\OperationMedicationInvoice::STATUS_ANNULLED)
+                ->value('invoice_number')
+            : null;
+
+        if ($patientInvoice !== null) {
+            return 'La orden '.ServiceOrderFlowTrace::orderLabel($record).' tiene la factura al paciente '.$patientInvoice.' vigente. Anúlela en Facturas a pacientes antes de cancelar, anular o reasignar la orden.';
+        }
+
         return null;
     }
 

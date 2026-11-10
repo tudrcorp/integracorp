@@ -9,7 +9,8 @@ namespace App\Enums;
  *
  * Los de servicios salen de `operation_service_statistics` (una fila por ítem
  * de servicio). Los de inventario salen del inventario propio (Diagnomóvil):
- * existencias por ubicación y el libro de entradas y salidas.
+ * existencias por ubicación y el libro de entradas y salidas. El de facturación
+ * sale de las facturas de medicamentos al paciente (una fila por factura).
  */
 enum OperationReportType: string
 {
@@ -31,10 +32,13 @@ enum OperationReportType: string
     case InventoryConsumption = 'inventory_consumption';
     case InventoryIdle = 'inventory_idle';
     case InventoryReconciliation = 'inventory_reconciliation';
+    case MedicationInvoices = 'medication_invoices';
 
     public const GROUP_SERVICES = 'services';
 
     public const GROUP_INVENTORY = 'inventory';
+
+    public const GROUP_BILLING = 'billing';
 
     public function label(): string
     {
@@ -57,6 +61,7 @@ enum OperationReportType: string
             self::InventoryConsumption => 'Consumo por producto',
             self::InventoryIdle => 'Productos sin movimiento',
             self::InventoryReconciliation => 'Conciliación de existencias',
+            self::MedicationInvoices => 'Facturas a pacientes',
         };
     }
 
@@ -81,6 +86,7 @@ enum OperationReportType: string
             self::InventoryConsumption => 'Unidades consumidas por producto y motivo, con promedio diario.',
             self::InventoryIdle => 'Productos con existencia que no tuvieron salidas en el periodo.',
             self::InventoryReconciliation => 'Diferencias entre almacén, ficha de inventario y movimientos registrados.',
+            self::MedicationInvoices => 'Facturas al paciente por lo no cubierto (medicamentos, laboratorios, estudios, especialistas), con totales por cobrar y cobrados.',
         };
     }
 
@@ -105,15 +111,25 @@ enum OperationReportType: string
             self::InventoryConsumption => 'heroicon-o-arrow-trending-down',
             self::InventoryIdle => 'heroicon-o-pause-circle',
             self::InventoryReconciliation => 'heroicon-o-clipboard-document-check',
+            self::MedicationInvoices => 'heroicon-o-receipt-percent',
         };
     }
 
     /**
-     * Sección del selector: servicios o inventario.
+     * Sección del selector: servicios, inventario o facturación.
      */
     public function group(): string
     {
-        return str_starts_with($this->value, 'inventory_') ? self::GROUP_INVENTORY : self::GROUP_SERVICES;
+        return match (true) {
+            str_starts_with($this->value, 'inventory_') => self::GROUP_INVENTORY,
+            $this === self::MedicationInvoices => self::GROUP_BILLING,
+            default => self::GROUP_SERVICES,
+        };
+    }
+
+    public function isMedicationInvoices(): bool
+    {
+        return $this === self::MedicationInvoices;
     }
 
     public function isInventory(): bool
@@ -146,6 +162,7 @@ enum OperationReportType: string
             self::InventoryMovements => ['movimiento', 'movimientos'],
             self::InventoryBalance, self::InventoryReconciliation => ['producto por ubicación', 'productos por ubicación'],
             self::InventoryGeneral, self::InventoryLowStock, self::InventoryConsumption, self::InventoryIdle => ['producto', 'productos'],
+            self::MedicationInvoices => ['factura', 'facturas'],
             default => ['servicio', 'servicios'],
         };
     }
@@ -178,7 +195,7 @@ enum OperationReportType: string
      */
     public function isDetail(): bool
     {
-        return in_array($this, [self::ServiceDetail, self::DeniedCases, self::FullTable, self::InventoryMovements], true);
+        return in_array($this, [self::ServiceDetail, self::DeniedCases, self::FullTable, self::InventoryMovements, self::MedicationInvoices], true);
     }
 
     /**
@@ -187,6 +204,11 @@ enum OperationReportType: string
      */
     public function hasManyRows(): bool
     {
+        if ($this === self::MedicationInvoices) {
+            // Se acota y va a cola solo si de verdad es grande (ver OperationReportGenerator::shouldQueue).
+            return false;
+        }
+
         return $this->isDetail() || in_array($this, [self::CasesByPatient, self::Patients, self::InventoryGeneral, self::InventoryBalance], true);
     }
 

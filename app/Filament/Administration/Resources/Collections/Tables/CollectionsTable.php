@@ -393,22 +393,7 @@ class CollectionsTable
                         }),
 
                     /**REGENERAR PDF */
-                    Action::make('regenerate_pdf')
-                        ->label('Regenerar PDF')
-                        ->icon('heroicon-s-arrow-down-on-square-stack')
-                        ->color('warning')
-                        ->modalHeading('Aviso de cobro')
-                        ->modalDescription('Revise y corrija los datos del aviso (los cambios valen solo para el PDF), regenérelo y luego envíelo por correo al afiliado.')
-                        ->modalIcon('heroicon-o-document-arrow-down')
-                        ->modalWidth(Width::SevenExtraLarge)
-                        ->modalContent(function (Collection $record): ViewContract {
-                            return View::make('filament.administration.collections.aviso-cobro-preview-modal', [
-                                'collection' => $record,
-                            ]);
-                        })
-                        ->modalSubmitAction(false)
-                        ->modalCancelActionLabel('Cerrar')
-                        ->action(fn () => null),
+                    self::avisoCobroAction(),
 
                     self::adjustAction(),
                     self::adjustmentHistoryAction(),
@@ -656,5 +641,27 @@ class CollectionsTable
     public static function isCorporate(?string $type): bool
     {
         return str_contains(Str::upper(Str::ascii((string) $type)), 'CORPORATIVA');
+    }
+
+    /**
+     * Aviso de cobro: revisar datos, regenerar el PDF, verlo si se quiere y enviarlo con los copys
+     * elegidos. La usan Gestión de Cobranza y Cobranza Por Mes.
+     */
+    public static function avisoCobroAction(string $label = 'Regenerar PDF'): Action
+    {
+        return Action::make('regenerate_pdf')
+            ->label($label)
+            ->icon('heroicon-s-arrow-down-on-square-stack')
+            ->color('warning')
+            ->modalHeading('Aviso de cobro')
+            ->modalDescription('Revise y corrija los datos del aviso (los cambios valen solo para el PDF), regenérelo y envíelo por correo al afiliado y al agente / agencia con el copy que elija.')
+            ->modalIcon('heroicon-o-document-arrow-down')
+            ->modalWidth(Width::SevenExtraLarge)
+            ->modalContent(fn (Collection $record): ViewContract => View::make('filament.administration.collections.aviso-cobro-preview-modal', [
+                'collection' => $record,
+            ]))
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cerrar')
+            ->action(fn () => null);
     }
 }

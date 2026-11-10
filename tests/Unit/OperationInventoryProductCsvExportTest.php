@@ -32,8 +32,8 @@ it('expone la bulk action de exportar productos csv en la tabla', function (): v
 
 it('define encabezados y operadores opcionales de existencia', function (): void {
     expect(OperationInventoryProductCsvExportService::headers())
-        ->toContain('Código', 'Categoría', 'Almacén', 'Existencia')
-        ->and(count(OperationInventoryProductCsvExportService::headers()))->toBe(11);
+        ->toContain('Código', 'Categoría', 'Costo', '% utilidad', 'Precio final', 'Almacén', 'Existencia')
+        ->and(count(OperationInventoryProductCsvExportService::headers()))->toBe(13);
 
     expect(OperationInventoryProductCsvExportService::existenceOperatorOptions())
         ->toBe([

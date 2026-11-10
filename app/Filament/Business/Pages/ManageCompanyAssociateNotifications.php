@@ -107,7 +107,7 @@ class ManageCompanyAssociateNotifications extends Page
         $this->form->fill([
             'is_active' => $settings->isActive(),
             'notification_emails' => collect($settings->emails())
-                ->map(fn (string $email): array => ['email' => $email])
+                ->map(fn (string $email): array => ['email' => $email, 'copy_mode' => $settings->emailMode($email)])
                 ->values()
                 ->all(),
             'notification_phones' => collect($settings->phones())
@@ -188,6 +188,10 @@ class ManageCompanyAssociateNotifications extends Page
             ->values()
             ->all();
 
+        $emailModes = $notificationKey->supportsEmailCopyModes()
+            ? self::emailModesFromState($data['notification_emails'] ?? [], $emails)
+            : null;
+
         $phones = collect($data['notification_phones'] ?? [])
             ->pluck('phone')
             ->filter(fn (mixed $phone): bool => filled($phone))
@@ -200,6 +204,7 @@ class ManageCompanyAssociateNotifications extends Page
         $settings->update([
             'is_active' => $isActive,
             'notification_emails' => $emails,
+            'notification_email_modes' => $emailModes,
             'notification_phones' => $phones,
             'updated_by' => Auth::user()?->name,
         ]);
@@ -208,6 +213,7 @@ class ManageCompanyAssociateNotifications extends Page
             'notification_key' => $notificationKey->value,
             'is_active' => $isActive,
             'emails_count' => count($emails),
+            'bcc_emails_count' => is_array($emailModes) ? count(array_filter($emailModes, fn (string $mode): bool => $mode === SystemNotificationRecipientSetting::EMAIL_MODE_BCC)) : 0,
             'phones_count' => count($phones),
             'updated_by' => Auth::user()?->name,
         ]);
@@ -223,6 +229,33 @@ class ManageCompanyAssociateNotifications extends Page
             ->body("La tarea quedó {$statusLabel}. ".$notificationKey->savedRecipientsMessage($emails, $phones))
             ->success()
             ->send();
+    }
+
+    /**
+     * Modo de copia por correo guardado. Si el mismo correo aparece dos veces, gana CCO (el más
+     * reservado): nunca se expone un correo que el analista marcó como oculto.
+     *
+     * @param  array<int|string, mixed>  $items
+     * @param  list<string>  $emails
+     * @return array<string, string>
+     */
+    private static function emailModesFromState(array $items, array $emails): array
+    {
+        $modes = array_fill_keys($emails, SystemNotificationRecipientSetting::EMAIL_MODE_CC);
+
+        foreach ($items as $item) {
+            $email = strtolower(trim((string) (is_array($item) ? ($item['email'] ?? '') : '')));
+
+            if ($email === '' || ! array_key_exists($email, $modes)) {
+                continue;
+            }
+
+            if (($item['copy_mode'] ?? null) === SystemNotificationRecipientSetting::EMAIL_MODE_BCC) {
+                $modes[$email] = SystemNotificationRecipientSetting::EMAIL_MODE_BCC;
+            }
+        }
+
+        return $modes;
     }
 
     public static function shouldRegisterNavigation(): bool

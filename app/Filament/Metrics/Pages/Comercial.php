@@ -6,19 +6,23 @@ namespace App\Filament\Metrics\Pages;
 
 use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Metrics\Pages\Concerns\IsCorporateMetricsPage;
+use App\Filament\Metrics\Widgets\Corporate\AgencyQuoteEffectivenessRanking;
+use App\Filament\Metrics\Widgets\Corporate\AgentQuoteEffectivenessRanking;
 use App\Filament\Metrics\Widgets\Corporate\CommercialKpiTiles;
 use App\Filament\Metrics\Widgets\Corporate\CorporateDetailWidget;
 use App\Filament\Metrics\Widgets\Corporate\CorporateFunnel;
 use App\Filament\Metrics\Widgets\Corporate\IncomeByAgencyRanking;
+use App\Filament\Metrics\Widgets\Corporate\PlanQuotesAnalysis;
 use App\Filament\Metrics\Widgets\Corporate\PlansSoldChart;
 use App\Filament\Metrics\Widgets\Corporate\QuotesTrendChart;
+use App\Filament\Metrics\Widgets\Corporate\QuotesYearKpiTiles;
 use App\Filament\Metrics\Widgets\Corporate\SalesByAgentRanking;
 use BackedEnum;
 use Filament\Pages\Dashboard;
 use Filament\Support\Icons\Heroicon;
 
 /**
- * Comercial: cotizaciones, conversión, red de ventas y lo que más se vende.
+ * Comercial: cotizaciones (del año y por plan), conversión, red de ventas y lo que más se vende.
  */
 class Comercial extends Dashboard
 {
@@ -42,6 +46,10 @@ class Comercial extends Dashboard
     {
         return [
             CommercialKpiTiles::class,
+            QuotesYearKpiTiles::class,
+            PlanQuotesAnalysis::class,
+            AgentQuoteEffectivenessRanking::class,
+            AgencyQuoteEffectivenessRanking::class,
             QuotesTrendChart::class,
             CorporateFunnel::class,
             SalesByAgentRanking::class,

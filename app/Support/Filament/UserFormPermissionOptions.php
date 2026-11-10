@@ -53,6 +53,8 @@ class UserFormPermissionOptions
         'rrhhdeduccionresource' => ['deducciones'],
         'rrhhdepartamentoresource' => ['departamentos'],
         'saleresource' => ['ventas'],
+        'salereceiptemailtemplateresource' => ['copys-recibo-de-pago'],
+        'collectionnoticeemailtemplateresource' => ['copys-aviso-de-cobro'],
         'stateresource' => ['estados'],
         'travelagencyresource' => ['agencias-de-viaje'],
         'travelagentresource' => ['agentes-de-viaje'],
