@@ -882,7 +882,6 @@ class AffiliatesRelationManager extends RelationManager
             ->toolbarActions([
                 BulkActionGroup::make([
                     CapitationCostColumn::bulkAction(),
-                    CapitationCostColumn::assignBulkAction(),
                     $this->changeSpecificBusinessUnitBulkAction(),
                     $this->addUpgradeWithVoucherBulkAction(fn (): bool => self::userCanManageUpgrades()),
                     BulkAction::make('remove_upgrade_bulk')
