@@ -8,6 +8,7 @@ use App\Enums\OperationInventoryProductPresentation;
 use App\Models\OperationInventoryProduct;
 use App\Models\OperationInventoryUbication;
 use App\Support\CsvExportStream;
+use App\Support\Operations\OperationInventoryProductPricing;
 use Illuminate\Database\Eloquent\Builder;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -34,6 +35,8 @@ final class OperationInventoryProductCsvExportService
             'Nombre',
             'Categoría',
             'Costo',
+            '% utilidad',
+            'Precio final',
             'Unidad',
             'Presentación',
             'Almacén',
@@ -114,7 +117,7 @@ final class OperationInventoryProductCsvExportService
         $existenceValue = filled($filters['existence_value'] ?? null) ? (int) $filters['existence_value'] : null;
 
         $query = OperationInventoryProduct::query()
-            ->with(['category:id,name']);
+            ->with(['category:id,name,profit_percentage']);
 
         if ($categoryId !== null) {
             $query->where('operation_inventory_product_category_id', $categoryId);
@@ -157,12 +160,16 @@ final class OperationInventoryProductCsvExportService
         string $ubicationName,
     ): array {
         $existence = (int) ($product->filtered_existence ?? $product->totalExistence());
+        $profitPercentage = OperationInventoryProductPricing::profitPercentageFor($product);
+        $finalPrice = OperationInventoryProductPricing::finalPriceFor($product);
 
         return [
             (string) $product->code,
             (string) $product->name,
             (string) ($product->category?->name ?? '—'),
             number_format((float) $product->cost, 2, '.', ''),
+            $profitPercentage !== null ? number_format($profitPercentage, 2, '.', '') : 'Sin definir',
+            $finalPrice !== null ? number_format($finalPrice, 2, '.', '') : 'Sin definir',
             (string) ($product->unit ?? '—'),
             OperationInventoryProductPresentation::labelFromMixed($product->presentation),
             $ubicationName,

@@ -51,6 +51,11 @@ final class OperationReportGenerator
      */
     public static function shouldQueue(OperationReportType $type, OperationReportFormat $format, int $rowCount): bool
     {
+        if ($type->isMedicationInvoices()) {
+            // Lo normal son pocas facturas: se descarga al instante. Solo lo muy grande va a cola.
+            return $rowCount > ($format === OperationReportFormat::Pdf ? self::PDF_ROW_LIMIT : self::SYNC_ROW_LIMIT);
+        }
+
         if ($format === OperationReportFormat::Pdf) {
             return $type->hasManyRows();
         }
@@ -89,11 +94,15 @@ final class OperationReportGenerator
             throw new AuthorizationException('No tiene acceso a los reportes de inventario.');
         }
 
+        if ($type->isMedicationInvoices() && ! MedicationInvoiceReportBuilder::allows()) {
+            throw new AuthorizationException('No tiene permiso para generar el reporte de facturas de medicamentos.');
+        }
+
         $disk = self::disk();
         $relativePath = self::userDirectory($userId).'/'.$filename;
         $disk->makeDirectory(self::userDirectory($userId));
 
-        $rowLimit = $format === OperationReportFormat::Pdf && $type->hasManyRows() ? self::PDF_ROW_LIMIT : null;
+        $rowLimit = $format === OperationReportFormat::Pdf && ($type->hasManyRows() || $type->isMedicationInvoices()) ? self::PDF_ROW_LIMIT : null;
         $data = OperationReportBuilder::build($type, $filters, $rowLimit);
         $notice = $rowLimit === null ? null : self::pdfLimitNotice($type, $filters, $data);
 

@@ -4,16 +4,23 @@ declare(strict_types=1);
 
 namespace App\Support\Filament\Administration;
 
+use App\Enums\SystemNotificationKey;
 use App\Filament\Administration\Resources\Sales\Tables\SalesTable;
 use App\Mail\MailSaleReciboPago;
+use App\Models\Affiliation;
+use App\Models\AffiliationCorporate;
 use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\Sale;
+use App\Support\DocumentEmails\DocumentEmailWitnesses;
 use Illuminate\Support\Facades\Mail;
 
 final class SaleReciboPagoEmailRecipients
 {
     /**
+     * Testigos históricos: hoy son el valor inicial de «Testigos de recibos de pago» en el Centro
+     * de notificaciones, que es donde se administran.
+     *
      * @var list<string>
      */
     public const CC_RECIPIENTS = [
@@ -24,11 +31,16 @@ final class SaleReciboPagoEmailRecipients
     ];
 
     /**
+     * `emails` son los del responsable (agente y agencia), como siempre; el afiliado va aparte
+     * en `affiliate` porque recibe su propio correo con su propio copy.
+     *
      * @return array{
+     *     affiliate: array{name: ?string, email: ?string},
      *     agent: array{linked: bool, name: ?string, code: ?string, email: ?string},
      *     agency: array{linked: bool, name: ?string, code: ?string, email: ?string},
      *     emails: list<string>,
      *     cc_emails: list<string>,
+     *     bcc_emails: list<string>,
      *     has_recipients: bool,
      *     has_pdf: bool
      * }
@@ -38,6 +50,7 @@ final class SaleReciboPagoEmailRecipients
         $agent = self::resolveAgent($sale);
         $agency = self::resolveAgency($sale);
 
+        $witnesses = DocumentEmailWitnesses::for(SystemNotificationKey::SaleReceiptWitnessCopy);
         $agentEmail = self::normalizeEmail($agent?->email);
         $agencyEmail = self::normalizeEmail($agency?->email);
 
@@ -47,6 +60,10 @@ final class SaleReciboPagoEmailRecipients
         ])));
 
         return [
+            'affiliate' => [
+                'name' => filled($sale->affiliate_full_name) ? (string) $sale->affiliate_full_name : null,
+                'email' => self::resolveAffiliateEmail($sale),
+            ],
             'agent' => [
                 'linked' => filled($sale->agent_id),
                 'name' => $agent?->name,
@@ -60,7 +77,8 @@ final class SaleReciboPagoEmailRecipients
                 'email' => $agencyEmail,
             ],
             'emails' => $emails,
-            'cc_emails' => self::ccRecipients(),
+            'cc_emails' => $witnesses['cc'],
+            'bcc_emails' => $witnesses['bcc'],
             'has_recipients' => $emails !== [],
             'has_pdf' => is_file(SalesTable::reciboPagoPdfPath($sale)),
         ];
@@ -71,7 +89,15 @@ final class SaleReciboPagoEmailRecipients
      */
     public static function ccRecipients(): array
     {
-        return self::CC_RECIPIENTS;
+        return DocumentEmailWitnesses::for(SystemNotificationKey::SaleReceiptWitnessCopy)['cc'];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function bccRecipients(): array
+    {
+        return DocumentEmailWitnesses::for(SystemNotificationKey::SaleReceiptWitnessCopy)['bcc'];
     }
 
     public static function send(Sale $sale, bool $testMode = false, ?string $testEmail = null): void
@@ -107,8 +133,28 @@ final class SaleReciboPagoEmailRecipients
         Mail::to($recipients['emails'])->send(new MailSaleReciboPago(
             invoiceNumber: (string) $sale->invoice_number,
             pdfPath: $pdfPath,
-            ccRecipients: self::ccRecipients(),
+            ccRecipients: $recipients['cc_emails'],
+            bccRecipients: $recipients['bcc_emails'],
         ));
+    }
+
+    /**
+     * Correo del afiliado: el de la afiliación (titular o empresa) y, si no hay, el copiado en la venta.
+     */
+    public static function resolveAffiliateEmail(Sale $sale): ?string
+    {
+        $email = null;
+
+        if (filled($sale->affiliation_code)) {
+            $email = match ($sale->type) {
+                'AFILIACION INDIVIDUAL' => Affiliation::query()->where('code', $sale->affiliation_code)->value('email_ti'),
+                'AFILIACION CORPORATIVA' => AffiliationCorporate::query()->where('code', $sale->affiliation_code)->value('email'),
+                default => null,
+            };
+        }
+
+        return self::normalizeEmail(is_string($email) ? $email : null)
+            ?? self::normalizeEmail($sale->affiliate_email);
     }
 
     private static function resolveAgent(Sale $sale): ?Agent
@@ -137,7 +183,7 @@ final class SaleReciboPagoEmailRecipients
         return Agency::query()->where('code', $sale->code_agency)->first();
     }
 
-    private static function normalizeEmail(?string $email): ?string
+    public static function normalizeEmail(?string $email): ?string
     {
         $normalized = strtolower(trim((string) $email));
 

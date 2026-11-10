@@ -24,6 +24,9 @@ use Illuminate\Support\HtmlString;
 
 final class CoordinationServiceQuoteManager
 {
+    /** @var list<string> Facturas emitidas en el guardado en curso (para el aviso final). */
+    private static array $issuedInvoiceNumbers = [];
+
     public static function coordinationQuotes(OperationCoordinationService $record): Collection
     {
         return OperationQuoteGenerator::query()
@@ -261,9 +264,15 @@ final class CoordinationServiceQuoteManager
             .'</div>'
             .'<div class="grid gap-3 sm:grid-cols-3">'
             .self::manageQuoteSummaryRow('Costo base', self::formatManageQuoteAmountPreview((float) $quote->costo_dolares), 'slate')
-            .self::manageQuoteSummaryRow('Ganancia', number_format((float) $quote->porcentaje_ganancia, 2, '.', '').'%', 'amber')
-            .self::manageQuoteSummaryRow('Subtotal', self::formatManageQuoteAmountPreview((float) $quote->subtotal), 'slate')
+            .self::manageQuoteSummaryRow(
+                'Ganancia',
+                self::formatManageQuoteAmountPreview(round((float) $quote->total - (float) $quote->costo_dolares, 2))
+                    .' · '.number_format((float) $quote->porcentaje_ganancia, 2, '.', '').'%',
+                'amber'
+            )
+            .self::manageQuoteSummaryRow('Total', self::formatManageQuoteAmountPreview((float) $quote->total), 'slate')
             .'</div>'
+            .self::renderQuoteInvoicePreviewBlock($quote)
             .self::renderQuoteSupplierPreviewBlock($quote)
             .$itemsTable
             .(filled($quote->observations)
@@ -274,6 +283,31 @@ final class CoordinationServiceQuoteManager
                 : '')
             .'</div>'
         );
+    }
+
+    /**
+     * Si la cotización genera factura al aprobarse, a quién y si ya se emitió.
+     */
+    public static function renderQuoteInvoicePreviewBlock(OperationQuoteGenerator $quote): string
+    {
+        if (! (bool) $quote->generates_invoice) {
+            return '';
+        }
+
+        $invoiceNumber = filled($quote->operation_medication_invoice_id)
+            ? \App\Models\OperationMedicationInvoice::query()->whereKey($quote->operation_medication_invoice_id)->value('invoice_number')
+            : null;
+        $payer = \App\Models\OperationMedicationInvoice::payerLabel($quote->invoice_payer_type) ?? 'Responsable';
+
+        return '<div class="rounded-xl border border-sky-200/80 bg-sky-50/60 px-3 py-2.5 text-sm dark:border-sky-500/25 dark:bg-sky-950/20">'
+            .'<p class="text-xs font-semibold uppercase tracking-wide text-sky-800/80 dark:text-sky-200/70">'
+            .e($invoiceNumber !== null ? 'Factura '.$invoiceNumber : 'Genera factura al aprobarse').'</p>'
+            .'<p class="mt-1 text-gray-800 dark:text-gray-100"><span class="font-semibold">'.e($payer).':</span> '
+            .e((string) $quote->invoice_payer_name)
+            .(filled($quote->invoice_payer_identification) ? ' · '.e((string) $quote->invoice_payer_identification) : '')
+            .'</p>'
+            .'<p class="mt-0.5 text-xs text-gray-600 dark:text-gray-300">'.e((string) $quote->invoice_payer_address).'</p>'
+            .'</div>';
     }
 
     public static function renderQuoteSupplierPreviewBlock(OperationQuoteGenerator $quote): string
@@ -448,17 +482,31 @@ final class CoordinationServiceQuoteManager
         }
 
         $lineItems = (array) ($data['edit_quote_line_items'] ?? []);
-        $subtotal = OperationCoordinationServicesTable::decimalOrNull($data['edit_quote_costo_dolares'] ?? null)
-            ?? CoordinationServiceItemsManager::manageQuoteSubtotalFromLineItems($lineItems);
         $bcvRate = OperationCoordinationServicesTable::decimalOrNull($data['edit_quote_bcv_rate'] ?? null)
             ?? self::resolveBcvRateFromQuote($quote);
-        $porcentaje = OperationCoordinationServicesTable::decimalOrNull($data['edit_quote_porcentaje_ganancia'] ?? 0) ?? 0.0;
         $supplierId = (int) ($data['edit_quote_supplier_id'] ?? 0);
+        $percentageError = QuoteLinePricing::validationMessage($lineItems);
 
-        if ($subtotal === null || $subtotal <= 0 || $bcvRate === null || $bcvRate <= 0) {
+        if ($percentageError !== null) {
+            Notification::make()
+                ->title('% de utilidad no válido')
+                ->body($percentageError)
+                ->warning()
+                ->send();
+
+            return false;
+        }
+
+        $updatedItems = CoordinationServiceItemsManager::withSalePrices(
+            self::mergeQuoteLineItemsIntoItemsPayload($quote, $lineItems, (float) ($bcvRate ?? 0)),
+            $bcvRate,
+        );
+        $totals = QuoteLinePricing::totals($updatedItems);
+
+        if ($totals['cost'] === null || $totals['cost'] <= 0 || $totals['priced'] !== $totals['count'] || $bcvRate === null || $bcvRate <= 0) {
             Notification::make()
                 ->title('Datos incompletos')
-                ->body('Revise el costo base, los precios unitarios y la tasa BCV de la cotización.')
+                ->body('Indique el precio del proveedor (mayor a cero) de cada ítem y revise la tasa BCV de la cotización.')
                 ->warning()
                 ->send();
 
@@ -475,13 +523,47 @@ final class CoordinationServiceQuoteManager
             return false;
         }
 
-        $subtotal = round($subtotal, 2);
-        $total = CoordinationServiceItemsManager::manageQuoteTotal($subtotal, $porcentaje) ?? 0.0;
+        $invoice = [
+            'generates_invoice' => false,
+            'invoice_payer_type' => null,
+            'invoice_payer_name' => null,
+            'invoice_payer_identification' => null,
+            'invoice_payer_address' => null,
+        ];
+
+        $wantsInvoice = (bool) ($data['edit_quote_generates_invoice'] ?? false)
+            && ! (bool) $quote->is_courtesy
+            && QuoteInvoiceIssuer::supportsServiceType($quote->type_service)
+            && MedicationInvoiceWizard::userCanInvoice();
+
+        if ($wantsInvoice) {
+            try {
+                $invoice = ['generates_invoice' => true, ...QuoteInvoicePayer::snapshot(
+                    $record,
+                    is_string($data['edit_quote_invoice_payer_type'] ?? null) ? $data['edit_quote_invoice_payer_type'] : null,
+                    $data['edit_quote_invoice_payer_address'] ?? null,
+                )];
+            } catch (MedicationInvoiceException $exception) {
+                Notification::make()
+                    ->title('Factura de la cotización')
+                    ->body($exception->getMessage())
+                    ->warning()
+                    ->send();
+
+                return false;
+            }
+        } elseif (! MedicationInvoiceWizard::userCanInvoice() && (bool) $quote->generates_invoice) {
+            // Sin permiso de facturar no se ve el bloque: se conserva lo que decidió quien sí lo tiene.
+            $invoice = $quote->only(array_keys($invoice));
+        }
+
+        $subtotal = (float) $totals['cost'];
+        $total = (float) $totals['total'];
+        $porcentaje = $totals['effective_percentage'] ?? 0.0;
         $costoBs = round($total * $bcvRate, 2);
         $supplierAddress = filled($data['edit_quote_supplier_address'] ?? null)
             ? trim((string) $data['edit_quote_supplier_address'])
             : CoordinationServiceItemsManager::resolveManageQuoteSupplierAddress($supplierId);
-        $updatedItems = self::mergeQuoteLineItemsIntoItemsPayload($quote, $lineItems, $bcvRate);
 
         $quote->update([
             'supplier_id' => $supplierId,
@@ -495,6 +577,7 @@ final class CoordinationServiceQuoteManager
             'porcentaje_ganancia' => $porcentaje,
             'subtotal' => $subtotal,
             'total' => $total,
+            ...$invoice,
             'updated_by' => Auth::user()?->name,
         ]);
 
@@ -525,6 +608,7 @@ final class CoordinationServiceQuoteManager
         $original = collect(is_array($quote->items) ? $quote->items : [])->keyBy('key');
 
         return collect($lineItems)
+            ->filter(fn (mixed $line): bool => is_array($line) && $original->has((string) ($line['key'] ?? '')))
             ->map(function (array $line) use ($original, $bcvRate): array {
                 $key = (string) ($line['key'] ?? '');
                 $orig = $original->get($key, []);
@@ -535,6 +619,7 @@ final class CoordinationServiceQuoteManager
                 return array_merge(is_array($orig) ? $orig : [], [
                     'unit_price_usd' => $unitUsd,
                     'unit_price_ves' => $unitVes,
+                    'profit_percentage' => QuoteLinePricing::percentage($line['profit_percentage'] ?? null),
                 ]);
             })
             ->values()
@@ -900,6 +985,7 @@ final class CoordinationServiceQuoteManager
             }
         }
 
+        self::$issuedInvoiceNumbers = [];
         $ordersCreated = 0;
         $createdOrderId = 0;
         $privateCareItemsFinalized = 0;
@@ -1153,6 +1239,19 @@ final class CoordinationServiceQuoteManager
                 $quote->updated_by = Auth::user()?->name;
                 $quote->save();
                 AccountsReceivableManager::syncFromQuote($quote->fresh() ?? $quote);
+
+                // La factura al paciente nace con la aprobación y en la misma transacción: si no
+                // se puede emitir, tampoco se aprueba ni queda la orden.
+                try {
+                    $invoice = QuoteInvoiceIssuer::issueForApprovedQuote($record, $quote->fresh() ?? $quote);
+                } catch (MedicationInvoiceException $exception) {
+                    throw new ServiceOrderFlowException($exception->getMessage());
+                }
+
+                if ($invoice !== null) {
+                    self::$issuedInvoiceNumbers[] = (string) $invoice->invoice_number;
+                }
+
                 $ordersCreated++;
                 $createdOrderId = $orderId;
             }
@@ -1174,6 +1273,10 @@ final class CoordinationServiceQuoteManager
 
         if ($privateCareItemsFinalized > 0) {
             $body .= ' Se finalizaron '.$privateCareItemsFinalized.' ítem(s) clínico(s) por atención particular sin generar orden de servicio.';
+        }
+
+        if (self::$issuedInvoiceNumbers !== []) {
+            $body .= ' Se emitió la factura '.implode(', ', self::$issuedInvoiceNumbers).' al paciente, con su cuenta por cobrar pendiente.';
         }
 
         foreach (array_unique($contadoQuoteIds) as $contadoQuoteId) {

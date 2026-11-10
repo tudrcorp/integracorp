@@ -2,6 +2,7 @@
 
 namespace App\Filament\Operations\Resources\AccountsReceivables\Tables;
 
+use App\Filament\Operations\Resources\OperationMedicationInvoices\OperationMedicationInvoiceResource;
 use App\Models\OperationAccountsReceivable;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\AccountsReceivablePresenter;
@@ -17,7 +18,7 @@ class AccountsReceivablesTable
     {
         return $table
             ->heading('Cuentas por cobrar')
-            ->description('Servicios reasignados a TDG por proveedores. Cotización y orden se completan cuando TDG gestiona el caso.')
+            ->description('Servicios reasignados a TDG por proveedores y facturas a pacientes. Cotización y orden se completan cuando TDG gestiona el caso.')
             ->defaultSort('created_at', 'desc')
             ->modifyQueryUsing(function (Builder $query): Builder {
                 return $query
@@ -30,6 +31,7 @@ class AccountsReceivablesTable
                         'operationCoordinationService.telemedicineCase:id,code',
                         'operationQuoteGenerator:id,total,costo_bolivares',
                         'operationServiceOrder:id,order_number',
+                        'operationMedicationInvoice:id,invoice_number',
                     ])
                     ->whereHas(
                         'operationCoordinationService',
@@ -69,6 +71,15 @@ class AccountsReceivablesTable
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->icon('heroicon-m-calendar-days'),
+                TextColumn::make('medication_invoice_number')
+                    ->label('N.º factura')
+                    ->state(fn (OperationAccountsReceivable $record): string => AccountsReceivablePresenter::medicationInvoiceNumber($record) ?? '—')
+                    ->badge()
+                    ->color(fn (OperationAccountsReceivable $record): string => AccountsReceivablePresenter::medicationInvoiceNumber($record) !== null ? 'success' : 'gray')
+                    ->url(fn (OperationAccountsReceivable $record): ?string => filled($record->operation_medication_invoice_id) && OperationMedicationInvoiceResource::canViewAny()
+                        ? OperationMedicationInvoiceResource::getUrl('view', ['record' => $record->operation_medication_invoice_id])
+                        : null)
+                    ->toggleable(),
                 TextColumn::make('quote_number')
                     ->label('N.º cotización')
                     ->state(fn (OperationAccountsReceivable $record): string => AccountsReceivablePresenter::quoteNumber($record) ?? '—')
@@ -82,14 +93,14 @@ class AccountsReceivablesTable
                     ->badge()
                     ->color(fn (OperationAccountsReceivable $record): string => AccountsReceivablePresenter::serviceOrderNumber($record) !== null ? 'info' : 'gray'),
                 TextColumn::make('quote_amount_usd')
-                    ->label('Monto cotización (US$)')
+                    ->label('Monto (US$)')
                     ->state(fn (OperationAccountsReceivable $record): string => AccountsReceivablePresenter::formatUsd(
                         AccountsReceivablePresenter::quoteAmountUsd($record)
                     ))
                     ->alignEnd()
                     ->sortable(),
                 TextColumn::make('quote_amount_ves')
-                    ->label('Monto cotización (Bs.)')
+                    ->label('Monto (Bs.)')
                     ->state(fn (OperationAccountsReceivable $record): string => AccountsReceivablePresenter::formatVes(
                         AccountsReceivablePresenter::quoteAmountVes($record)
                     ))

@@ -302,7 +302,7 @@ it('Nuevos Negocios: proveedor de la empresa y plan de catálogo de su generador
     expect(AffiliateCapitationCost::forCompanyAssociate($associate)->reason)->toBe('Sin empresa');
 });
 
-it('una página completa de afiliados resuelve con a lo sumo cuatro consultas, sin importar las filas', function (): void {
+it('una página completa de afiliados resuelve con a lo sumo cinco consultas, sin importar las filas', function (): void {
     [$planA] = capPlanesTdec();
     $alias = capAlias();
     capPlan(capProveedor($alias), [$planA]);
@@ -318,7 +318,7 @@ it('una página completa de afiliados resuelve con a lo sumo cuatro consultas, s
     $queries = count(DB::getQueryLog());
     DB::disableQueryLog();
 
-    expect($queries)->toBeLessThanOrEqual(4);
+    expect($queries)->toBeLessThanOrEqual(5);
 });
 
 it('la columna y el ajuste masivo están en las seis tablas de afiliados de Operaciones y Negocios', function (string $file, string $method): void {
@@ -678,3 +678,227 @@ function capPlanData(CapitationPlan $plan): array
         'covered_plan_ids' => $plan->coveredPlans->modelKeys(),
     ];
 }
+
+/**
+ * Afiliado individual en memoria con varios proveedores en la afiliación.
+ *
+ * @param  list<string>  $aliases
+ */
+function capAfiliadoConProveedores(array $aliases, int $planId, string $status = 'ACTIVO'): Affiliate
+{
+    $affiliate = new Affiliate(['status' => $status, 'plan_id' => $planId, 'full_name' => 'QA ASIGNACION '.uniqid()]);
+    $affiliate->id = random_int(900_000_000, 999_999_999);
+    $affiliate->exists = true;
+    $affiliate->setRelation('affiliation', new Affiliation(['service_providers' => $aliases, 'status' => 'ACTIVA', 'plan_id' => $planId]));
+
+    return $affiliate;
+}
+
+it('el plan asignado directamente reemplaza al cálculo automático', function (): void {
+    [$planA, $planB] = capPlanesTdec();
+    $aliasA = capAlias();
+    $aliasB = capAlias();
+    capPlan(capProveedor($aliasA), [$planA], '4.45');
+    $direct = capPlan(capProveedor($aliasB), [$planB], '9.00');
+    $affiliate = capAfiliadoConProveedores([$aliasA, $aliasB], $planA);
+
+    expect(AffiliateCapitationCost::forAffiliate($affiliate)->amount)->toBe(4.45);
+
+    expect(App\Support\Business\CapitationPlans\CapitationAssignmentWriter::assign([$affiliate], $direct->id, 'Asignación directa por contrato.', auth()->user()))->toBe(1);
+
+    $result = AffiliateCapitationCost::forAffiliate($affiliate);
+
+    expect($result->amount)->toBe(9.0)
+        ->and($result->isAssigned())->toBeTrue()
+        ->and($result->lines)->toHaveCount(1)
+        ->and($result->lines[0]['capitation_plan_id'])->toBe($direct->id)
+        ->and($result->summary())->toStartWith('Asignado · '.$direct->name);
+
+    $log = App\Models\AffiliateCapitationAssignmentLog::query()->where('subject_type', 'affiliate')->where('subject_id', $affiliate->id)->sole();
+
+    expect($log->action)->toBe('ASIGNACION')
+        ->and($log->new_capitation_plan_id)->toBe($direct->id)
+        ->and($log->previous_capitation_plan_id)->toBeNull()
+        ->and(DB::table('logs')->where('action', 'AUDIT_CAPITATION_PLAN_ASSIGNED')->latest('id')->value('response'))->toContain('affiliate:'.$affiliate->id);
+});
+
+it('exige que el proveedor del plan esté en la afiliación: sin él la lista sale vacía y no asigna a ninguno', function (): void {
+    [$planA, $planB] = capPlanesTdec();
+    $alias = capAlias();
+    $plan = capPlan(capProveedor($alias), [$planB], '5.00');
+    $ok = capAfiliadoConProveedores([$alias], $planA);
+    $withoutProvider = capAfiliadoConProveedores([], $planA);
+
+    expect(App\Support\Business\CapitationPlans\CapitationAssignmentWriter::planOptionsFor($withoutProvider))->toBe([])
+        ->and(App\Support\Business\CapitationPlans\CapitationAssignmentWriter::planOptionsFor($ok))->toHaveKey($plan->id)
+        ->and(fn () => App\Support\Business\CapitationPlans\CapitationAssignmentWriter::assign([$ok, $withoutProvider], $plan->id, 'Asignación de prueba mixta.', auth()->user()))
+        ->toThrow(ValidationException::class);
+
+    expect(App\Models\AffiliateCapitationAssignment::query()->whereIn('subject_id', [$ok->id, $withoutProvider->id])->count())->toBe(0);
+
+    // Con el proveedor en la afiliación se asigna aunque el plan no cubra su plan TDEC.
+    App\Support\Business\CapitationPlans\CapitationAssignmentWriter::assign([$ok], $plan->id, 'Asignación aunque no cubra el plan TDEC.', auth()->user());
+
+    expect(AffiliateCapitationCost::forAffiliate($ok)->amount)->toBe(5.0);
+});
+
+it('no asigna planes inactivos ni de proveedores fuera de Outsourcing', function (): void {
+    [$planA] = capPlanesTdec();
+    $inactive = capPlan(capProveedor(capAlias()), [$planA], '5.00', ['status' => 'INACTIVO']);
+    $affiliate = capAfiliadoConProveedores([], $planA);
+
+    expect(App\Support\Business\CapitationPlans\CapitationAssignmentWriter::planOptions())->not->toHaveKey($inactive->id)
+        ->and(fn () => App\Support\Business\CapitationPlans\CapitationAssignmentWriter::assign([$affiliate], $inactive->id, 'Intento con plan inactivo.', auth()->user()))
+        ->toThrow(ValidationException::class);
+
+    expect(App\Models\AffiliateCapitationAssignment::query()->where('subject_id', $affiliate->id)->exists())->toBeFalse();
+});
+
+it('si el plan asignado se inactiva o vence da 0,00 con aviso y no vuelve en silencio a lo automático', function (): void {
+    [$planA] = capPlanesTdec();
+    $aliasA = capAlias();
+    $aliasB = capAlias();
+    capPlan(capProveedor($aliasA), [$planA], '4.45');
+    $direct = capPlan(capProveedor($aliasB), [$planA], '9.00');
+    $affiliate = capAfiliadoConProveedores([$aliasA, $aliasB], $planA);
+    App\Support\Business\CapitationPlans\CapitationAssignmentWriter::assign([$affiliate], $direct->id, 'Asignación directa por contrato.', auth()->user());
+
+    DB::table('capitation_plans')->where('id', $direct->id)->update(['status' => 'INACTIVO']);
+    AffiliateCapitationCost::flush();
+
+    $inactive = AffiliateCapitationCost::forAffiliate($affiliate);
+
+    expect($inactive->amount)->toBe(0.0)
+        ->and($inactive->isAssigned())->toBeTrue()
+        ->and($inactive->reason)->toContain('vencido o inactivo: reasígnelo');
+
+    DB::table('capitation_plans')->where('id', $direct->id)->update(['status' => 'ACTIVO', 'valid_until' => CarbonImmutable::now()->subDay()->toDateString()]);
+    AffiliateCapitationCost::flush();
+
+    expect(AffiliateCapitationCost::forAffiliate($affiliate)->amount)->toBe(0.0);
+});
+
+it('si el proveedor sale de la afiliación, el plan asignado deja de aplicar con aviso', function (): void {
+    [$planA] = capPlanesTdec();
+    $alias = capAlias();
+    $direct = capPlan(capProveedor($alias), [$planA], '7.00');
+    $affiliate = capAfiliadoConProveedores([$alias], $planA);
+    App\Support\Business\CapitationPlans\CapitationAssignmentWriter::assign([$affiliate], $direct->id, 'Asignación directa por contrato.', auth()->user());
+
+    $affiliate->affiliation->service_providers = ['OTRO'];
+    AffiliateCapitationCost::flush();
+
+    $result = AffiliateCapitationCost::forAffiliate($affiliate);
+
+    expect($result->amount)->toBe(0.0)
+        ->and($result->isAssigned())->toBeTrue()
+        ->and($result->reason)->toContain('ya no está en la afiliación');
+});
+
+it('el monto negociado manda sobre el plan asignado; inactivo sigue en 0,00', function (): void {
+    [$planA] = capPlanesTdec();
+    $alias = capAlias();
+    $direct = capPlan(capProveedor($alias), [$planA], '9.00');
+    $affiliate = capAfiliadoConProveedores([$alias], $planA);
+    App\Support\Business\CapitationPlans\CapitationAssignmentWriter::assign([$affiliate], $direct->id, 'Asignación directa por contrato.', auth()->user());
+    App\Support\Business\CapitationPlans\CapitationOverrideWriter::set([$affiliate], '6.50', 'Negociado sobre el plan asignado.', auth()->user());
+
+    $result = AffiliateCapitationCost::forAffiliate($affiliate);
+
+    expect($result->amount)->toBe(6.5)
+        ->and($result->planAmount)->toBe(9.0)
+        ->and($result->isOverridden())->toBeTrue()
+        ->and($result->isAssigned())->toBeTrue();
+
+    $affiliate->status = 'INACTIVO';
+    AffiliateCapitationCost::flush();
+
+    expect(AffiliateCapitationCost::forAffiliate($affiliate)->amount)->toBe(0.0)
+        ->and(AffiliateCapitationCost::forAffiliate($affiliate)->isAssigned())->toBeTrue();
+});
+
+it('quitar vuelve al cálculo automático y deshacer restaura el estado anterior paso a paso', function (): void {
+    [$planA] = capPlanesTdec();
+    $alias = capAlias();
+    capPlan(capProveedor($alias), [$planA], '4.45');
+    $first = capPlan(capProveedor(capAlias()), [$planA], '8.00');
+    $second = capPlan(capProveedor(capAlias()), [$planA], '9.00');
+    $affiliate = capAfiliadoConProveedores([$alias, $first->supplier->integracorp_alias, $second->supplier->integracorp_alias], $planA);
+    $writer = App\Support\Business\CapitationPlans\CapitationAssignmentWriter::class;
+    $user = auth()->user();
+
+    $writer::assign([$affiliate], $first->id, 'Primera asignación directa.', $user);
+    $writer::assign([$affiliate], $second->id, 'Cambio al segundo plan.', $user);
+    expect(AffiliateCapitationCost::forAffiliate($affiliate)->amount)->toBe(9.0);
+
+    $writer::revert([$affiliate], 'Deshacer el cambio de plan.', $user);
+    AffiliateCapitationCost::flush();
+    expect(AffiliateCapitationCost::forAffiliate($affiliate)->amount)->toBe(8.0);
+
+    $writer::remove([$affiliate], 'Ya no aplica la asignación.', $user);
+    AffiliateCapitationCost::flush();
+    $automatic = AffiliateCapitationCost::forAffiliate($affiliate);
+    expect($automatic->isAssigned())->toBeFalse();
+
+    $writer::revert([$affiliate], 'Deshacer el retiro.', $user);
+    AffiliateCapitationCost::flush();
+    expect(AffiliateCapitationCost::forAffiliate($affiliate)->amount)->toBe(8.0)
+        ->and(fn () => $writer::remove([capAfiliadoConProveedores([$alias], $planA)], 'Retiro sin asignación previa.', $user))->toThrow(ValidationException::class)
+        ->and(fn () => $writer::assign([$affiliate], $first->id, 'corta', $user))->toThrow(ValidationException::class);
+});
+
+it('también asigna a afiliados corporativos y a asociados de Nuevos Negocios', function (): void {
+    [$planA] = capPlanesTdec();
+    $alias = capAlias();
+    $direct = capPlan(capProveedor($alias), [$planA], '3.30');
+
+    $corporate = new AffiliateCorporate(['status' => 'ACTIVO', 'plan_id' => $planA, 'first_name' => 'QA', 'last_name' => 'CORP']);
+    $corporate->id = random_int(900_000_000, 999_999_999);
+    $corporate->exists = true;
+    $corporate->setRelation('affiliationCorporate', new AffiliationCorporate(['service_providers' => [$alias], 'status' => 'ACTIVA']));
+
+    App\Support\Business\CapitationPlans\CapitationAssignmentWriter::assign([$corporate], $direct->id, 'Asignación a corporativo.', auth()->user());
+
+    expect(AffiliateCapitationCost::forAffiliateCorporate($corporate)->amount)->toBe(3.3)
+        ->and(App\Models\AffiliateCapitationAssignment::query()->where('subject_type', 'affiliate_corporate')->where('subject_id', $corporate->id)->exists())->toBeTrue();
+});
+
+it('las seis tablas de afiliados ofrecen la acción masiva y la celda con su propio permiso', function (): void {
+    $tables = [
+        'app/Filament/Business/Resources/AffiliationCorporates/RelationManagers/CorporateAffiliatesRelationManager.php',
+        'app/Filament/Business/Resources/Affiliations/RelationManagers/AffiliatesRelationManager.php',
+        'app/Filament/Business/Resources/CompanyAssociates/Tables/CompanyAssociatesTable.php',
+        'app/Filament/Operations/Resources/AffiliateCorporates/Tables/AffiliateCorporatesTable.php',
+        'app/Filament/Operations/Resources/CompanyAssociates/Tables/CompanyAssociatesTable.php',
+        'app/Filament/Operations/Resources/Affiliates/Tables/AffiliatesTable.php',
+    ];
+
+    foreach ($tables as $table) {
+        expect(file_get_contents(dirname(__DIR__, 2).'/'.$table))->toContain('CapitationCostColumn::assignBulkAction()');
+    }
+
+    expect(App\Support\Filament\BusinessFilamentActionPermissionRegistry::modulesForSlug('asignar-plan-capitado-afiliado'))->toBe(['NEGOCIOS', 'OPERACIONES'])
+        ->and(App\Filament\Shared\Affiliations\CapitationOverrideActions::canAssign())->toBeTrue();
+
+    test()->actingAs(User::factory()->make([
+        'id' => 999_999_082,
+        'name' => 'QA SIN PERMISO',
+        'email' => 'qa.sin.permiso@tudrencasa.com',
+        'status' => 'ACTIVO',
+        'departament' => ['NEGOCIOS'],
+    ]));
+
+    expect(App\Filament\Shared\Affiliations\CapitationOverrideActions::canAssign())->toBeFalse();
+});
+
+it('las tablas de afiliados individuales y corporativos de Operaciones muestran la acción masiva', function (string $page): void {
+    Filament::setCurrentPanel('operations');
+
+    Livewire\Livewire::test($page)
+        ->assertSuccessful()
+        ->assertTableBulkActionExists('assignCapitationPlanBulk')
+        ->assertTableBulkActionExists('adjustCapitationCostBulk');
+})->with([
+    'individuales' => [App\Filament\Operations\Resources\Affiliates\Pages\ListAffiliates::class],
+    'corporativos' => [App\Filament\Operations\Resources\AffiliateCorporates\Pages\ListAffiliateCorporates::class],
+]);

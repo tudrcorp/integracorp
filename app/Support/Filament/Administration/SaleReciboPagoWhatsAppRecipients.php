@@ -4,15 +4,22 @@ declare(strict_types=1);
 
 namespace App\Support\Filament\Administration;
 
+use App\Enums\SystemNotificationKey;
 use App\Filament\Administration\Resources\Sales\Tables\SalesTable;
 use App\Http\Controllers\NotificationController;
 use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\Sale;
+use App\Support\SystemNotificationRecipients;
 use RuntimeException;
 
+/**
+ * Destinatarios del recibo por WhatsApp: agente, agencia y los teléfonos testigo del Centro de
+ * notificaciones («Testigos de recibos de pago»). Antes la copia interna era un teléfono fijo.
+ */
 final class SaleReciboPagoWhatsAppRecipients
 {
+    /** Valor inicial histórico de los testigos; se administra en el Centro de notificaciones. */
     public const SOL_RODRIGUEZ_PHONE = '04143027250';
 
     public const SOL_RODRIGUEZ_LABEL = 'Sol Rodriguez';
@@ -21,7 +28,7 @@ final class SaleReciboPagoWhatsAppRecipients
      * @return array{
      *     agent: array{linked: bool, name: ?string, code: ?string, phone: ?string, phone_display: ?string},
      *     agency: array{linked: bool, name: ?string, code: ?string, phone: ?string, phone_display: ?string},
-     *     internal: array{name: string, phone: string, phone_display: string},
+     *     internal: list<array{name: string, phone: string, phone_display: string}>,
      *     targets: list<array{role: string, name: ?string, phone: string, phone_display: string}>,
      *     has_recipients: bool,
      *     has_pdf: bool
@@ -34,7 +41,7 @@ final class SaleReciboPagoWhatsAppRecipients
 
         $agentPhone = self::normalizePhone($agent?->phone);
         $agencyPhone = self::normalizePhone($agency?->phone);
-        $solPhone = self::normalizePhone(self::SOL_RODRIGUEZ_PHONE);
+        $witnessPhones = self::witnessPhones();
 
         $targets = [];
         $seenPhones = [];
@@ -59,14 +66,20 @@ final class SaleReciboPagoWhatsAppRecipients
             ];
         }
 
-        if ($solPhone !== null && ! isset($seenPhones[$solPhone])) {
-            $seenPhones[$solPhone] = true;
-            $targets[] = [
-                'role' => 'internal',
-                'name' => self::SOL_RODRIGUEZ_LABEL,
-                'phone' => $solPhone,
-                'phone_display' => self::formatPhoneDisplay($solPhone),
+        $internal = [];
+
+        foreach ($witnessPhones as $witnessPhone) {
+            $entry = [
+                'name' => self::witnessLabel($witnessPhone),
+                'phone' => $witnessPhone,
+                'phone_display' => self::formatPhoneDisplay($witnessPhone),
             ];
+            $internal[] = $entry;
+
+            if (! isset($seenPhones[$witnessPhone])) {
+                $seenPhones[$witnessPhone] = true;
+                $targets[] = ['role' => 'internal', ...$entry];
+            }
         }
 
         return [
@@ -84,11 +97,7 @@ final class SaleReciboPagoWhatsAppRecipients
                 'phone' => $agencyPhone,
                 'phone_display' => $agencyPhone !== null ? self::formatPhoneDisplay($agencyPhone) : null,
             ],
-            'internal' => [
-                'name' => self::SOL_RODRIGUEZ_LABEL,
-                'phone' => $solPhone ?? self::SOL_RODRIGUEZ_PHONE,
-                'phone_display' => self::formatPhoneDisplay($solPhone ?? self::SOL_RODRIGUEZ_PHONE),
-            ],
+            'internal' => $internal,
             'targets' => $targets,
             'has_recipients' => $targets !== [],
             'has_pdf' => is_file(SalesTable::reciboPagoPdfPath($sale)),
@@ -168,6 +177,30 @@ final class SaleReciboPagoWhatsAppRecipients
         }
 
         return $report;
+    }
+
+    /**
+     * Teléfonos testigo activos del Centro de notificaciones, sin repetir.
+     *
+     * @return list<string>
+     */
+    private static function witnessPhones(): array
+    {
+        $setting = SystemNotificationRecipients::setting(SystemNotificationKey::SaleReceiptWitnessCopy);
+
+        if (! $setting->isActive()) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter(array_map(
+            static fn (string $phone): ?string => self::normalizePhone($phone),
+            $setting->phones(),
+        ))));
+    }
+
+    private static function witnessLabel(string $phone): string
+    {
+        return $phone === self::SOL_RODRIGUEZ_PHONE ? self::SOL_RODRIGUEZ_LABEL : 'Testigo';
     }
 
     private static function resolveAgent(Sale $sale): ?Agent

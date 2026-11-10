@@ -5,8 +5,11 @@ namespace App\Filament\Operations\Resources\OperationInventoryProducts\Pages;
 use App\Filament\Operations\Resources\OperationInventoryProducts\Actions\LoadProductExistenceAction;
 use App\Filament\Operations\Resources\OperationInventoryProducts\OperationInventoryProductResource;
 use App\Models\OperationInventoryProduct;
+use App\Support\Operations\OperationInventoryListHeaders;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
 
 class ViewOperationInventoryProduct extends ViewRecord
@@ -14,6 +17,28 @@ class ViewOperationInventoryProduct extends ViewRecord
     protected static string $resource = OperationInventoryProductResource::class;
 
     protected static ?string $title = 'Ver Producto';
+
+    /**
+     * Encabezado propio: nombre, código, existencia y precio de referencia del producto.
+     */
+    public function getHeading(): string|Htmlable
+    {
+        /** @var OperationInventoryProduct $product */
+        $product = $this->getRecord();
+
+        return OperationInventoryListHeaders::product($product);
+    }
+
+    /**
+     * Título de la pestaña del navegador (el encabezado es HTML).
+     */
+    public function getTitle(): string|Htmlable
+    {
+        /** @var OperationInventoryProduct $product */
+        $product = $this->getRecord();
+
+        return filled($product->name) ? (string) $product->name : 'Ver Producto';
+    }
 
     protected function resolveRecord(int|string $key): Model
     {
@@ -23,6 +48,8 @@ class ViewOperationInventoryProduct extends ViewRecord
         $record->load([
             'category',
             'stocks.ubication',
+            'latestInventoryEntry.ubication',
+            'latestInventoryOutflow.ubication',
         ]);
 
         return $record;
@@ -32,7 +59,9 @@ class ViewOperationInventoryProduct extends ViewRecord
     {
         return [
             LoadProductExistenceAction::make(),
-            EditAction::make()->label('Editar'),
+            EditAction::make()
+                ->label('Editar')
+                ->icon(Heroicon::OutlinedPencilSquare),
         ];
     }
 }

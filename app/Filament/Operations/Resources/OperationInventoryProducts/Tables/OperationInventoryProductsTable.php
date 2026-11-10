@@ -6,6 +6,7 @@ use App\Enums\OperationInventoryProductPresentation;
 use App\Filament\Operations\Resources\OperationInventoryProducts\Actions\BulkAdjustProductExistenceActions;
 use App\Filament\Operations\Resources\OperationInventoryProducts\Actions\ExportProductsCsvBulkAction;
 use App\Models\OperationInventoryProduct;
+use App\Support\Operations\OperationInventoryProductPricing;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -51,6 +52,20 @@ class OperationInventoryProductsTable
                     ->label('Costo')
                     ->money('USD')
                     ->sortable(),
+                TextColumn::make('category.profit_percentage')
+                    ->label('% utilidad')
+                    ->numeric(decimalPlaces: 2)
+                    ->suffix(' %')
+                    ->placeholder('Sin definir')
+                    ->tooltip('Porcentaje definido en la categoría del producto, aplicado sobre el costo.'),
+                TextColumn::make('final_price')
+                    ->label('Precio final')
+                    ->state(fn (OperationInventoryProduct $record): ?float => OperationInventoryProductPricing::finalPriceFor($record))
+                    ->money('USD')
+                    ->weight(FontWeight::SemiBold)
+                    ->color('success')
+                    ->placeholder('Sin definir')
+                    ->tooltip('Costo + % de utilidad de la categoría. Es un precio de referencia: no modifica órdenes ni documentos emitidos.'),
                 TextColumn::make('unit')
                     ->label('Unidad')
                     ->searchable()

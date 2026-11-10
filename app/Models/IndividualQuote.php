@@ -17,6 +17,36 @@ class IndividualQuote extends Model
 {
     protected $table = 'individual_quotes';
 
+    /**
+     * - Al pasar a ANULADA se guarda cuándo (`anulated_at`); si sale de ANULADA se limpia.
+     * - Al borrarse queda su huella en `quote_deletion_logs` para las métricas comerciales.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $quote): void {
+            if (! $quote->isDirty('status')) {
+                return;
+            }
+
+            $isAnulated = strtoupper(trim((string) $quote->status)) === 'ANULADA';
+            $wasAnulated = strtoupper(trim((string) $quote->getOriginal('status'))) === 'ANULADA';
+
+            if ($isAnulated && ! $wasAnulated) {
+                $quote->anulated_at = now();
+            } elseif (! $isAnulated) {
+                $quote->anulated_at = null;
+            }
+        });
+
+        static::deleting(function (self $quote): void {
+            QuoteDeletionLog::record(
+                QuoteDeletionLog::INDIVIDUAL,
+                $quote,
+                $quote->detailsQuote()->pluck('plan_id')->filter()->map(fn (mixed $id): int => (int) $id)->all(),
+            );
+        });
+    }
+
     protected $fillable = [
         'code',
         'email',
@@ -26,6 +56,7 @@ class IndividualQuote extends Model
         'full_name',
         'birth_date',
         'status',
+        'anulated_at',
         'created_by',
         'storefront_user_id',
         'state_id',

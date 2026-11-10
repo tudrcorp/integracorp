@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class OperationInventoryProduct extends Model
 {
@@ -61,6 +62,22 @@ class OperationInventoryProduct extends Model
     public function inventoryOutflows(): HasMany
     {
         return $this->hasMany(OperationInventoryOutflow::class);
+    }
+
+    /**
+     * Última entrada registrada del producto (ficha del producto).
+     */
+    public function latestInventoryEntry(): HasOne
+    {
+        return $this->hasOne(OperationInventoryEntry::class)->latestOfMany();
+    }
+
+    /**
+     * Última salida registrada del producto (ficha del producto).
+     */
+    public function latestInventoryOutflow(): HasOne
+    {
+        return $this->hasOne(OperationInventoryOutflow::class)->latestOfMany();
     }
 
     public function totalExistence(): int

@@ -14,7 +14,20 @@ class TelemedicineListSpecialist extends Model
         'name',
         'type',
         'type_two',
+        'cost',
+        'profit_percentage',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'cost' => 'decimal:2',
+            'profit_percentage' => 'decimal:2',
+        ];
+    }
 
     /**
      * @return Collection<string, string>

@@ -9,6 +9,7 @@ use App\Filament\Metrics\Pages\Dashboard;
 use App\Filament\Metrics\Pages\Finanzas;
 use App\Filament\Metrics\Pages\OperacionesYSalud;
 use App\Filament\Metrics\Pages\Organizacion;
+use App\Filament\Metrics\Pages\Sistema;
 use App\Filament\Metrics\Pages\Usuarios;
 use App\Filament\Shared\Auth\PanelAwareLogin;
 use App\Support\Filament\MetricsPanelNavigationGroups;
@@ -114,7 +115,7 @@ class MetricsPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::PAGE_START,
                 fn () => view('filament.operations.dashboard.page-start', ['branding' => true, 'brandingLabel' => 'Panel corporativo · Toma de decisiones']),
-                scopes: [Dashboard::class, Finanzas::class, Comercial::class, Cartera::class, OperacionesYSalud::class, Organizacion::class, Usuarios::class],
+                scopes: [Dashboard::class, Finanzas::class, Comercial::class, Cartera::class, OperacionesYSalud::class, Sistema::class, Organizacion::class, Usuarios::class],
             );
     }
 }

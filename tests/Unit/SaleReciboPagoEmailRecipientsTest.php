@@ -11,6 +11,24 @@ use Illuminate\Support\Facades\Mail;
 
 uses(Tests\TestCase::class);
 
+/**
+ * Los testigos salen del Centro de notificaciones: leerlos crea su fila la primera vez. Todo va en
+ * una transacción revertida y parte del valor inicial, sin importar lo configurado en la base.
+ */
+beforeEach(function (): void {
+    Illuminate\Support\Facades\DB::beginTransaction();
+    App\Models\SystemNotificationRecipientSetting::query()
+        ->whereIn('notification_key', [
+            App\Enums\SystemNotificationKey::SaleReceiptWitnessCopy->value,
+            App\Enums\SystemNotificationKey::CollectionNoticeWitnessCopy->value,
+        ])
+        ->delete();
+});
+
+afterEach(function (): void {
+    Illuminate\Support\Facades\DB::rollBack();
+});
+
 it('resuelve correos del agente y la agencia cuando estan cargados en la venta', function (): void {
     $agent = new Agent([
         'name' => 'Agente Demo',

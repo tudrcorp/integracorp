@@ -227,6 +227,7 @@ class CompanyAssociatesTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     CapitationCostColumn::bulkAction(),
+                    CapitationCostColumn::assignBulkAction(),
                     CompanyAssociatesTableActions::exportCsvBulkAction(),
                     CompanyAssociatesTableActions::sendDocumentsBulkAction(),
                 ]),

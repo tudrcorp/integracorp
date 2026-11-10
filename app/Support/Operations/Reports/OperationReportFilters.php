@@ -45,6 +45,9 @@ final readonly class OperationReportFilters
      * @param  list<int>  $categories  Categorías de producto (ids).
      * @param  list<int>  $products  Productos (ids).
      * @param  list<string>  $stockStatuses  {@see self::stockStatusOptions()}
+     * @param  list<string>  $invoiceStatuses  Estados de factura de medicamentos.
+     * @param  list<string>  $invoiceTypes  Tipos de factura a paciente (medicamentos, laboratorios…).
+     * @param  list<int>  $invoiceIds  Facturas elegidas a mano (acción masiva): si hay, manda sobre el periodo.
      */
     public function __construct(
         public CarbonImmutable $from,
@@ -58,6 +61,9 @@ final readonly class OperationReportFilters
         public array $categories = [],
         public array $products = [],
         public array $stockStatuses = [],
+        public array $invoiceStatuses = [],
+        public array $invoiceIds = [],
+        public array $invoiceTypes = [],
     ) {
         if ($from->greaterThan($to)) {
             throw new InvalidArgumentException('La fecha inicial no puede ser posterior a la final.');
@@ -117,6 +123,15 @@ final readonly class OperationReportFilters
             stockStatuses: array_values(array_intersect(
                 self::strings($data['stock_statuses'] ?? []),
                 array_keys(self::stockStatusOptions()),
+            )),
+            invoiceStatuses: array_values(array_intersect(
+                self::strings($data['invoice_statuses'] ?? []),
+                array_keys(MedicationInvoiceReportBuilder::statusOptions()),
+            )),
+            invoiceIds: array_slice(self::ids($data['invoice_ids'] ?? []), 0, MedicationInvoiceReportBuilder::MAX_SELECTED),
+            invoiceTypes: array_values(array_intersect(
+                self::strings($data['invoice_types'] ?? []),
+                array_keys(\App\Models\OperationMedicationInvoice::typeOptions()),
             )),
         );
     }
@@ -208,6 +223,9 @@ final readonly class OperationReportFilters
             'categories' => $this->categories,
             'products' => $this->products,
             'stock_statuses' => $this->stockStatuses,
+            'invoice_statuses' => $this->invoiceStatuses,
+            'invoice_ids' => $this->invoiceIds,
+            'invoice_types' => $this->invoiceTypes,
         ];
     }
 

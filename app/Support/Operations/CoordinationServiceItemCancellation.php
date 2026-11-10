@@ -162,6 +162,18 @@ final class CoordinationServiceItemCancellation
             return;
         }
 
+        $invoiceNumber = PatientInvoiceItemGuard::activeInvoiceNumberFor($item);
+
+        if ($invoiceNumber !== null) {
+            Notification::make()
+                ->title('No se puede cancelar')
+                ->body('Este ítem está en la factura al paciente '.$invoiceNumber.'. Anúlela en Facturas a pacientes antes de cancelar el ítem.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
         $bitacoraDescription = self::buildBitacoraDescription($itemTitle, $observationText);
         $userId = Auth::id();
         $userName = (string) (Auth::user()?->name ?? 'SISTEMA');

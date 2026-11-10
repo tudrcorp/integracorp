@@ -12,6 +12,8 @@ use App\Models\OperationInventoryProduct;
 use App\Models\OperationInventoryProductCategory;
 use App\Models\OperationInventorySetting;
 use App\Models\OperationInventoryUbication;
+use App\Models\OperationMedicationFailure;
+use App\Models\OperationMedicationInvoice;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -86,6 +88,8 @@ final class OperationInventoryListHeaders
             'low_stock' => ['operation_inventory_products.is_active = 1 AND '.self::PRODUCT_STOCK_SQL.' BETWEEN 1 AND ?', [$threshold]],
             'out_of_stock' => ['operation_inventory_products.is_active = 1 AND '.self::PRODUCT_STOCK_SQL.' <= 0'],
             'inactive' => ['COALESCE(operation_inventory_products.is_active, 0) = 0'],
+            'without_price' => ['operation_inventory_products.is_active = 1 AND NOT EXISTS (SELECT 1 FROM operation_inventory_product_categories AS c WHERE c.id = operation_inventory_products.operation_inventory_product_category_id AND c.profit_percentage IS NOT NULL)'],
+            'without_cost' => ['operation_inventory_products.is_active = 1 AND COALESCE(operation_inventory_products.cost, 0) <= 0'],
         ]);
 
         return self::render([
@@ -93,14 +97,79 @@ final class OperationInventoryListHeaders
             'title' => 'Productos',
             'total' => $summary['total'],
             'totalHint' => 'Productos del catálogo',
-            'description' => 'Catálogo de medicamentos e insumos. La existencia es la suma de todos los almacenes; el umbral de stock bajo ('.$threshold.') se ajusta en Parámetros de Inventario.',
+            'description' => 'Catálogo de medicamentos e insumos. La existencia es la suma de todos los almacenes; el umbral de stock bajo ('.$threshold.') se ajusta en Parámetros de Inventario. El precio final es el costo más el % de utilidad de la categoría.',
             'stats' => [
                 ['label' => 'Activos', 'value' => $summary['active'], 'icon' => 'heroicon-m-check-circle', 'tone' => 'success', 'hint' => 'Productos disponibles para despacho'],
                 ['label' => 'Stock bajo', 'value' => $summary['low_stock'], 'icon' => 'heroicon-m-exclamation-triangle', 'tone' => 'warning', 'hint' => 'Productos activos con existencia total entre 1 y '.$threshold],
                 ['label' => 'Sin existencia', 'value' => $summary['out_of_stock'], 'icon' => 'heroicon-m-no-symbol', 'tone' => 'danger', 'hint' => 'Productos activos sin unidades en ningún almacén'],
+                ['label' => 'Sin precio definido', 'value' => $summary['without_price'], 'icon' => 'heroicon-m-receipt-percent', 'tone' => 'warning', 'hint' => 'Productos activos cuya categoría no tiene % de utilidad (o sin categoría)'],
+                ['label' => 'Sin costo', 'value' => $summary['without_cost'], 'icon' => 'heroicon-m-currency-dollar', 'tone' => 'danger', 'hint' => 'Productos activos con costo en 0: su precio final también sale en 0'],
                 ['label' => 'Inactivos', 'value' => $summary['inactive'], 'icon' => 'heroicon-m-pause-circle', 'tone' => 'gray', 'hint' => 'Productos desactivados'],
             ],
         ]);
+    }
+
+    public static function medicationInvoices(): HtmlString
+    {
+        $summary = OperationsListHeaderCounts::aggregate(OperationMedicationInvoice::query(), [
+            'pending' => ['operation_medication_invoices.status = ?', [OperationMedicationInvoice::STATUS_PENDING_PAYMENT]],
+            'paid' => ['operation_medication_invoices.status = ?', [OperationMedicationInvoice::STATUS_PAID]],
+            'annulled' => ['operation_medication_invoices.status = ?', [OperationMedicationInvoice::STATUS_ANNULLED]],
+        ]);
+
+        return self::render([
+            'eyebrow' => 'Coordinación de servicios',
+            'icon' => 'heroicon-o-receipt-percent',
+            'title' => 'Facturas a pacientes',
+            'total' => $summary['total'],
+            'totalHint' => 'Facturas emitidas',
+            'description' => 'Lo no cubierto que se factura al paciente: medicamentos del inventario, laboratorios, estudios y consultas con especialista. Cada factura tiene su cuenta por cobrar. Factura interna, no fiscal.',
+            'stats' => [
+                ['label' => 'Pendientes por cobrar', 'value' => $summary['pending'], 'icon' => 'heroicon-m-clock', 'tone' => 'warning', 'hint' => 'Facturas emitidas que aún no se han cobrado'],
+                ['label' => 'Cobradas', 'value' => $summary['paid'], 'icon' => 'heroicon-m-check-circle', 'tone' => 'success', 'hint' => 'Facturas con el cobro total registrado'],
+                ['label' => 'Anuladas', 'value' => $summary['annulled'], 'icon' => 'heroicon-m-no-symbol', 'tone' => 'gray', 'hint' => 'Facturas anuladas: la existencia volvió al inventario'],
+            ],
+        ]);
+    }
+
+    public static function medicationFailures(): HtmlString
+    {
+        $summary = OperationsListHeaderCounts::aggregate(OperationMedicationFailure::query(), [
+            'pending' => ['operation_medication_failures.status = ?', [OperationMedicationFailure::STATUS_PENDING_PURCHASE]],
+            'acquired' => ['operation_medication_failures.status = ?', [OperationMedicationFailure::STATUS_ACQUIRED]],
+            'discarded' => ['operation_medication_failures.status = ?', [OperationMedicationFailure::STATUS_DISCARDED]],
+        ]);
+
+        return self::render([
+            'icon' => 'heroicon-o-exclamation-triangle',
+            'title' => 'Fallas de medicamentos',
+            'total' => $summary['total'],
+            'totalHint' => 'Fallas registradas',
+            'description' => 'Medicamentos recetados que el inventario no pudo cubrir (no está, no corresponde o no alcanza). Se registran en «Gestionar servicio» al marcar «Generar cotización».',
+            'stats' => [
+                ['label' => 'Pendientes de compra', 'value' => $summary['pending'], 'icon' => 'heroicon-m-shopping-cart', 'tone' => 'warning', 'hint' => 'La empresa debe adquirirlos'],
+                ['label' => 'Adquiridos', 'value' => $summary['acquired'], 'icon' => 'heroicon-m-check-circle', 'tone' => 'success', 'hint' => 'Fallas resueltas con la compra'],
+                ['label' => 'Descartados', 'value' => $summary['discarded'], 'icon' => 'heroicon-m-x-circle', 'tone' => 'gray', 'hint' => 'Fallas que no se van a comprar'],
+            ],
+        ]);
+    }
+
+    /**
+     * Encabezado de la ficha de un producto: identidad, existencia y precio de referencia.
+     * Usa las relaciones ya cargadas por la página (categoría y existencias), sin consultas extra.
+     */
+    public static function product(OperationInventoryProduct $product): HtmlString
+    {
+        $totalExistence = (int) $product->stocks->sum('existence');
+
+        return new HtmlString(view('filament.operations.inventory.product-view-header', [
+            'product' => $product,
+            'totalExistence' => $totalExistence,
+            'stockStatus' => OperationInventoryProductStockStatus::for($totalExistence),
+            'profitPercentage' => OperationInventoryProductPricing::profitPercentageFor($product),
+            'finalPrice' => OperationInventoryProductPricing::finalPriceFor($product),
+            'missingPriceReason' => OperationInventoryProductPricing::missingPriceReason($product),
+        ])->render());
     }
 
     public static function inventory(): HtmlString

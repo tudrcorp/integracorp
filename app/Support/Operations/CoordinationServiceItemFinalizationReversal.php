@@ -194,6 +194,19 @@ final class CoordinationServiceItemFinalizationReversal
                     return 'Solo se reversan ítems en estado FINALIZADO. Estado actual: '.($currentStatus !== '' ? $currentStatus : '—').'.';
                 }
 
+                if ($item instanceof \App\Models\TelemedicinePatientMedications
+                    && $item->inventory_dispatch_source === MedicationInvoiceIssuer::DISPATCH_SOURCE_INVOICE) {
+                    $invoiceNumber = \App\Models\OperationMedicationInvoiceItem::query()
+                        ->where('telemedicine_patient_medication_id', $item->getKey())
+                        ->whereHas('invoice', fn ($query) => $query->where('status', '!=', \App\Models\OperationMedicationInvoice::STATUS_ANNULLED))
+                        ->with('invoice:id,invoice_number')
+                        ->latest('id')
+                        ->first()?->invoice?->invoice_number;
+
+                    return 'Este medicamento se facturó al paciente'.($invoiceNumber ? ' (factura '.$invoiceNumber.')' : '')
+                        .'. Para reabrirlo, anule la factura en Facturas de medicamentos: así la existencia vuelve al inventario.';
+                }
+
                 $finalizedOrder = self::orderContainingItem($coordination, $itemType, $item, closedOnly: true);
 
                 if ($finalizedOrder instanceof OperationServiceOrder) {

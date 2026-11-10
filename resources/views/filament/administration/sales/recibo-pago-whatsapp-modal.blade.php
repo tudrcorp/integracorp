@@ -7,7 +7,7 @@
     /** @var array<string, mixed> $recipients */
     $agent = $recipients['agent'] ?? ['linked' => false, 'name' => null, 'code' => null, 'phone_display' => null];
     $agency = $recipients['agency'] ?? ['linked' => false, 'name' => null, 'code' => null, 'phone_display' => null];
-    $internal = $recipients['internal'] ?? ['name' => 'Sol Rodriguez', 'phone_display' => '0414-3027250'];
+    $internal = $recipients['internal'] ?? [];
     $targets = $recipients['targets'] ?? [];
     $hasRecipients = (bool) ($recipients['has_recipients'] ?? false);
 @endphp
@@ -84,19 +84,24 @@
                 </section>
 
                 <section class="rounded-2xl border border-sky-200/80 bg-sky-50/70 p-4 dark:border-sky-500/20 dark:bg-sky-950/20">
-                    <p class="mb-2 text-sm font-semibold text-sky-900 dark:text-sky-200">
-                        Copia interna
+                    <p class="mb-1 text-sm font-semibold text-sky-900 dark:text-sky-200">
+                        Testigos
                     </p>
-                    <dl class="grid gap-2 text-sm">
-                        <div class="flex flex-wrap justify-between gap-2">
-                            <dt class="text-gray-500 dark:text-gray-400">Nombre</dt>
-                            <dd class="font-medium text-gray-900 dark:text-white">{{ $internal['name'] }}</dd>
-                        </div>
-                        <div class="flex flex-wrap justify-between gap-2">
-                            <dt class="text-gray-500 dark:text-gray-400">Teléfono</dt>
-                            <dd class="font-semibold text-emerald-700 dark:text-emerald-300">{{ $internal['phone_display'] }}</dd>
-                        </div>
-                    </dl>
+                    <p class="mb-2 text-xs text-gray-500 dark:text-gray-400">
+                        Se configuran en Negocios → Centro de notificaciones → «Testigos de recibos de pago».
+                    </p>
+                    @if ($internal === [])
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Sin teléfonos testigo activos.</p>
+                    @else
+                        <dl class="grid gap-2 text-sm">
+                            @foreach ($internal as $witness)
+                                <div class="flex flex-wrap justify-between gap-2" wire:key="witness-{{ $witness['phone'] }}">
+                                    <dt class="text-gray-500 dark:text-gray-400">{{ $witness['name'] }}</dt>
+                                    <dd class="font-semibold text-emerald-700 dark:text-emerald-300">{{ $witness['phone_display'] }}</dd>
+                                </div>
+                            @endforeach
+                        </dl>
+                    @endif
                 </section>
 
                 <section class="rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-4 dark:border-emerald-500/20 dark:bg-emerald-950/20">

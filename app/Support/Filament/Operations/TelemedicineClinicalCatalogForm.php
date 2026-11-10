@@ -95,6 +95,42 @@ final class TelemedicineClinicalCatalogForm
                             ])
                             ->columnSpanFull(),
                     ]),
+                Section::make('Precio al paciente (no cubierto)')
+                    ->icon(Heroicon::OutlinedCurrencyDollar)
+                    ->description('Se usa cuando el servicio NO está cubierto y Operaciones lo factura directo al paciente: precio = costo + % de utilidad. Déjelos vacíos si aún no están definidos.')
+                    ->extraAttributes(['class' => self::SECTION_CARD])
+                    ->columnSpanFull()
+                    ->schema([
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('cost')
+                                    ->label('Costo')
+                                    ->prefix('US$')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->maxValue(\App\Support\Operations\MedicationInvoiceIssuer::MAX_LOADED_COST)
+                                    ->step(0.01)
+                                    ->live(debounce: 500)
+                                    ->validationMessages(['min' => 'El costo no puede ser negativo.']),
+                                TextInput::make('profit_percentage')
+                                    ->label('% de utilidad')
+                                    ->suffix('%')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->maxValue(\App\Support\Operations\ClinicalServiceCatalog::MAX_PROFIT_PERCENTAGE)
+                                    ->step(0.01)
+                                    ->live(debounce: 500)
+                                    ->validationMessages(['min' => 'El porcentaje no puede ser negativo.']),
+                                \Filament\Forms\Components\Placeholder::make('final_price_preview')
+                                    ->label('Precio al paciente')
+                                    ->content(function (Get $get): string {
+                                        $price = \App\Support\Operations\OperationInventoryProductPricing::finalPrice($get('cost'), $get('profit_percentage'));
+
+                                        return $price !== null && $price > 0 ? 'US$ '.number_format($price, 2, ',', '.') : 'Sin definir';
+                                    }),
+                            ])
+                            ->columnSpanFull(),
+                    ]),
             ]);
     }
 
@@ -106,6 +142,13 @@ final class TelemedicineClinicalCatalogForm
     {
         $data['name'] = mb_strtoupper(trim((string) ($data['name'] ?? '')));
         $data['type'] = mb_strtoupper(trim((string) ($data['type'] ?? '')));
+
+        // Vacío = sin definir (no 0): el precio al paciente solo existe con ambos valores cargados.
+        foreach (['cost', 'profit_percentage'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $data[$field] = is_numeric($data[$field]) ? round((float) $data[$field], 2) : null;
+            }
+        }
 
         return $data;
     }

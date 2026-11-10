@@ -19,7 +19,9 @@ it('renderiza la vista modal de vista previa de recibo de pago', function (): vo
 
     expect($html)
         ->toContain('reciboPagoPanel')
-        ->toContain('Generar vista previa')
+        ->toContain('Generar recibo')
+        ->toContain('Ver vista previa')
+        ->toContain('x-if="showPreview"')
         ->toContain('regenerateUrl');
 });
 

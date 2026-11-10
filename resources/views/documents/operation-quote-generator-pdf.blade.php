@@ -7,8 +7,13 @@
         is_array($quote->items) ? $quote->items : [],
         $profitPercentage
     );
-    $publicCostoUsd = \App\Support\Operations\OperationQuoteGeneratorPublicAmounts::applyProfit($quote->costo_dolares, $profitPercentage);
-    $publicSubtotalUsd = \App\Support\Operations\OperationQuoteGeneratorPublicAmounts::applyProfit($quote->subtotal, $profitPercentage);
+    $usesItemPricing = \App\Support\Operations\QuoteLinePricing::usesItemPricing($quote->items);
+    $publicCostoUsd = $usesItemPricing
+        ? (float) ($quote->total ?? 0)
+        : \App\Support\Operations\OperationQuoteGeneratorPublicAmounts::applyProfit($quote->costo_dolares, $profitPercentage);
+    $publicSubtotalUsd = $usesItemPricing
+        ? (float) ($quote->total ?? 0)
+        : \App\Support\Operations\OperationQuoteGeneratorPublicAmounts::applyProfit($quote->subtotal, $profitPercentage);
     $publicTotalUsd = (float) ($quote->total ?? 0);
     $patientName = \App\Support\Telemedicine\TelemedicinePatientDisplayName::forCoordination($coordination);
     $providerPhone = \App\Support\Operations\OperationServiceOrderProviderContacts::fromModels(

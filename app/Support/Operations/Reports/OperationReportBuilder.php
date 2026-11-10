@@ -174,6 +174,10 @@ final class OperationReportBuilder
      */
     public static function count(OperationReportType $type, OperationReportFilters $filters): int
     {
+        if ($type->isMedicationInvoices()) {
+            return MedicationInvoiceReportBuilder::count($filters);
+        }
+
         if ($type->isInventory()) {
             return OperationInventoryReportBuilder::count($type, $filters);
         }
@@ -183,6 +187,10 @@ final class OperationReportBuilder
 
     public static function build(OperationReportType $type, OperationReportFilters $filters, ?int $rowLimit = null): OperationReportData
     {
+        if ($type->isMedicationInvoices()) {
+            return MedicationInvoiceReportBuilder::build($type, $filters, $rowLimit);
+        }
+
         if ($type->isInventory()) {
             return OperationInventoryReportBuilder::build($type, $filters, $rowLimit);
         }

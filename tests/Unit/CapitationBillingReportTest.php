@@ -370,3 +370,35 @@ it('el reporte tiene permiso propio y no aparece en el Centro de reportes sin é
 
     expect(CentroDeReportes::availableTypes())->toContain(AdministrationReportType::CapitationBilling);
 });
+
+it('un afiliado con el plan de otro proveedor asignado se cobra solo a ese proveedor', function (): void {
+    ['supplier' => $supplier, 'alias' => $alias] = capitationBillingSupplier();
+    ['supplier' => $otherSupplier, 'alias' => $otherAlias] = capitationBillingSupplier();
+
+    // La afiliación lleva a los dos proveedores; al afiliado se le asigna el plan del segundo.
+    $both = Affiliation::query()->forceCreate([
+        'code' => 'PEST-CAP-'.Str::upper(Str::random(8)),
+        'code_agency' => 'TDG-100',
+        'status' => 'ACTIVA',
+        'plan_id' => 1,
+        'service_providers' => json_encode([$alias, $otherAlias]),
+        'full_name_payer' => 'PAGADOR PRUEBA',
+        'nro_identificacion_payer' => '12345678',
+    ]);
+    $assigned = capitationBillingAffiliate($both, 'IVAN REASIGNADO', '2026-04-10 09:00:00');
+
+    App\Models\AffiliateCapitationAssignment::query()->forceCreate([
+        'subject_type' => CapitationSubject::AFFILIATE,
+        'subject_id' => $assigned->getKey(),
+        'capitation_plan_id' => CapitationPlan::query()->where('provider_id', $otherSupplier->getKey())->value('id'),
+        'reason' => 'Asignación a otro proveedor',
+    ]);
+    AffiliateCapitationCost::flush();
+
+    $first = CapitationBillingCalculator::compute($supplier, CarbonImmutable::parse('2026-11-01'), now: CarbonImmutable::parse('2026-11-20 10:00'));
+    $second = CapitationBillingCalculator::compute($otherSupplier, CarbonImmutable::parse('2026-11-01'), now: CarbonImmutable::parse('2026-11-20 10:00'));
+
+    expect(array_column($first->monthRows, 'affiliate_name'))->not->toContain('IVAN REASIGNADO')
+        ->and(array_column($second->monthRows, 'affiliate_name'))->toBe(['IVAN REASIGNADO'])
+        ->and($second->monthRows[0]['amount'])->toBe(6.0);
+});

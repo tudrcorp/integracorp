@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\AffiliationCorporates\Pages;
 
+use App\Filament\Business\Resources\AffiliationCorporates\Actions\AffiliationCorporateFichaPdfActions;
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Filament\Business\Resources\AffiliationCorporates\Concerns\OptimizesAffiliationCorporateInfolistPerformance;
 use App\Filament\Shared\Affiliations\AffiliationDateCorrectionActions;
@@ -42,28 +43,22 @@ class ViewAffiliationCorporate extends ViewRecord
                 ->extraAttributes([
                     'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
                 ]),
-            Action::make('generateCertificate')
-                ->label('Generar certificado')
-                ->icon(Heroicon::OutlinedDocumentCheck)
-                ->color('success')
-                ->tooltip('Abre el Generador de Certificado con esta afiliación y todos los afiliados vigentes ya seleccionados.')
-                ->url(fn (AffiliationCorporate $record): string => AffiliationCorporateResource::getUrl('certificate-generator', ['afiliacion' => $record->getKey()]))
-                ->visible(fn (AffiliationCorporate $record): bool => CorporateCertificateGenerator::canAccess()
-                    && in_array(strtoupper(trim((string) $record->status)), CorporateCertificateGenerator::CERTIFIABLE_STATUSES, true))
-                ->extraAttributes([
-                    'class' => FilamentIosButton::extraClassForFilamentColor('success'),
-                ]),
-            Action::make('updatePopulation')
-                ->label('Actualizar población')
-                ->icon(Heroicon::OutlinedUserGroup)
-                ->color('primary')
-                ->tooltip('Subir el archivo de población de la empresa: el sistema propone altas, reactivaciones y bajas, y usted aprueba con OTP.')
-                ->url(fn (AffiliationCorporate $record): string => AffiliationCorporateResource::getUrl('population', ['record' => $record->getKey()]))
-                ->visible(fn (): bool => CorporatePopulationUpdates::canAccess())
-                ->extraAttributes([
-                    'class' => FilamentIosButton::extraClassForFilamentColor('primary'),
-                ]),
             FilamentIosActionsMenu::make([
+                Action::make('generateCertificate')
+                    ->label('Generar certificado')
+                    ->icon(Heroicon::OutlinedDocumentCheck)
+                    ->color('success')
+                    ->tooltip('Abre el Generador de Certificado con esta afiliación y todos los afiliados vigentes ya seleccionados.')
+                    ->url(fn (AffiliationCorporate $record): string => AffiliationCorporateResource::getUrl('certificate-generator', ['afiliacion' => $record->getKey()]))
+                    ->visible(fn (AffiliationCorporate $record): bool => CorporateCertificateGenerator::canAccess()
+                        && in_array(strtoupper(trim((string) $record->status)), CorporateCertificateGenerator::CERTIFIABLE_STATUSES, true)),
+                Action::make('updatePopulation')
+                    ->label('Actualizar población')
+                    ->icon(Heroicon::OutlinedUserGroup)
+                    ->color('primary')
+                    ->tooltip('Subir el archivo de población de la empresa: el sistema propone altas, reactivaciones y bajas, y usted aprueba con OTP.')
+                    ->url(fn (AffiliationCorporate $record): string => AffiliationCorporateResource::getUrl('population', ['record' => $record->getKey()]))
+                    ->visible(fn (): bool => CorporatePopulationUpdates::canAccess()),
                 Action::make('attachDocuments')
                     ->label('Adjuntar documentos')
                     ->icon(Heroicon::OutlinedPaperClip)
@@ -224,6 +219,7 @@ class ViewAffiliationCorporate extends ViewRecord
                     ->label('Editar')
                     ->icon(Heroicon::OutlinedPencil)
                     ->color('primary'),
+                AffiliationCorporateFichaPdfActions::printCorporatePdfAction(),
             ]),
         ];
     }

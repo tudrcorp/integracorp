@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\Affiliations\Pages;
 
+use App\Filament\Business\Resources\Affiliations\Actions\AffiliationFichaPdfActions;
 use App\Filament\Business\Resources\Affiliations\AffiliationResource;
 use App\Filament\Business\Resources\Affiliations\Concerns\OptimizesAffiliationInfolistPerformance;
 use App\Filament\Shared\Affiliations\AffiliationDateCorrectionActions;
@@ -44,18 +45,15 @@ class ViewAffiliation extends ViewRecord
                 ->extraAttributes([
                     'class' => FilamentIosButton::extraClassForFilamentColor('gray'),
                 ]),
-            Action::make('generateCertificate')
-                ->label('Generar certificado')
-                ->icon(Heroicon::OutlinedDocumentCheck)
-                ->color('success')
-                ->tooltip('Abre el Generador de Certificado con esta afiliación y todos los afiliados que llevan carnet ya seleccionados.')
-                ->url(fn (Affiliation $record): string => AffiliationResource::getUrl('certificate-generator', ['afiliacion' => $record->getKey()]))
-                ->visible(fn (Affiliation $record): bool => CertificateGenerator::canAccess()
-                    && in_array(strtoupper(trim((string) $record->status)), CertificateGenerator::CERTIFIABLE_STATUSES, true))
-                ->extraAttributes([
-                    'class' => FilamentIosButton::extraClassForFilamentColor('success'),
-                ]),
             FilamentIosActionsMenu::make([
+                Action::make('generateCertificate')
+                    ->label('Generar certificado')
+                    ->icon(Heroicon::OutlinedDocumentCheck)
+                    ->color('success')
+                    ->tooltip('Abre el Generador de Certificado con esta afiliación y todos los afiliados que llevan carnet ya seleccionados.')
+                    ->url(fn (Affiliation $record): string => AffiliationResource::getUrl('certificate-generator', ['afiliacion' => $record->getKey()]))
+                    ->visible(fn (Affiliation $record): bool => CertificateGenerator::canAccess()
+                        && in_array(strtoupper(trim((string) $record->status)), CertificateGenerator::CERTIFIABLE_STATUSES, true)),
                 Action::make('goToPayments')
                     ->label('Ver pagos realizados')
                     ->icon(Heroicon::OutlinedBanknotes)
@@ -223,6 +221,7 @@ class ViewAffiliation extends ViewRecord
                     ->label('Editar')
                     ->icon(Heroicon::OutlinedPencil)
                     ->color('primary'),
+                AffiliationFichaPdfActions::printIndividualPdfAction(),
             ]),
         ];
     }

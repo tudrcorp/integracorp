@@ -72,10 +72,12 @@ it('define fillable, cast y relación del modelo de categorías', function () {
     expect($model->getFillable())->toEqualCanonicalizing([
         'name',
         'description',
+        'profit_percentage',
         'is_active',
         'created_by',
     ])
         ->and($model->getCasts())->toHaveKey('is_active', 'boolean')
+        ->and($model->getCasts())->toHaveKey('profit_percentage', 'decimal:2')
         ->and($contents)->toContain('function products(): HasMany');
 });
 

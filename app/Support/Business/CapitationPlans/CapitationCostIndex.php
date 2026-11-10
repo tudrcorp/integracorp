@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Business\CapitationPlans;
 
+use App\Models\AffiliateCapitationAssignment;
 use App\Models\AffiliateCapitationOverride;
 use App\Models\CapitationPlan;
 use App\Models\Supplier;
@@ -12,10 +13,10 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * Planes de capitado aplicables, agrupados por alias del proveedor Outsourcing, y ajustes
- * negociados por afiliado.
+ * Planes de capitado aplicables, agrupados por alias del proveedor Outsourcing, ajustes
+ * negociados y planes asignados directamente por afiliado.
  *
- * Se arma con tres consultas y vive una sola vez por request o job (binding `scoped`): una
+ * Se arma con cinco consultas y vive una sola vez por request o job (binding `scoped`): una
  * tabla de 50 afiliados no consulta 50 veces, y un worker de colas no arrastra datos viejos
  * de un job al siguiente.
  */
@@ -27,7 +28,10 @@ final class CapitationCostIndex
     /**
      * @param  array<string, array{amount: float, reason: string, by: string, at: string, plan_amount: float|null}>  $overrides  por clave `tipo:id`
      */
-    private function __construct(private readonly array $byAlias, private readonly array $overrides = []) {}
+    /**
+     * @param  array<string, array{capitation_plan_id: int, supplier_id: int, plan: string, provider: string, cost: float, frequency: string, alias: string, plan_model: CapitationPlan, usable: bool, reason: string, by: string, at: string}>  $assignments  por clave `tipo:id`
+     */
+    private function __construct(private readonly array $byAlias, private readonly array $overrides = [], private readonly array $assignments = []) {}
 
     public static function load(): self
     {
@@ -68,7 +72,67 @@ final class CapitationCostIndex
             ];
         }
 
-        return new self($byAlias, self::loadOverrides());
+        return new self($byAlias, self::loadOverrides(), self::loadAssignments());
+    }
+
+    /**
+     * Asignaciones directas con su plan aunque esté inactivo o eliminado: así el afiliado
+     * muestra «plan asignado vencido» en vez de pasar en silencio al cálculo automático.
+     *
+     * @return array<string, array{capitation_plan_id: int, supplier_id: int, plan: string, provider: string, cost: float, frequency: string, alias: string, plan_model: CapitationPlan, usable: bool, reason: string, by: string, at: string}>
+     */
+    private static function loadAssignments(): array
+    {
+        try {
+            $rows = AffiliateCapitationAssignment::query()
+                ->with(['capitationPlan.supplier:id,name,integracorp_alias,is_outsourcing_medical_department,deleted_at'])
+                ->get(['subject_type', 'subject_id', 'capitation_plan_id', 'reason', 'created_by_name', 'updated_at']);
+        } catch (QueryException $exception) {
+            Log::warning('CapitationCostIndex: no se pudieron leer las asignaciones directas', ['error' => $exception->getMessage()]);
+
+            return [];
+        }
+
+        $assignments = [];
+
+        foreach ($rows as $row) {
+            $plan = $row->capitationPlan;
+
+            if (! $plan instanceof CapitationPlan) {
+                continue;
+            }
+
+            $supplier = $plan->provider_type === CapitationPlan::PROVIDER_SUPPLIER ? $plan->supplier : null;
+
+            $assignments[$row->subject_type.':'.$row->subject_id] = [
+                'capitation_plan_id' => (int) $plan->getKey(),
+                'supplier_id' => (int) ($supplier?->getKey() ?? 0),
+                'plan' => (string) $plan->name,
+                'provider' => (string) ($supplier?->name ?? '—'),
+                'cost' => round((float) $plan->cost_per_affiliate_usd, 2),
+                'frequency' => $plan->payment_frequency->label(),
+                'alias' => self::normalize((string) ($supplier?->integracorp_alias ?? '')),
+                'plan_model' => $plan,
+                'usable' => ! $plan->trashed()
+                    && $plan->status === CapitationPlan::STATUS_ACTIVE
+                    && $supplier instanceof Supplier
+                    && ! $supplier->trashed()
+                    && (bool) $supplier->is_outsourcing_medical_department,
+                'reason' => (string) $row->reason,
+                'by' => (string) ($row->created_by_name ?? '—'),
+                'at' => (string) $row->updated_at?->format('d/m/Y h:i A'),
+            ];
+        }
+
+        return $assignments;
+    }
+
+    /**
+     * @return array{capitation_plan_id: int, supplier_id: int, plan: string, provider: string, cost: float, frequency: string, alias: string, plan_model: CapitationPlan, usable: bool, reason: string, by: string, at: string}|null
+     */
+    public function assignmentFor(?string $subjectKey): ?array
+    {
+        return $subjectKey !== null ? ($this->assignments[$subjectKey] ?? null) : null;
     }
 
     /**

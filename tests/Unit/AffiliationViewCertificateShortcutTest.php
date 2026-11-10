@@ -13,20 +13,39 @@ dataset('fichas de afiliación', [
     'corporativa' => ['AffiliationCorporates/Pages/ViewAffiliationCorporate.php', 'AffiliationCorporateResource', 'CorporateCertificateGenerator'],
 ]);
 
-it('la ficha muestra «Generar certificado» junto a Volver, fuera del menú de acciones', function (string $file, string $resource, string $generator): void {
-    $page = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/'.$file);
+it('la ficha individual lleva «Generar certificado» dentro del menú Acciones, primero', function (): void {
+    $page = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/Affiliations/Pages/ViewAffiliation.php');
 
     $back = strpos($page, "Action::make('back')");
-    $shortcut = strpos($page, "Action::make('generateCertificate')");
     $menu = strpos($page, 'FilamentIosActionsMenu::make([');
+    $shortcut = strpos($page, "Action::make('generateCertificate')");
 
     expect($shortcut)->toBeInt()
-        ->and($shortcut)->toBeGreaterThan($back)
-        ->and($shortcut)->toBeLessThan($menu)
+        ->and($menu)->toBeGreaterThan($back)
+        ->and($shortcut)->toBeGreaterThan($menu)
+        ->and(substr_count(substr($page, $menu, $shortcut - $menu), 'Action::make('))->toBe(0)
         ->and($page)
         ->toContain("->label('Generar certificado')")
-        ->toContain($resource."::getUrl('certificate-generator', ['afiliacion' => \$record->getKey()])");
-})->with('fichas de afiliación');
+        ->toContain("AffiliationResource::getUrl('certificate-generator', ['afiliacion' => \$record->getKey()])");
+});
+
+it('la ficha corporativa lleva «Generar certificado» y «Actualizar población» dentro del menú Acciones, primero', function (): void {
+    $page = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/AffiliationCorporates/Pages/ViewAffiliationCorporate.php');
+
+    $menu = strpos($page, 'FilamentIosActionsMenu::make([');
+    $certificate = strpos($page, "Action::make('generateCertificate')");
+    $population = strpos($page, "Action::make('updatePopulation')");
+    $documents = strpos($page, "Action::make('attachDocuments')");
+
+    expect($menu)->toBeInt()
+        ->and($certificate)->toBeGreaterThan($menu)
+        ->and($population)->toBeGreaterThan($certificate)
+        ->and($documents)->toBeGreaterThan($population)
+        ->and($page)
+        ->toContain("->label('Generar certificado')")
+        ->toContain("->label('Actualizar población')")
+        ->toContain("AffiliationCorporateResource::getUrl('certificate-generator', ['afiliacion' => \$record->getKey()])");
+});
 
 it('el botón solo aparece con permiso del generador y si la afiliación es certificable', function (string $file, string $resource, string $generator): void {
     $page = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/'.$file);

@@ -32,13 +32,16 @@ it('buildManageQuoteLineItemsDefault usa las claves de cotización generalizadas
     $reflection = new ReflectionMethod(CoordinationServiceItemsManager::class, 'buildManageQuoteLineItemsDefault');
     $parameters = $reflection->getParameters();
 
-    expect($parameters)->toHaveCount(4)
+    expect($parameters)->toHaveCount(5)
         ->and($parameters[3]->getName())->toBe('registerUnregisteredProvider')
         ->and($parameters[3]->isDefaultValueAvailable())->toBeTrue()
-        ->and($parameters[3]->getDefaultValue())->toBeFalse();
+        ->and($parameters[3]->getDefaultValue())->toBeFalse()
+        ->and($parameters[4]->getName())->toBe('excludedKeys')
+        ->and($parameters[4]->getDefaultValue())->toBe([]);
 
     expect(coveredQuoteManagerSource())
-        ->toContain('$quoteKeys = self::quoteSelectedManagementItemKeys($record, $selectedKeys, $registerUnregisteredProvider);')
+        ->toContain('self::quoteSelectedManagementItemKeys($record, $selectedKeys, $registerUnregisteredProvider),')
+        ->toContain('$excludedKeys,')
         ->toContain('in_array($item[\'key\'], $quoteKeys, true)');
 });
 
@@ -88,13 +91,15 @@ it('persistManageQuote acepta un proveedor explícito y cuenta el subtotal desde
     $reflection = new ReflectionMethod(CoordinationServiceItemsManager::class, 'persistManageQuote');
     $parameters = $reflection->getParameters();
 
-    expect($parameters)->toHaveCount(7)
+    expect($parameters)->toHaveCount(8)
         ->and($parameters[4]->getName())->toBe('supplierIdOverride')
         ->and($parameters[5]->getName())->toBe('supplierAddressOverride')
-        ->and($parameters[6]->getName())->toBe('useSupplierOverride');
+        ->and($parameters[6]->getName())->toBe('useSupplierOverride')
+        ->and($parameters[7]->getName())->toBe('allowInvoice')
+        ->and($parameters[7]->getDefaultValue())->toBeFalse();
 
     expect(coveredQuoteManagerSource())
-        ->toContain('$costoUsd = self::sumItemsUnitPriceUsd($items)')
+        ->toContain('$totals = QuoteLinePricing::totals($items)')
         ->toContain('if ($useSupplierOverride) {')
         ->toContain('AccountsReceivableManager::syncFromQuote');
 });

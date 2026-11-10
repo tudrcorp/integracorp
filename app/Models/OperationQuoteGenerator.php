@@ -30,6 +30,12 @@ class OperationQuoteGenerator extends Model
         'type_service',
         'is_cash',
         'is_courtesy',
+        'generates_invoice',
+        'invoice_payer_type',
+        'invoice_payer_name',
+        'invoice_payer_identification',
+        'invoice_payer_address',
+        'operation_medication_invoice_id',
         'supplier_id',
         'supplier_address',
         'observations',
@@ -49,6 +55,7 @@ class OperationQuoteGenerator extends Model
         'items' => 'array',
         'is_cash' => 'boolean',
         'is_courtesy' => 'boolean',
+        'generates_invoice' => 'boolean',
     ];
 
     public function telemedicinePatient()
@@ -74,6 +81,16 @@ class OperationQuoteGenerator extends Model
     public function operationServiceOrder()
     {
         return $this->belongsTo(OperationServiceOrder::class);
+    }
+
+    /**
+     * Factura al paciente emitida al aprobar la cotización (si el analista indicó que genera factura).
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo<OperationMedicationInvoice, $this>
+     */
+    public function invoice(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(OperationMedicationInvoice::class, 'operation_medication_invoice_id');
     }
 
     /**

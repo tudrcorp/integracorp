@@ -37,6 +37,12 @@ class OperationInventoryProductCategoriesTable
                     ->tooltip(fn (OperationInventoryProductCategory $record): ?string => filled($record->description)
                         ? trim((string) $record->description)
                         : null),
+                TextColumn::make('profit_percentage')
+                    ->label('Utilidad')
+                    ->numeric(decimalPlaces: 2)
+                    ->suffix(' %')
+                    ->placeholder('Sin definir')
+                    ->sortable(),
                 TextColumn::make('products_count')
                     ->label('Productos')
                     ->counts('products')

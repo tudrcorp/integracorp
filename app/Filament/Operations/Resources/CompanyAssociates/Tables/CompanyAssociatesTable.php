@@ -188,6 +188,7 @@ class CompanyAssociatesTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     CapitationCostColumn::bulkAction(),
+                    CapitationCostColumn::assignBulkAction(),
                 ]),
             ]);
     }

@@ -5,6 +5,7 @@
 
 @php
     /** @var array<string, mixed> $recipients */
+    $affiliate = $recipients['affiliate'] ?? ['name' => null, 'email' => null];
     $agent = $recipients['agent'] ?? ['linked' => false, 'name' => null, 'code' => null, 'email' => null];
     $agency = $recipients['agency'] ?? ['linked' => false, 'name' => null, 'code' => null, 'email' => null];
     $emails = $recipients['emails'] ?? [];
@@ -24,6 +25,30 @@
             </div>
 
             <div class="space-y-4 p-4">
+                <section class="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/5">
+                    <div class="mb-3 flex items-center gap-2">
+                        <span class="inline-flex size-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                            <x-heroicon-o-user class="size-4" />
+                        </span>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900 dark:text-white">Afiliado</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Correo de la afiliación (titular o empresa). Recibe su propio correo.</p>
+                        </div>
+                    </div>
+                    <dl class="grid gap-2 text-sm">
+                        <div class="flex flex-wrap justify-between gap-2">
+                            <dt class="text-gray-500 dark:text-gray-400">Nombre</dt>
+                            <dd class="font-medium text-gray-900 dark:text-white">{{ $affiliate['name'] ?: '—' }}</dd>
+                        </div>
+                        <div class="flex flex-wrap justify-between gap-2">
+                            <dt class="text-gray-500 dark:text-gray-400">Correo</dt>
+                            <dd class="font-semibold {{ filled($affiliate['email']) ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300' }}">
+                                {{ $affiliate['email'] ?: 'Sin correo registrado' }}
+                            </dd>
+                        </div>
+                    </dl>
+                </section>
+
                 <section class="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/5">
                     <div class="mb-3 flex items-center gap-2">
                         <span class="inline-flex size-8 items-center justify-center rounded-full bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300">
@@ -92,7 +117,7 @@
 
                 <section class="rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-4 dark:border-emerald-500/20 dark:bg-emerald-950/20">
                     <p class="mb-2 text-sm font-semibold text-emerald-900 dark:text-emerald-200">
-                        Correos a los que se enviará el recibo
+                        Correos del agente / agencia (un solo correo para ambos)
                     </p>
 
                     @if ($hasRecipients)
