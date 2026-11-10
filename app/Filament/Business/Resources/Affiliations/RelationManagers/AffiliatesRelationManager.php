@@ -6,6 +6,7 @@ namespace App\Filament\Business\Resources\Affiliations\RelationManagers;
 
 use App\Filament\Business\Concerns\AssignsUpgradesWithIlsVoucher;
 use App\Filament\Business\Concerns\ManagesAffiliateSpecificBusinessUnit;
+use App\Filament\Shared\Affiliations\Actions\AffiliateFichaAction;
 use App\Filament\Shared\Affiliations\CapitationCostColumn;
 use App\Models\Affiliate;
 use App\Models\AffiliateUpgrade;
@@ -16,6 +17,7 @@ use App\Models\BusinessUnit;
 use App\Models\Plan;
 use App\Support\AffiliateVaucherIlsRemainingDays;
 use App\Support\AffiliationAffiliateFeeCalculator;
+use App\Support\Affiliations\AffiliateFicha\AffiliateFichaData;
 use App\Support\Affiliations\AffiliateSpecificBusinessUnitChanger;
 use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
 use App\Support\Business\CapitationPlans\AffiliateCapitationCost;
@@ -613,6 +615,7 @@ class AffiliatesRelationManager extends RelationManager
             ])
             ->recordActions([
                 ActionGroup::make([
+                    AffiliateFichaAction::make(AffiliateFichaData::KIND_INDIVIDUAL),
                     Action::make('upload_info_ils')
                         ->label('Voucher ILS')
                         ->color('info')
@@ -879,6 +882,7 @@ class AffiliatesRelationManager extends RelationManager
             ->toolbarActions([
                 BulkActionGroup::make([
                     CapitationCostColumn::bulkAction(),
+                    CapitationCostColumn::assignBulkAction(),
                     $this->changeSpecificBusinessUnitBulkAction(),
                     $this->addUpgradeWithVoucherBulkAction(fn (): bool => self::userCanManageUpgrades()),
                     BulkAction::make('remove_upgrade_bulk')

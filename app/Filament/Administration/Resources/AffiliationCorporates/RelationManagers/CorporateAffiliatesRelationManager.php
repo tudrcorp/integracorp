@@ -2,11 +2,13 @@
 
 namespace App\Filament\Administration\Resources\AffiliationCorporates\RelationManagers;
 
+use App\Filament\Shared\Affiliations\Actions\AffiliateFichaAction;
 use App\Http\Controllers\AffiliateCorporateController;
 use App\Models\AffiliateCorporate;
 use App\Models\AgeRange;
 use App\Models\Plan;
 use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
+use App\Support\Affiliations\AffiliateFicha\AffiliateFichaData;
 use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Plans\PlanInfantEligibility;
 use BackedEnum;
@@ -350,6 +352,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
             ])
             ->recordActions([
                 ActionGroup::make([
+                    AffiliateFichaAction::make(AffiliateFichaData::KIND_CORPORATE),
                     Action::make('upload_info_ils')
                         ->label('Vaucher ILS')
                         ->color('warning')

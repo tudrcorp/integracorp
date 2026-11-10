@@ -2,9 +2,11 @@
 
 namespace App\Filament\Administration\Resources\Affiliations\RelationManagers;
 
+use App\Filament\Shared\Affiliations\Actions\AffiliateFichaAction;
 use App\Models\Affiliate;
 use App\Models\AgeRange;
 use App\Models\Plan;
+use App\Support\Affiliations\AffiliateFicha\AffiliateFichaData;
 use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Plans\PlanInfantEligibility;
 use BackedEnum;
@@ -306,6 +308,7 @@ class AffiliatesRelationManager extends RelationManager
             ])
             ->recordActions([
                 ActionGroup::make([
+                    AffiliateFichaAction::make(AffiliateFichaData::KIND_INDIVIDUAL),
                     Action::make('upload_info_ils')
                         ->label('Vaucher ILS')
                         ->color('info')
