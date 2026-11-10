@@ -72,6 +72,10 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const MARK_COLLECTION_FOLLOW_UP = 'marcar-estado-gestion-cobranza';
 
+    public const MANAGE_SALE_RECEIPT_EMAIL_TEMPLATES = 'gestionar-copys-recibo-de-pago';
+
+    public const MANAGE_COLLECTION_NOTICE_EMAIL_TEMPLATES = 'gestionar-copys-aviso-de-cobro';
+
     public const EDIT_ORG_STRUCTURE = 'editar-estructura-organizacional';
 
     public const EXPORT_ORG_CHART = 'exportar-organigrama';
@@ -94,11 +98,25 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const EDIT_CAPITATION_PER_AFFILIATE = 'editar-capitado-por-afiliado';
 
+    public const ASSIGN_CAPITATION_PLAN = 'asignar-plan-capitado-afiliado';
+
     public const CAPITATION_BILLING_REPORT = 'prefacturacion-capitado';
 
     public const REVERT_DATA_CHANGES = 'revertir-cambios-auditados';
 
     public const REVERSE_CASH_PAYMENTS = 'reversar-pagos-de-contado';
+
+    public const INVOICE_MEDICATIONS_FROM_INVENTORY = 'facturar-medicamentos-inventario';
+
+    public const REGISTER_MEDICATION_INVOICE_PAYMENT = 'registrar-pago-factura-medicamentos';
+
+    public const ANNUL_MEDICATION_INVOICE = 'anular-factura-medicamentos';
+
+    public const MANAGE_MEDICATION_FAILURES = 'gestionar-fallas-medicamentos';
+
+    public const REPORT_MEDICATION_INVOICES = 'reporte-facturas-medicamentos';
+
+    public const VIEW_AFFILIATE_CLINICAL_FICHA = 'ver-ficha-clinica-afiliado';
 
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
@@ -181,6 +199,16 @@ final class BusinessFilamentActionPermissionRegistry
                 'group' => 'COBRANZA',
                 'modules' => ['ADMINISTRACION'],
             ],
+            self::MANAGE_SALE_RECEIPT_EMAIL_TEMPLATES => [
+                'name' => 'Copys de recibos de pago: crear, editar, activar, desactivar y marcar el predeterminado',
+                'group' => 'ADMINISTRACIÓN',
+                'modules' => ['ADMINISTRACION'],
+            ],
+            self::MANAGE_COLLECTION_NOTICE_EMAIL_TEMPLATES => [
+                'name' => 'Copys de avisos de cobro: crear, editar, activar, desactivar y marcar el predeterminado',
+                'group' => 'ADMINISTRACIÓN',
+                'modules' => ['ADMINISTRACION'],
+            ],
             self::MANAGE_WHITE_COMPANY_NEGOTIATED_FEES => [
                 'name' => 'Matriz de negociación',
                 'group' => 'ESTRUCTURA COMERCIAL',
@@ -229,6 +257,31 @@ final class BusinessFilamentActionPermissionRegistry
             self::FINALIZE_OPERATION_SERVICE_ORDER => [
                 'name' => 'Finalizar órdenes de servicio (cargando el documento)',
                 'group' => 'COORDINACIÓN DE SERVICIOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::INVOICE_MEDICATIONS_FROM_INVENTORY => [
+                'name' => 'Facturar al paciente lo no cubierto (medicamentos del inventario, laboratorios, estudios y especialistas)',
+                'group' => 'COORDINACIÓN DE SERVICIOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::REGISTER_MEDICATION_INVOICE_PAYMENT => [
+                'name' => 'Facturas a pacientes: registrar el pago',
+                'group' => 'COORDINACIÓN DE SERVICIOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::ANNUL_MEDICATION_INVOICE => [
+                'name' => 'Facturas a pacientes: anular (con motivo obligatorio; en medicamentos devuelve la existencia)',
+                'group' => 'COORDINACIÓN DE SERVICIOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::REPORT_MEDICATION_INVOICES => [
+                'name' => 'Facturas a pacientes: generar el reporte (PDF, Excel o CSV) en la tabla y en el Generador de reportes',
+                'group' => 'COORDINACIÓN DE SERVICIOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::MANAGE_MEDICATION_FAILURES => [
+                'name' => 'Fallas de medicamentos: marcar como adquirido o descartado',
+                'group' => 'INVENTARIO DIAGNOMOVIL',
                 'modules' => ['OPERACIONES'],
             ],
             self::EXTERNAL_MANAGE_COVERED_ITEMS => [
@@ -341,6 +394,11 @@ final class BusinessFilamentActionPermissionRegistry
                 'group' => 'CONFIGURACIÓN',
                 'modules' => [self::OWNER_MODULE],
             ],
+            self::ASSIGN_CAPITATION_PLAN => [
+                'name' => 'Capitado por afiliado: asignar, quitar o deshacer un plan de capitado directamente a uno o varios afiliados (con razón obligatoria)',
+                'group' => 'AFILIADOS',
+                'modules' => [self::OWNER_MODULE, 'OPERACIONES'],
+            ],
             self::EDIT_CAPITATION_PER_AFFILIATE => [
                 'name' => 'Capitado por afiliado: ajustar el monto negociado de uno o varios afiliados (con razón obligatoria)',
                 'group' => 'AFILIADOS',
@@ -350,6 +408,11 @@ final class BusinessFilamentActionPermissionRegistry
                 'name' => 'Guardias Médicas: cargar, editar, copiar y anular',
                 'group' => 'DEL USUARIO',
                 'modules' => ['OPERACIONES'],
+            ],
+            self::VIEW_AFFILIATE_CLINICAL_FICHA => [
+                'name' => 'Ficha del afiliado: incluir la información de operaciones y telemedicina (datos clínicos)',
+                'group' => 'AFILIADOS',
+                'modules' => [self::OWNER_MODULE, 'ADMINISTRACION', 'OPERACIONES'],
             ],
         ];
     }

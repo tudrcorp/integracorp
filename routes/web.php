@@ -487,6 +487,19 @@ Route::get('qc/pdf/{share}', [\App\Http\Controllers\QualityControlPdfController:
     ->middleware(['signed'])
     ->name('quality-control.pdf.shared');
 
+Route::get('operations/medication-invoices/{operationMedicationInvoice}/pdf/preview', [\App\Http\Controllers\MedicationInvoicePdfController::class, 'preview'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.medication-invoices.pdf.preview');
+
+Route::get('operations/medication-invoices/{operationMedicationInvoice}/pdf/download', [\App\Http\Controllers\MedicationInvoicePdfController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->name('operations.medication-invoices.pdf.download');
+
+/** Copia de la factura para WhatsApp: sin sesión, solo con firma vigente (48 h). */
+Route::get('fmp/pdf/{share}', [\App\Http\Controllers\MedicationInvoicePdfController::class, 'shared'])
+    ->middleware(['signed'])
+    ->name('medication-invoices.pdf.shared');
+
 Route::get('operations/operation-service-orders/{operationServiceOrder}/pdf/preview', [OperationServiceOrderPdfController::class, 'preview'])
     ->middleware(['web', 'auth'])
     ->name('operations.operation-service-orders.pdf.preview');
@@ -506,6 +519,15 @@ Route::get('business/medical-questionnaires/{questionnaire}/pdf', \App\Http\Cont
 Route::get('business/capitation-plans/pdf', \App\Http\Controllers\CapitationPlanPdfController::class)
     ->middleware(['web', 'auth'])
     ->name('business.capitation-plans.pdf');
+
+Route::get('fichas/afiliado/{kind}/{affiliate}/{scope}/{panel}/{mode}', \App\Http\Controllers\AffiliateFichaPdfController::class)
+    ->middleware(['web', 'auth', 'signed'])
+    ->whereIn('kind', ['individual', 'corporativo'])
+    ->whereNumber('affiliate')
+    ->whereIn('scope', ['administracion', 'operaciones', 'todo'])
+    ->whereIn('panel', ['business', 'administration', 'operations'])
+    ->whereIn('mode', ['vista', 'descarga'])
+    ->name('affiliate-ficha.pdf');
 
 Route::get('business/agents/{agent}/ficha-pdf/preview', [BusinessAgentFichaPdfController::class, 'preview'])
     ->middleware(['web', 'auth'])
@@ -663,6 +685,13 @@ Route::post('administration/sales/{sale}/recibo-pago/regenerate-async', [
 ])
     ->middleware(['web', 'auth'])
     ->name('administration.sales.recibo-pago.regenerate-async');
+
+Route::post('administration/sales/{sale}/recibo-pago/send-email', [
+    \App\Http\Controllers\ReciboPagoController::class,
+    'sendEmail',
+])
+    ->middleware(['web', 'auth'])
+    ->name('administration.sales.recibo-pago.send-email');
 
 Route::post('business/affiliations/documents/regenerate-async/{affiliation}', [
     AffiliationBusinessDocumentsController::class,

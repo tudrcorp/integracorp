@@ -7,6 +7,7 @@ namespace App\Filament\Business\Resources\AffiliationCorporates\RelationManagers
 use App\Filament\Business\Concerns\AssignsUpgradesWithIlsVoucher;
 use App\Filament\Business\Concerns\ManagesAffiliateSpecificBusinessUnit;
 use App\Filament\Business\Resources\AffiliationCorporates\Support\CorporateAffiliateIlsVoucherForm;
+use App\Filament\Shared\Affiliations\Actions\AffiliateFichaAction;
 use App\Filament\Shared\Affiliations\CapitationCostColumn;
 use App\Http\Controllers\AffiliateCorporateController;
 use App\Models\AffiliateCorporate;
@@ -22,6 +23,7 @@ use App\Support\AffiliationCorporates\CorporateAffiliateIlsVoucherManager;
 use App\Support\AffiliationCorporates\CorporateAffiliatePlanSynchronizer;
 use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
 use App\Support\AffiliationCorporates\CorporateAffiliateUpgradeManager;
+use App\Support\Affiliations\AffiliateFicha\AffiliateFichaData;
 use App\Support\Affiliations\AffiliateSpecificBusinessUnitChanger;
 use App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException;
 use App\Support\Business\CapitationPlans\AffiliateCapitationCost;
@@ -724,6 +726,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
             ])
             ->recordActions([
                 ActionGroup::make([
+                    AffiliateFichaAction::make(AffiliateFichaData::KIND_CORPORATE),
                     Action::make('sync_with_affiliation')
                         ->label('Sincronizar con la afiliación')
                         ->icon(Heroicon::ArrowPathRoundedSquare)
@@ -823,6 +826,7 @@ class CorporateAffiliatesRelationManager extends RelationManager
             ->toolbarActions([
                 BulkActionGroup::make([
                     CapitationCostColumn::bulkAction(),
+                    CapitationCostColumn::assignBulkAction(),
                     $this->changeSpecificBusinessUnitBulkAction(),
                     BulkAction::make('asigned_vaucher_ils')
                         ->label('Asignar vouchers ILS')

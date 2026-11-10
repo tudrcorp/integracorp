@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Resources\AffiliateCorporates\Tables;
 
 use App\Filament\Operations\Resources\AffiliateCorporates\AffiliateCorporateResource;
+use App\Filament\Shared\Affiliations\Actions\AffiliateFichaAction;
 use App\Filament\Shared\Affiliations\CapitationCostColumn;
 use App\Http\Controllers\AffiliateCorporateExportCsvController;
 use App\Models\AffiliateCorporate;
 use App\Support\AffiliationCorporates\CorporateAffiliateRelationship;
+use App\Support\Affiliations\AffiliateFicha\AffiliateFichaData;
 use App\Support\Business\CapitationPlans\AffiliateCapitationCost;
 use App\Support\Filament\PatientAgeDisplay;
 use Carbon\Carbon;
@@ -226,10 +228,12 @@ class AffiliateCorporatesTable
                     ->color('warning')
                     ->url(fn (AffiliateCorporate $record): string => AffiliateCorporateResource::getUrl('edit', ['record' => $record]))
                     ->visible(fn (AffiliateCorporate $record): bool => AffiliateCorporateResource::canEdit($record)),
+                AffiliateFichaAction::make(AffiliateFichaData::KIND_CORPORATE),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     CapitationCostColumn::bulkAction(),
+                    CapitationCostColumn::assignBulkAction(),
                     BulkAction::make('exportAffiliateCorporatesCsv')
                         ->label('Exportar Afiliados')
                         ->icon('heroicon-o-arrow-down-tray')
