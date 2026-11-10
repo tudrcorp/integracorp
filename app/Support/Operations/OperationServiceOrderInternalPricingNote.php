@@ -19,9 +19,35 @@ final class OperationServiceOrderInternalPricingNote
 {
     private const PATTERN = '/Generada\s+autom[aá]ticamente\s+desde\s+cotizaci[oó]n\s+#\d+\s*\(\s*costo\s+base[^)]*\)\.?/iu';
 
+    /**
+     * El tramo «· Total US$ 62.54» que llevaba la descripción automática
+     * «Orden por cotización #57 · MEDICAMENTOS · 4 ítem(s) · Total US$ 62.54».
+     * Ese total es el precio de venta de TDG, y frente al costo del proveedor
+     * deja ver el margen.
+     */
+    private const DESCRIPTION_TOTAL_PATTERN = '/^(Orden\s+por\s+cotizaci[oó]n\s+#\d+.*?)\s*·\s*Total\s+(?:US\$|Bs\.)\s*[\d.,]+\s*$/iu';
+
     public static function contains(?string $observations): bool
     {
         return is_string($observations) && preg_match(self::PATTERN, $observations) === 1;
+    }
+
+    public static function descriptionContainsTotal(?string $description): bool
+    {
+        return is_string($description) && preg_match(self::DESCRIPTION_TOTAL_PATTERN, $description) === 1;
+    }
+
+    /**
+     * La descripción sin el total de la cotización; cualquier otra descripción
+     * queda igual.
+     */
+    public static function stripDescriptionTotal(?string $description): ?string
+    {
+        if (! is_string($description)) {
+            return $description;
+        }
+
+        return preg_replace(self::DESCRIPTION_TOTAL_PATTERN, '$1', $description) ?? $description;
     }
 
     /**

@@ -924,15 +924,17 @@ final class CoordinationServiceQuoteManager
 
     /**
      * Descripción que el sistema guarda en la orden creada desde una cotización.
+     *
+     * Sale impresa en el PDF que recibe el proveedor: no lleva montos, porque el
+     * total de la cotización es el precio de venta de TDG (costo + ganancia).
      */
     public static function serviceOrderDescriptionForQuote(OperationQuoteGenerator $quote): string
     {
         return sprintf(
-            'Orden por cotización #%d · %s · %d ítem(s) · Total %s',
+            'Orden por cotización #%d · %s · %d ítem(s)',
             $quote->id,
             $quote->type_service,
-            count(is_array($quote->items) ? $quote->items : []),
-            self::formatManageQuoteAmountPreview((float) $quote->total)
+            count(is_array($quote->items) ? $quote->items : [])
         );
     }
 

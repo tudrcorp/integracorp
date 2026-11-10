@@ -414,7 +414,7 @@
             <tr>
                 <td>
                     <div class="label">Descripción</div>
-                    <div class="value-muted">{{ $order->description ?? '—' }}</div>
+                    <div class="value-muted">{{ \App\Support\Operations\OperationServiceOrderInternalPricingNote::stripDescriptionTotal($order->description) ?? '—' }}</div>
                 </td>
                 <td>
                     <div class="label">Dirección</div>
