@@ -233,7 +233,6 @@ class AffiliateCorporatesTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     CapitationCostColumn::bulkAction(),
-                    CapitationCostColumn::assignBulkAction(),
                     BulkAction::make('exportAffiliateCorporatesCsv')
                         ->label('Exportar Afiliados')
                         ->icon('heroicon-o-arrow-down-tray')

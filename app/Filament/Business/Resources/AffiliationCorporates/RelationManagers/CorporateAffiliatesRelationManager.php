@@ -826,7 +826,6 @@ class CorporateAffiliatesRelationManager extends RelationManager
             ->toolbarActions([
                 BulkActionGroup::make([
                     CapitationCostColumn::bulkAction(),
-                    CapitationCostColumn::assignBulkAction(),
                     $this->changeSpecificBusinessUnitBulkAction(),
                     BulkAction::make('asigned_vaucher_ils')
                         ->label('Asignar vouchers ILS')
