@@ -453,12 +453,6 @@ final class CoordinationServiceQuoteManager
         $data['approved_quote_id'] = $quote->id;
         $data['order_number'] = self::nextServiceOrderNumber();
         $data['telemedicine_priority_id'] = $record->telemedicine_priority_id;
-        $data['service_order_observations'] = sprintf(
-            'Generada automáticamente desde cotización #%d (costo base %s, ganancia %s%%).',
-            $quote->id,
-            self::formatManageQuoteAmountPreview((float) $quote->subtotal),
-            number_format((float) $quote->porcentaje_ganancia, 2, '.', '')
-        );
 
         return $data;
     }
@@ -926,12 +920,6 @@ final class CoordinationServiceQuoteManager
         $set('supplier_notify_email', null);
         $set('supplier_notify_phone', null);
         $set('telemedicine_priority_id', $record->telemedicine_priority_id);
-        $set('service_order_observations', sprintf(
-            'Generada automáticamente desde cotización #%d (costo base %s, ganancia %s%%).',
-            $quote->id,
-            self::formatManageQuoteAmountPreview((float) $quote->subtotal),
-            number_format((float) $quote->porcentaje_ganancia, 2, '.', '')
-        ));
     }
 
     /**

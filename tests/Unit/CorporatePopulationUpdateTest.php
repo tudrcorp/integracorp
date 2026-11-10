@@ -376,10 +376,17 @@ it('la OTP va a los destinatarios del centro de notificaciones, es de un solo us
     });
 
     $challenge = $issued['challenge'];
+    $copy = App\Models\SystemOtpCode::query()->where('challenge_type', $challenge->getMorphClass())->where('challenge_id', $challenge->getKey())->sole();
+    expect($copy->kind)->toBe(App\Enums\SystemOtpCodeKind::PopulationApply)
+        ->and($copy->code)->toBe($code)
+        ->and($copy->emails_sent)->toBe(1)
+        ->and($copy->used_at)->toBeNull();
+
     expect(CorporatePopulationOtp::verifyAndConsume($challenge, $code, popActor(), $update, CorporatePopulationOtpChallenge::PURPOSE_ROLLBACK))->toBeFalse()
         ->and(CorporatePopulationOtp::verifyAndConsume($challenge->fresh(), $code === '000000' ? '111111' : '000000', popActor(), $update, CorporatePopulationOtpChallenge::PURPOSE_APPLY))->toBeFalse()
         ->and(CorporatePopulationOtp::verifyAndConsume($challenge->fresh(), $code, popActor(), $update, CorporatePopulationOtpChallenge::PURPOSE_APPLY))->toBeTrue()
-        ->and(CorporatePopulationOtp::verifyAndConsume($challenge->fresh(), $code, popActor(), $update, CorporatePopulationOtpChallenge::PURPOSE_APPLY))->toBeFalse();
+        ->and(CorporatePopulationOtp::verifyAndConsume($challenge->fresh(), $code, popActor(), $update, CorporatePopulationOtpChallenge::PURPOSE_APPLY))->toBeFalse()
+        ->and($copy->fresh()->used_at)->not->toBeNull();
 
     $setting->forceFill(['is_active' => false])->save();
     expect(fn () => CorporatePopulationOtp::issue(popActor(), $update, CorporatePopulationOtpChallenge::PURPOSE_APPLY))->toThrow(RuntimeException::class, 'pausada');

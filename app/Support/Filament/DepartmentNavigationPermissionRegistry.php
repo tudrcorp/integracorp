@@ -204,6 +204,8 @@ final class DepartmentNavigationPermissionRegistry
         \App\Filament\Business\Pages\UserPermissionsOverview::class,
         SystemAuditTraceResource::class,
         AccountManagerResource::class,
+        /** Muestra claves OTP en claro: solo SUPERADMIN, nunca un permiso asignable. */
+        \App\Filament\Business\Resources\SystemOtpCodes\SystemOtpCodeResource::class,
     ];
 
     /**

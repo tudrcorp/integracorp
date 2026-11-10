@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Support\ClinicalEntitlements;
 
 use App\Enums\ClinicalUsageAccessContext;
+use App\Enums\SystemOtpCodeKind;
 use App\Jobs\SendNotificacionWhatsApp;
 use App\Mail\ClinicalUsageAccessOtpMail;
 use App\Models\ClinicalUsageAccessChallenge;
 use App\Models\User;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\Filament\UserNavigationAccess;
+use App\Support\Otp\SystemOtpCodeRegistry;
 use App\Support\SecurityAudit;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
@@ -230,6 +232,7 @@ final class ClinicalUsageAccessOtp
     public static function markConsumed(ClinicalUsageAccessChallenge $challenge): void
     {
         $challenge->forceFill(['consumed_at' => now()])->save();
+        SystemOtpCodeRegistry::markUsed($challenge);
 
         SecurityAudit::log('AUDIT_CLINICAL_USAGE_ACCESS_OTP_USED', 'business.clinical-usage.otp', [
             'challenge_public_id' => $challenge->public_id,
@@ -306,6 +309,19 @@ final class ClinicalUsageAccessOtp
             'emails_sent' => $emailsSent,
             'phones_sent' => $phonesSent,
         ])->save();
+
+        SystemOtpCodeRegistry::record(
+            SystemOtpCodeKind::ClinicalUsageAccess,
+            $challenge,
+            (string) ($payload['otp_code'] ?? ''),
+            (int) $challenge->user_id,
+            isset($payload['analyst_name']) ? (string) $payload['analyst_name'] : null,
+            trim(($payload['context_label'] ?? 'Cupos clínicos').(filled($payload['subject_label'] ?? null) ? ' · '.$payload['subject_label'] : '')),
+            [],
+            $emailsSent,
+            $phonesSent,
+            $challenge->expires_at,
+        );
 
         SecurityAudit::log($auditEvent, 'business.clinical-usage.otp', [
             'challenge_public_id' => $challenge->public_id,

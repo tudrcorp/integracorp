@@ -3,6 +3,7 @@
 namespace App\Filament\Operations\Resources\OperationServiceOrders\Schemas;
 
 use App\Models\OperationServiceOrder;
+use App\Support\Operations\OperationServiceOrderInternalPricingNote;
 use App\Support\Operations\OperationServiceOrderListDisplay;
 use App\Support\Operations\OperationServiceOrderProviderSummary;
 use App\Support\Operations\OperationServiceOrderValidity;
@@ -161,6 +162,7 @@ class OperationServiceOrderInfolist
                                                     ->columnSpanFull(),
                                                 TextEntry::make('observations')
                                                     ->label('Observaciones')
+                                                    ->state(fn (OperationServiceOrder $record): ?string => OperationServiceOrderInternalPricingNote::strip($record->observations))
                                                     ->placeholder('-')
                                                     ->columnSpanFull(),
                                             ])
