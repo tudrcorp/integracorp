@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Affiliations\Certificates;
 
 use App\Models\AffiliationCertificateIssue;
+use App\Models\PlanCertificateTemplate;
 use Illuminate\Support\Str;
 
 /**
@@ -55,7 +56,7 @@ final class CertificateDocumentData
             hasEmergency: $hasEmergency,
         );
 
-        return [
+        $data = [
             'tipo' => $in['tipo'],
             'codigo' => $in['codigo'],
             'planLabel' => $in['planLabel'],
@@ -104,6 +105,17 @@ final class CertificateDocumentData
             'pages' => $pages,
             'totalPaginas' => count($pages),
         ];
+
+        // Diseño propio del plan, fijado en la emisión: la versión no cambia aunque luego se suba otra.
+        $templateId = (int) ($issue->getAttribute('plan_certificate_template_id') ?? 0);
+        if ($templateId > 0) {
+            $template = $in['template'] ?? PlanCertificateTemplate::query()->find($templateId);
+            if ($template instanceof PlanCertificateTemplate) {
+                $data = PlanCertificateCover::apply($data, $template, $benefits['rows'], $people);
+            }
+        }
+
+        return $data;
     }
 
     /**

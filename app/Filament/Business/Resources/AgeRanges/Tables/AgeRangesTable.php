@@ -54,7 +54,24 @@ class AgeRangesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->modalDescription('Solo se borran los rangos que nada usa. Los que están en tarifas, afiliaciones, cotizaciones o renovaciones se conservan.')
+                        ->using(function (iterable $records): void {
+                            $kept = 0;
+                            foreach ($records as $record) {
+                                if (\App\Support\Plans\PlanAgeRangeEditor::isReferenced($record)) {
+                                    $kept++;
+
+                                    continue;
+                                }
+
+                                $record->delete();
+                            }
+
+                            if ($kept > 0) {
+                                \Filament\Notifications\Notification::make()->title($kept.' rango(s) no se borraron')->body('Están en uso en tarifas, afiliaciones, cotizaciones o renovaciones.')->warning()->send();
+                            }
+                        }),
                 ]),
             ])
             ->striped();

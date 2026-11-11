@@ -17,6 +17,8 @@ use App\Support\Affiliations\Certificates\CertificatePdfNotifier;
 use App\Support\Affiliations\Certificates\CertificateVerificationKey;
 use App\Support\Affiliations\Certificates\CorporateCertificateDocument;
 use App\Support\Affiliations\Certificates\IndividualCertificateDocument;
+use App\Support\Affiliations\Certificates\PlanCertificateCover;
+use App\Support\Affiliations\Certificates\PlanCertificateTemplates;
 use App\Support\DomPdfBatchRenderOptions;
 use App\Support\SecurityAudit;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -25,6 +27,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use RuntimeException;
 use setasign\Fpdi\Fpdi;
@@ -99,6 +102,7 @@ final class AffiliationCertificateGeneratorService
             'affiliation_id' => $affiliation->id,
             'affiliation_code' => (string) $affiliation->code,
             'plan_name' => $affiliation->plan?->description,
+            ...self::templateColumn($affiliation->plan_id ? (int) $affiliation->plan_id : null),
             'valid_from' => $period?->start->toDateString(),
             'valid_until' => $period?->end->toDateString(),
             'paid_until' => $period?->paidUntil->toDateString(),
@@ -148,6 +152,7 @@ final class AffiliationCertificateGeneratorService
             'affiliation_id' => $affiliation->id,
             'affiliation_code' => (string) $affiliation->code,
             'plan_name' => $plan?->description,
+            ...self::templateColumn($plan?->id ? (int) $plan->id : null),
             'valid_from' => $period?->start->toDateString(),
             'valid_until' => $period?->end->toDateString(),
             'paid_until' => $period?->paidUntil->toDateString(),
@@ -173,6 +178,20 @@ final class AffiliationCertificateGeneratorService
         }
 
         return $issue;
+    }
+
+    /**
+     * Diseño propio activo del plan, fijado en la emisión (solo si la columna existe:
+     * subir el código antes que la migración no rompe el generador).
+     *
+     * @return array<string, int|null>
+     */
+    private static function templateColumn(?int $planId): array
+    {
+        static $hasColumn = null;
+        $hasColumn ??= \Illuminate\Support\Facades\Schema::hasColumn('affiliation_certificate_issues', 'plan_certificate_template_id');
+
+        return $hasColumn ? ['plan_certificate_template_id' => PlanCertificateTemplates::activeFor($planId)?->getKey()] : [];
     }
 
     /**
@@ -310,12 +329,7 @@ final class AffiliationCertificateGeneratorService
             throw new InvalidArgumentException('Las partes elegidas no tienen contenido vigente en la afiliación.');
         }
 
-        foreach ($pages as $index => $page) {
-            $pages[$index]['num'] = $index + 1;
-        }
-
-        $data['pages'] = $pages;
-        $data['totalPaginas'] = count($pages);
+        [$data['pages'], $data['totalPaginas']] = PlanCertificateCover::renumber($pages);
         // Sin la relación, la portada no remite a páginas que no van en el documento.
         $data['relPaginas'] = CertificateDocumentData::relationPagesLabel($pages);
 
@@ -740,6 +754,62 @@ final class AffiliationCertificateGeneratorService
      * @param  array<string, mixed>  $data
      */
     private function renderDocument(array $data): string
+    {
+        if (collect($data['pages'])->contains(fn (array $page): bool => PlanCertificateCover::isCustom($page))) {
+            return $this->renderWithCustomCover($data);
+        }
+
+        return $this->renderStandard($data);
+    }
+
+    /**
+     * Con diseño propio del plan: cada tramo de hojas se dibuja por su lado (el
+     * diseño con su propio HTML, el resto con la plantilla estándar) y se unen en orden.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function renderWithCustomCover(array $data): string
+    {
+        $runs = [];
+        foreach ($data['pages'] as $page) {
+            $custom = PlanCertificateCover::isCustom($page);
+            $last = array_key_last($runs);
+
+            if ($last !== null && ! $custom && ! $runs[$last]['custom']) {
+                $runs[$last]['pages'][] = $page;
+            } else {
+                $runs[] = ['custom' => $custom, 'pages' => [$page]];
+            }
+        }
+
+        $directory = 'affiliation-certificates/tmp/'.Str::uuid();
+        $this->ensureDirectory($directory);
+        $merged = new Fpdi;
+
+        try {
+            foreach ($runs as $index => $run) {
+                $file = Storage::disk('local')->path($directory.'/'.$index.'.pdf');
+                $bytes = $run['custom']
+                    ? PlanCertificateCover::pdf(PlanCertificateCover::html($run['pages'][0], $data))
+                    : $this->renderStandard(array_merge($data, ['pages' => $run['pages']]));
+
+                if (file_put_contents($file, $bytes) === false) {
+                    throw new RuntimeException('No se pudo escribir el PDF temporal del certificado.');
+                }
+
+                $this->appendPdf($merged, $file);
+            }
+
+            return (string) $merged->Output('S');
+        } finally {
+            Storage::disk('local')->deleteDirectory($directory);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function renderStandard(array $data): string
     {
         $pdf = Pdf::loadView('documents.affiliation-certificate.document', ['data' => $data])
             ->setPaper('letter', 'portrait');

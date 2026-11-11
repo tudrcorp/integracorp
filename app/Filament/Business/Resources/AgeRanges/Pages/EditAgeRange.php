@@ -15,7 +15,8 @@ class EditAgeRange extends EditRecord
     {
         return [
             ViewAction::make(),
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->visible(fn (\App\Models\AgeRange $record): bool => ! \App\Support\Plans\PlanAgeRangeEditor::isReferenced($record)),
         ];
     }
 }

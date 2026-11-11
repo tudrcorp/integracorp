@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Business\Resources\Plans\Schemas;
 
 use App\Enums\PlanPricingMode;
+use App\Filament\Business\Resources\Plans\Actions\EditPlanAgeRangeAction;
 use App\Models\AgeRange;
 use App\Models\Coverage;
 use App\Models\Fee;
@@ -239,6 +240,7 @@ class PlanInfolist
                     ->columnSpanFull(),
 
                 Section::make('Tarifas por rango de edad y cobertura')
+                    ->afterHeader([EditPlanAgeRangeAction::make('editAgeRangeCoverages')->link()])
                     ->description('La prima anual que paga un afiliado según su edad y la cobertura contratada.')
                     ->icon('heroicon-o-currency-dollar')
                     ->visible(fn (mixed $record): bool => self::usesCoverages($record))
@@ -262,6 +264,7 @@ class PlanInfolist
                 // Un paquete no tiene coberturas: sus tarifas quedarían
                 // invisibles en las secciones de arriba.
                 Section::make('Tarifas del paquete por rango de edad')
+                    ->afterHeader([EditPlanAgeRangeAction::make('editAgeRangePackage')->link()])
                     ->description('El paquete se cobra como un todo: una sola tarifa anual por rango de edad.')
                     ->icon('heroicon-o-currency-dollar')
                     ->visible(fn (mixed $record): bool => self::isBenefitPackage($record))

@@ -7,6 +7,7 @@ use App\Filament\Business\Resources\Affiliations\Pages\CertificateGenerator;
 use App\Filament\Business\Resources\Affiliations\Pages\CreateAffiliation;
 use App\Filament\Business\Resources\Affiliations\Pages\EditAffiliation;
 use App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations;
+use App\Filament\Business\Resources\Affiliations\Pages\ManageAffiliationAffiliates;
 use App\Filament\Business\Resources\Affiliations\Pages\ViewAffiliation;
 use App\Filament\Business\Resources\Affiliations\RelationManagers\AffiliatesRelationManager;
 use App\Filament\Business\Resources\Affiliations\RelationManagers\PaidMembershipsRelationManager;
@@ -175,6 +176,7 @@ class AffiliationResource extends Resource
             'certificate-generator' => CertificateGenerator::route('/generador-certificado'),
             'view' => ViewAffiliation::route('/{record}'),
             'payments' => AffiliationPayments::route('/{record}/pagos'),
+            'affiliates' => ManageAffiliationAffiliates::route('/{record}/afiliados'),
             'edit' => EditAffiliation::route('/{record}/edit'),
         ];
     }

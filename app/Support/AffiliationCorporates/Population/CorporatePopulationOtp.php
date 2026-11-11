@@ -12,6 +12,7 @@ use App\Models\CorporatePopulationOtpChallenge;
 use App\Models\CorporatePopulationUpdate;
 use App\Models\User;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\Otp\SelfAuthorizedOtp;
 use App\Support\Otp\SystemOtpCodeRegistry;
 use App\Support\SecurityAudit;
 use App\Support\SystemNotificationRecipients;
@@ -34,11 +35,11 @@ final class CorporatePopulationOtp
     public const KEY = SystemNotificationKey::CorporatePopulationUpdate;
 
     /**
-     * @return array{challenge: CorporatePopulationOtpChallenge, emails: int, phones: int}
+     * @return array{challenge: CorporatePopulationOtpChallenge, emails: int, phones: int, delivered: bool}
      */
     public static function issue(User $user, CorporatePopulationUpdate $update, string $purpose): array
     {
-        [$emails, $phones] = self::recipients();
+        [$emails, $phones] = self::recipientsFor($user, $purpose);
 
         CorporatePopulationOtpChallenge::query()
             ->where('user_id', $user->getKey())
@@ -65,7 +66,7 @@ final class CorporatePopulationOtp
     }
 
     /**
-     * @return array{challenge: CorporatePopulationOtpChallenge, emails: int, phones: int}
+     * @return array{challenge: CorporatePopulationOtpChallenge, emails: int, phones: int, delivered: bool}
      */
     public static function resend(CorporatePopulationOtpChallenge $challenge, User $user, CorporatePopulationUpdate $update): array
     {
@@ -78,7 +79,7 @@ final class CorporatePopulationOtp
             throw new RuntimeException('Espere '.$wait.' segundos para reenviar la clave.');
         }
 
-        [$emails, $phones] = self::recipients();
+        [$emails, $phones] = self::recipientsFor($user, (string) $challenge->purpose);
         $code = self::generateCode();
 
         $challenge->forceFill([
@@ -135,6 +136,43 @@ final class CorporatePopulationOtp
         return (int) config('clinical-entitlements.otp.ttl_minutes', 5);
     }
 
+    public static function kindFor(string $purpose): SystemOtpCodeKind
+    {
+        return $purpose === CorporatePopulationOtpChallenge::PURPOSE_ROLLBACK ? SystemOtpCodeKind::PopulationRollback : SystemOtpCodeKind::PopulationApply;
+    }
+
+    /**
+     * Destinatarios de la clave (también reciben el aviso si alguien usa la suya).
+     *
+     * @return array{0: list<string>, 1: list<string>}
+     */
+    public static function recipientContacts(): array
+    {
+        try {
+            return self::recipients();
+        } catch (RuntimeException) {
+            return [[], []];
+        }
+    }
+
+    /**
+     * Sin destinatarios configurados, quien puede usar su propia clave sigue igual.
+     *
+     * @return array{0: list<string>, 1: list<string>}
+     */
+    private static function recipientsFor(User $user, string $purpose): array
+    {
+        try {
+            return self::recipients();
+        } catch (RuntimeException $exception) {
+            if (SelfAuthorizedOtp::keepsUndeliveredChallenge($user, self::kindFor($purpose))) {
+                return [[], []];
+            }
+
+            throw $exception;
+        }
+    }
+
     /**
      * @return array{0: list<string>, 1: list<string>}
      */
@@ -162,7 +200,7 @@ final class CorporatePopulationOtp
     /**
      * @param  list<string>  $emails
      * @param  list<string>  $phones
-     * @return array{challenge: CorporatePopulationOtpChallenge, emails: int, phones: int}
+     * @return array{challenge: CorporatePopulationOtpChallenge, emails: int, phones: int, delivered: bool}
      */
     private static function deliver(CorporatePopulationOtpChallenge $challenge, CorporatePopulationUpdate $update, User $user, string $code, array $emails, array $phones, string $auditEvent): array
     {
@@ -256,12 +294,13 @@ final class CorporatePopulationOtp
             'phones_sent' => $phonesSent,
         ], $user);
 
-        if ($emailsSent === 0 && $phonesSent === 0) {
+        $delivered = $emailsSent > 0 || $phonesSent > 0;
+        if (! $delivered && ! SelfAuthorizedOtp::keepsUndeliveredChallenge($user, self::kindFor((string) $challenge->purpose))) {
             $challenge->forceFill(['consumed_at' => now()])->save();
 
             throw new RuntimeException('No se pudo entregar la clave por correo ni por WhatsApp. Revise los destinatarios en el centro de notificaciones.');
         }
 
-        return ['challenge' => $challenge->fresh() ?? $challenge, 'emails' => $emailsSent, 'phones' => $phonesSent];
+        return ['challenge' => $challenge->fresh() ?? $challenge, 'emails' => $emailsSent, 'phones' => $phonesSent, 'delivered' => $delivered];
     }
 }

@@ -25,7 +25,7 @@ final class CertificateDeliveryParts
 
     /** Tipos de página de {@see CertificateDocumentData::paginate()} que trae cada parte. */
     private const PAGE_KINDS = [
-        self::CERTIFICATE => ['cert', 'cont'],
+        self::CERTIFICATE => ['cert', 'cont', 'custom'],
         self::AFFILIATES => ['rel'],
         self::CARNETS => ['carnet'],
     ];

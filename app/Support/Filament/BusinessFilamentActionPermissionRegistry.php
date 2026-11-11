@@ -70,6 +70,18 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const ADJUST_POPULATION_BILLING = 'aplicar-ajustes-por-poblacion';
 
+    public const RECALCULATE_CORPORATE_TOTALS = 'recalcular-totales-afiliacion-corporativa';
+
+    public const DESIGN_PLAN_CERTIFICATE = 'disenar-certificado-plan';
+
+    public const SELF_OTP_POPULATION_APPLY = 'usar-clave-propia-aplicar-poblacion';
+
+    public const SELF_OTP_POPULATION_ROLLBACK = 'usar-clave-propia-revertir-poblacion';
+
+    public const SELF_OTP_CLINICAL_USAGE_ACCESS = 'usar-clave-propia-uso-clinico';
+
+    public const SELF_OTP_CLINICAL_LIMIT_OVERRIDE = 'usar-clave-propia-fuera-de-cupo';
+
     public const MARK_COLLECTION_FOLLOW_UP = 'marcar-estado-gestion-cobranza';
 
     public const MANAGE_SALE_RECEIPT_EMAIL_TEMPLATES = 'gestionar-copys-recibo-de-pago';
@@ -343,6 +355,36 @@ final class BusinessFilamentActionPermissionRegistry
                 'name' => 'Actualizar población corporativa desde el archivo del cliente (aplicar y revertir con OTP)',
                 'group' => 'AFILIACIONES',
                 'modules' => [self::OWNER_MODULE],
+            ],
+            self::DESIGN_PLAN_CERTIFICATE => [
+                'name' => 'Planes: subir, restaurar y quitar el diseño HTML de la hoja del certificado (Generador de Certificado)',
+                'group' => 'PLANES',
+                'modules' => [self::OWNER_MODULE],
+            ],
+            self::RECALCULATE_CORPORATE_TOTALS => [
+                'name' => 'Recalcular población, tarifa anual y total de una afiliación corporativa con sus afiliados activos',
+                'group' => 'AFILIACIONES',
+                'modules' => [self::OWNER_MODULE],
+            ],
+            self::SELF_OTP_POPULATION_APPLY => [
+                'name' => 'Clave OTP: usar la clave propia para APLICAR una carga de población (sin esperar al autorizador)',
+                'group' => 'CLAVES OTP',
+                'modules' => [self::OWNER_MODULE],
+            ],
+            self::SELF_OTP_POPULATION_ROLLBACK => [
+                'name' => 'Clave OTP: usar la clave propia para REVERTIR una carga de población (sin esperar al autorizador)',
+                'group' => 'CLAVES OTP',
+                'modules' => [self::OWNER_MODULE],
+            ],
+            self::SELF_OTP_CLINICAL_USAGE_ACCESS => [
+                'name' => 'Clave OTP: usar la clave propia para entrar a la configuración de uso clínico (sin esperar al SUPERADMIN)',
+                'group' => 'CLAVES OTP',
+                'modules' => [self::OWNER_MODULE],
+            ],
+            self::SELF_OTP_CLINICAL_LIMIT_OVERRIDE => [
+                'name' => 'Clave OTP: usar la clave propia para autorizar un servicio fuera de cupo en telemedicina',
+                'group' => 'CLAVES OTP',
+                'modules' => ['TELEMEDICINA'],
             ],
             self::VIEW_HR_AMOUNTS => [
                 'name' => 'Ver sueldos y costo de nómina en el Escritorio',

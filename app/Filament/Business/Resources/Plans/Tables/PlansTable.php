@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\Plans\Tables;
 
+use App\Filament\Business\Resources\Plans\Actions\PlanCertificateTemplateActions;
 use App\Models\Plan;
 use App\Support\Plans\PlanQuotability;
 use Carbon\Carbon;
@@ -75,6 +76,14 @@ class PlansTable
                     ->color(fn (Plan $record): string => \App\Support\ClinicalEntitlements\PlanClinicalCompleteness::isComplete($record)
                         ? 'success'
                         : 'warning'),
+                TextColumn::make('certificate_template')
+                    ->label('Certificado')
+                    ->badge()
+                    ->state(fn (Plan $record): string => ($version = PlanCertificateTemplateActions::activeVersion($record)) !== null ? 'Diseño propio (v'.$version.')' : 'Predeterminado')
+                    ->color(fn (Plan $record): string => PlanCertificateTemplateActions::activeVersion($record) !== null ? 'success' : 'gray')
+                    ->tooltip(fn (Plan $record): string => PlanCertificateTemplateActions::activeVersion($record) !== null
+                        ? 'El Generador de Certificado usa el diseño propio de este plan.'
+                        : 'Sin diseño propio: el Generador de Certificado usa el diseño predeterminado con los colores del plan. Puede subir uno en «Diseño del certificado».'),
                 TextColumn::make('created_by')
                     ->searchable(),
                 TextColumn::make('created_at')
@@ -131,6 +140,7 @@ class PlansTable
                     EditAction::make()
                         ->label('Editar')
                         ->hidden(fn (Plan $record): bool => $record->comesFromUpgrade()),
+                    ...PlanCertificateTemplateActions::all(),
                     Action::make('update_status')
                         ->label('Actualizar Estatus')
                         ->icon('heroicon-s-check-circle')

@@ -5,15 +5,20 @@ declare(strict_types=1);
 namespace App\Filament\Business\Concerns;
 
 use App\Enums\ClinicalUsageAccessContext;
+use App\Enums\SystemOtpCodeKind;
 use App\Filament\Forms\Components\OtpBoxesInput;
 use App\Models\ClinicalUsageAccessChallenge;
 use App\Models\User;
 use App\Support\ClinicalEntitlements\ClinicalEntitlementException;
 use App\Support\ClinicalEntitlements\ClinicalUsageAccessOtp;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\Otp\SelfAuthorizedOtp;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
@@ -137,12 +142,26 @@ trait InteractsWithClinicalUsageAccessGate
                     ->label('Estado de la clave')
                     ->content(fn (): string => $this->clinicalUsageAccessStatusMessage())
                     ->visible(fn (): bool => filled($this->pendingClinicalUsageAccessPublicId)),
+                Toggle::make('use_own_code')
+                    ->label('Usar la clave que yo solicité')
+                    ->helperText('Su usuario tiene permiso para entrar sin esperar al SUPERADMIN. Queda registrado y se les avisa.')
+                    ->live()
+                    ->visible(fn (): bool => $this->canUseOwnClinicalUsageCode())
+                    ->dehydrated(fn (): bool => $this->canUseOwnClinicalUsageCode()),
+                Textarea::make('own_code_reason')
+                    ->label('¿Por qué usa su propia clave?')
+                    ->placeholder('Ej.: Ningún SUPERADMIN respondió y hay que corregir el cupo hoy.')
+                    ->rows(2)
+                    ->visible(fn (Get $get): bool => $this->canUseOwnClinicalUsageCode() && (bool) $get('use_own_code'))
+                    ->required(fn (Get $get): bool => $this->canUseOwnClinicalUsageCode() && (bool) $get('use_own_code'))
+                    ->minLength(SelfAuthorizedOtp::REASON_MIN_LENGTH)
+                    ->maxLength(1000),
                 OtpBoxesInput::make('otp_code')
                     ->label('Clave de 6 dígitos')
                     ->length(6)
                     ->autofocus()
-                    ->required(fn (): bool => filled($this->pendingClinicalUsageAccessPublicId))
-                    ->visible(fn (): bool => filled($this->pendingClinicalUsageAccessPublicId))
+                    ->required(fn (Get $get): bool => filled($this->pendingClinicalUsageAccessPublicId) && ! ($this->canUseOwnClinicalUsageCode() && (bool) $get('use_own_code')))
+                    ->visible(fn (Get $get): bool => filled($this->pendingClinicalUsageAccessPublicId) && ! ($this->canUseOwnClinicalUsageCode() && (bool) $get('use_own_code')))
                     ->helperText('Un dígito por casilla. Puede pegar la clave completa. Pídala a un SUPERADMIN: si sale de esta pantalla, esta visita queda cerrada.'),
             ])
             ->extraModalFooterActions([
@@ -205,7 +224,18 @@ trait InteractsWithClinicalUsageAccessGate
             return;
         }
 
-        $code = preg_replace('/\D+/', '', (string) ($data['otp_code'] ?? '')) ?? '';
+        $useOwn = (bool) ($data['use_own_code'] ?? false);
+
+        try {
+            $code = SelfAuthorizedOtp::resolveCode($challenge, $user, SystemOtpCodeKind::ClinicalUsageAccess, $useOwn, $data['own_code_reason'] ?? null, $data['otp_code'] ?? null);
+        } catch (\RuntimeException $exception) {
+            Notification::make()->title('No se pudo usar su clave')->body($exception->getMessage())->danger()->send();
+            $action->halt();
+
+            return;
+        }
+
+        $code = preg_replace('/\D+/', '', $code) ?? '';
         if (! ClinicalUsageAccessOtp::verify($challenge, $code, (int) $user->id)) {
             $fresh = $challenge->fresh();
             $remaining = max(0, (int) ($fresh?->max_attempts ?? 0) - (int) ($fresh?->attempt_count ?? 0));
@@ -226,6 +256,17 @@ trait InteractsWithClinicalUsageAccessGate
         }
 
         ClinicalUsageAccessOtp::markConsumed($challenge);
+
+        if ($useOwn) {
+            $contacts = ClinicalUsageAccessOtp::superAdminContactPoints();
+
+            try {
+                SelfAuthorizedOtp::recordUse(SystemOtpCodeKind::ClinicalUsageAccess, $challenge, $user, (string) ($data['own_code_reason'] ?? ''), (string) ($this->clinicalUsageAccessSubjectLabel() ?? $this->clinicalUsageAccessContext()->label()), $contacts['emails'], $contacts['phones']);
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        }
+
         $this->pendingClinicalUsageAccessPublicId = null;
         $this->clinicalUsageUnlocked = true;
         $this->defaultAction = null;
@@ -259,6 +300,17 @@ trait InteractsWithClinicalUsageAccessGate
         }
 
         $this->pendingClinicalUsageAccessPublicId = $issued['challenge']->public_id;
+
+        if (! ($issued['delivered'] ?? true)) {
+            Notification::make()
+                ->title('La clave no se pudo entregar')
+                ->body('No llegó a ningún SUPERADMIN. Como tiene permiso, marque «Usar la clave que yo solicité» para entrar.')
+                ->warning()
+                ->persistent()
+                ->send();
+
+            return;
+        }
 
         Notification::make()
             ->title('Clave enviada a SUPERADMIN')
@@ -343,6 +395,15 @@ trait InteractsWithClinicalUsageAccessGate
     }
 
     protected function onClinicalUsageUnlocked(): void {}
+
+    protected function canUseOwnClinicalUsageCode(): bool
+    {
+        $user = Auth::user();
+
+        return filled($this->pendingClinicalUsageAccessPublicId)
+            && $user instanceof User
+            && SelfAuthorizedOtp::userCan($user, SystemOtpCodeKind::ClinicalUsageAccess);
+    }
 
     protected function assertClinicalUsageUnlocked(): void
     {

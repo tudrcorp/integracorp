@@ -360,7 +360,7 @@ final class PopulationUpdateApplier
      * @param  list<TelemedicinePatient>  $patients
      * @return list<array{id: int, status: string|null, document: string|null, document_skipped: bool}>
      */
-    private static function syncPatients(array $patients, ?string $status, ?string $document): array
+    public static function syncPatients(array $patients, ?string $status, ?string $document): array
     {
         $out = [];
 

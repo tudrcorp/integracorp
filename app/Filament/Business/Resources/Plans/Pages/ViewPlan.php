@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\Plans\Pages;
 
+use App\Filament\Business\Resources\Plans\Actions\EditPlanAgeRangeAction;
 use App\Filament\Business\Resources\Plans\PlanResource;
 use App\Support\ClinicalEntitlements\PlanClinicalCompleteness;
 use Filament\Actions\Action;
@@ -24,6 +25,7 @@ class ViewPlan extends ViewRecord
                 ->icon(Heroicon::OutlinedHeart)
                 ->color($complete ? 'gray' : 'warning')
                 ->url(PlanResource::getUrl('uso-clinico', ['record' => $this->getRecord()])),
+            EditPlanAgeRangeAction::make(),
             EditAction::make(),
         ];
     }

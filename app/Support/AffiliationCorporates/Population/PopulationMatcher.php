@@ -287,7 +287,7 @@ final class PopulationMatcher
      * @param  array<string, mixed>  $row
      * @param  array<string, list<int>>  $docOwners
      */
-    private static function documentFix(array $person, array $row, array $docOwners): ?string
+    public static function documentFix(array $person, array $row, array $docOwners): ?string
     {
         if ($person['minor_document'] || ! PopulationPerson::isIdentifyingDocument($person['doc_key']) || $person['doc_key'] === $row['doc_key']) {
             return null;
