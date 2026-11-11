@@ -13,6 +13,7 @@ use App\Models\CorporatePopulationUpdateItem as Item;
 use App\Models\User;
 use App\Support\AffiliationCorporates\Population\PopulationColumnMapping;
 use App\Support\AffiliationCorporates\Population\PopulationFileReader;
+use App\Support\AffiliationCorporates\Population\PopulationUpdateDeletion;
 use App\Support\AffiliationCorporates\Population\PopulationUpdateUrls;
 use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
@@ -23,6 +24,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Panel;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
@@ -43,6 +45,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -344,6 +347,7 @@ class CorporatePopulationUpdates extends Page implements HasTable
                     ->label('Abrir')
                     ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
                     ->url(fn (CorporatePopulationUpdate $record): ?string => PopulationUpdateUrls::detail($record)),
+                $this->deleteAction(),
             ])
             ->poll(fn (): ?string => CorporatePopulationUpdate::query()
                 ->where('affiliation_corporate_id', $this->owner()->getKey())
@@ -353,6 +357,70 @@ class CorporatePopulationUpdates extends Page implements HasTable
             ->emptyStateHeading('Todavía no hay cargas de población')
             ->emptyStateDescription('Use «Nueva carga» para subir el archivo que envió la empresa.')
             ->paginated([10, 25]);
+    }
+
+    protected function deleteAction(): Action
+    {
+        return Action::make('delete')
+            ->label('Eliminar')
+            ->icon(Heroicon::OutlinedTrash)
+            ->color('danger')
+            ->visible(fn (CorporatePopulationUpdate $record): bool => $record->status === CorporatePopulationUpdate::STATUS_ANALYZED)
+            ->disabled(fn (CorporatePopulationUpdate $record): bool => PopulationUpdateDeletion::blockingReason($record) !== null)
+            ->tooltip(fn (CorporatePopulationUpdate $record): ?string => PopulationUpdateDeletion::blockingReason($record))
+            ->modalHeading('Eliminar esta carga')
+            ->modalIcon(Heroicon::OutlinedTrash)
+            ->modalIconColor('danger')
+            ->modalWidth(Width::Large)
+            ->modalDescription(fn (CorporatePopulationUpdate $record): string => 'Se eliminan la carga del archivo «'.$record->file_name.'» ('.$record->created_at?->timezone((string) config('app.timezone'))->format('d/m/Y H:i').'), su análisis y el archivo subido. Esta carga nunca se aplicó: ningún afiliado se agrega, se da de baja ni cambia de tarifa por eliminarla. No se puede deshacer.')
+            ->schema([
+                Placeholder::make('saved_corrections')
+                    ->hiddenLabel()
+                    ->visible(fn (CorporatePopulationUpdate $record): bool => PopulationUpdateDeletion::savedCorrections($record)['corrections'] > 0)
+                    ->content(function (CorporatePopulationUpdate $record): HtmlString {
+                        $saved = PopulationUpdateDeletion::savedCorrections($record);
+
+                        return new HtmlString('<div class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-400/30">'
+                            .'Desde esta carga se guardaron <strong>'.$saved['corrections'].' correcciones de datos en '.count($saved['affiliates']).' ficha(s)</strong>. Esas correcciones <strong>no se deshacen</strong> al eliminar la carga: quedan en las fichas y en «Auditoría de cambios».</div>');
+                    }),
+                Textarea::make('reason')
+                    ->label('Razón de la eliminación')
+                    ->placeholder('Ej.: La empresa envió un archivo equivocado; se subirá la versión corregida.')
+                    ->helperText('Obligatoria. Queda registrada en la bitácora junto con el nombre del archivo y su resumen.')
+                    ->rows(3)
+                    ->required()
+                    ->minLength(PopulationUpdateDeletion::REASON_MIN_LENGTH)
+                    ->maxLength(1000)
+                    ->validationMessages([
+                        'required' => 'Escriba la razón de la eliminación.',
+                        'min' => 'Explique la razón con al menos '.PopulationUpdateDeletion::REASON_MIN_LENGTH.' caracteres.',
+                    ]),
+            ])
+            ->modalSubmitActionLabel('Sí, eliminar la carga')
+            ->action(function (array $data, CorporatePopulationUpdate $record, Action $action): void {
+                abort_unless(static::canAccess(), 403);
+                abort_unless((int) $record->affiliation_corporate_id === (int) $this->owner()->getKey(), 404);
+
+                $user = Auth::user();
+                abort_unless($user instanceof User, 403);
+
+                try {
+                    PopulationUpdateDeletion::delete($record, $user, (string) ($data['reason'] ?? ''));
+                } catch (RuntimeException $exception) {
+                    Notification::make()->title('No se eliminó')->body($exception->getMessage())->danger()->send();
+                    $action->halt();
+
+                    return;
+                } catch (Throwable $exception) {
+                    report($exception);
+                    Notification::make()->title('No se eliminó')->body('Error inesperado. No se borró nada; intente de nuevo.')->danger()->send();
+                    $action->halt();
+
+                    return;
+                }
+
+                Notification::make()->title('Carga eliminada')->body('Se eliminó «'.$record->file_name.'». La razón quedó registrada en la bitácora.')->success()->send();
+            });
     }
 
     public static function summaryLine(CorporatePopulationUpdate $record): string

@@ -12,6 +12,7 @@ use App\Models\ClinicalUsageAccessChallenge;
 use App\Models\User;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\Filament\UserNavigationAccess;
+use App\Support\Otp\SelfAuthorizedOtp;
 use App\Support\Otp\SystemOtpCodeRegistry;
 use App\Support\SecurityAudit;
 use Illuminate\Support\Collection;
@@ -98,7 +99,7 @@ final class ClinicalUsageAccessOtp
         }
 
         $contacts = self::superAdminContactPoints();
-        if ($contacts['emails'] === [] && $contacts['phones'] === []) {
+        if ($contacts['emails'] === [] && $contacts['phones'] === [] && ! SelfAuthorizedOtp::keepsUndeliveredChallenge($analyst, SystemOtpCodeKind::ClinicalUsageAccess)) {
             throw ClinicalEntitlementException::unauthorized(
                 'No hay usuarios SUPERADMIN activos con correo o teléfono para entregar la clave. Avise a un SUPERADMIN.'
             );
@@ -171,7 +172,7 @@ final class ClinicalUsageAccessOtp
         }
 
         $contacts = self::superAdminContactPoints();
-        if ($contacts['emails'] === [] && $contacts['phones'] === []) {
+        if ($contacts['emails'] === [] && $contacts['phones'] === [] && ! SelfAuthorizedOtp::keepsUndeliveredChallenge($analyst, SystemOtpCodeKind::ClinicalUsageAccess)) {
             throw ClinicalEntitlementException::unauthorized(
                 'No hay usuarios SUPERADMIN activos con correo o teléfono para reenviar la clave.'
             );
@@ -332,7 +333,8 @@ final class ClinicalUsageAccessOtp
             'phones_sent' => $phonesSent,
         ]);
 
-        if ($emailsSent === 0 && $phonesSent === 0) {
+        $delivered = $emailsSent > 0 || $phonesSent > 0;
+        if (! $delivered && ! SelfAuthorizedOtp::keepsUndeliveredChallenge(User::query()->find($challenge->user_id), SystemOtpCodeKind::ClinicalUsageAccess)) {
             $challenge->forceFill(['consumed_at' => now()])->save();
             throw ClinicalEntitlementException::unauthorized(
                 'No se pudo entregar la clave por correo ni WhatsApp a los SUPERADMIN. Intente de nuevo.'
@@ -341,7 +343,7 @@ final class ClinicalUsageAccessOtp
 
         return [
             'challenge' => $challenge->fresh() ?? $challenge,
-            'delivered' => true,
+            'delivered' => $delivered,
             'emails' => $emailsSent,
             'phones' => $phonesSent,
         ];

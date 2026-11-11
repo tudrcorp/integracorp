@@ -47,7 +47,7 @@ final class PopulationUpdateAnalyzer
 
             $affiliates = AffiliateCorporate::query()
                 ->where('affiliation_corporate_id', $owner->getKey())
-                ->get(['id', 'first_name', 'last_name', 'nro_identificacion', 'birth_date', 'age', 'status', 'plan_id', 'coverage_id', 'fee', 'updated_at']);
+                ->get(['id', 'first_name', 'last_name', 'nro_identificacion', 'birth_date', 'age', 'sex', 'relationship', 'status', 'plan_id', 'coverage_id', 'fee', 'updated_at']);
 
             $items = PopulationMatcher::match($persons, $affiliates);
             $items = self::resolvePlans($owner, $items);
@@ -125,7 +125,7 @@ final class PopulationUpdateAnalyzer
      * @param  list<array<string, mixed>>  $items
      * @return list<array<string, mixed>>
      */
-    private static function resolvePlans(AffiliationCorporate $owner, array $items): array
+    public static function resolvePlans(AffiliationCorporate $owner, array $items): array
     {
         $planRows = CorporateAffiliatePlanSynchronizer::planRowsFor($owner);
 
@@ -174,7 +174,7 @@ final class PopulationUpdateAnalyzer
      * @param  \Illuminate\Support\Collection<int, AffiliateCorporate>  $affiliates
      * @return list<array<string, mixed>>
      */
-    private static function blockOpenActivity(AffiliationCorporate $owner, array $items, $affiliates): array
+    public static function blockOpenActivity(AffiliationCorporate $owner, array $items, $affiliates): array
     {
         $ids = [];
         foreach ($items as $item) {
@@ -213,11 +213,12 @@ final class PopulationUpdateAnalyzer
      * bajas van primero.
      *
      * @param  list<array<string, mixed>>  $items
+     * @param  list<int>  $alsoLeaving  afiliados que se van según otras filas de la carga (reevaluación de una sola fila)
      * @return list<array<string, mixed>>
      */
-    private static function blockPeopleActiveElsewhere(AffiliationCorporate $owner, array $items): array
+    public static function blockPeopleActiveElsewhere(AffiliationCorporate $owner, array $items, array $alsoLeaving = []): array
     {
-        $leaving = [];
+        $leaving = array_fill_keys($alsoLeaving, true);
         foreach ($items as $item) {
             if (in_array($item['action'], [Item::ACTION_DEACTIVATE, Item::ACTION_DUPLICATE_BASE], true) && $item['affiliate_corporate_id'] !== null) {
                 $leaving[(int) $item['affiliate_corporate_id']] = true;
@@ -278,15 +279,38 @@ final class PopulationUpdateAnalyzer
         foreach ($items as $i => $item) {
             $affiliate = $item['affiliate_corporate_id'] !== null ? $byId->get((int) $item['affiliate_corporate_id']) : null;
             if ($affiliate instanceof AffiliateCorporate) {
-                $items[$i]['details']['observed'] = self::fingerprint($affiliate);
-                $items[$i]['details']['base_name'] = trim($affiliate->first_name.' '.$affiliate->last_name);
-                $items[$i]['details']['base_document'] = (string) $affiliate->nro_identificacion;
-                $items[$i]['details']['base_status'] = (string) $affiliate->status;
-                $items[$i]['details']['base_birth_date'] = (string) $affiliate->birth_date;
+                $items[$i]['details'] = self::observedDetails((array) $item['details'], $affiliate, is_array($item['file_data']) ? $item['file_data'] : null);
             }
         }
 
         return $items;
+    }
+
+    /**
+     * Foto de la ficha para la fila: huella para no aplicar sobre datos viejos,
+     * datos para mostrar y, si la fila trae persona del archivo, los campos que
+     * todavía no cuadran con el archivo.
+     *
+     * @param  array<string, mixed>  $details
+     * @param  array<string, mixed>|null  $person
+     * @return array<string, mixed>
+     */
+    public static function observedDetails(array $details, AffiliateCorporate $affiliate, ?array $person): array
+    {
+        $details['observed'] = self::fingerprint($affiliate);
+        $details['base_name'] = trim($affiliate->first_name.' '.$affiliate->last_name);
+        $details['base_document'] = (string) $affiliate->nro_identificacion;
+        $details['base_status'] = (string) $affiliate->status;
+        $details['base_birth_date'] = (string) $affiliate->birth_date;
+
+        if ($person !== null) {
+            $details['differences'] = PopulationFieldComparison::pendingDifferences(
+                PopulationFieldComparison::forPerson($person, $affiliate),
+                (array) ($details['accepted'] ?? []),
+            );
+        }
+
+        return $details;
     }
 
     /**
@@ -310,11 +334,16 @@ final class PopulationUpdateAnalyzer
     {
         $counts = [];
         $selected = [];
+        $withDifferences = 0;
 
         foreach ($items as $item) {
             $counts[$item['action']] = ($counts[$item['action']] ?? 0) + 1;
             if ($item['selected']) {
                 $selected[$item['action']] = ($selected[$item['action']] ?? 0) + 1;
+            }
+
+            if ($item['action'] === Item::ACTION_MATCH && ($item['details']['differences'] ?? []) !== []) {
+                $withDifferences++;
             }
         }
 
@@ -326,6 +355,7 @@ final class PopulationUpdateAnalyzer
             'base_countable' => $countable,
             'counts' => $counts,
             'selected' => $selected,
+            'match_with_differences' => $withDifferences,
         ];
     }
 

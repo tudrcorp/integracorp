@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Certificado {{certificado.codigo}}</title>
+<!--
+    PLANTILLA DE EJEMPLO - Hoja del certificado (Generador de Certificado de IntegraCorp)
+
+    Reglas para que el PDF salga bien:
+      - Hoja carta de 816 x 1056 px. Maquete con TABLAS y anchos fijos (sin flex ni grid).
+      - Margenes con padding en celdas de tabla, no en div.
+      - Imagenes: solo las del sistema (marcadores imagen.logo, imagen.qr, imagen.firma...) o incrustadas en base64.
+        Los enlaces externos (http) se eliminan al subir el archivo.
+      - Sin script, formularios ni eventos: se eliminan al subir.
+      - El simbolo check solo existe en la fuente DejaVu Sans.
+
+    La guia completa de marcadores, bloques que se repiten y condiciones esta en la ventana
+    "Diseno del certificado" de la tabla de planes. La relacion de afiliados, los carnets y
+    las paginas siguientes los agrega el sistema con el diseno estandar.
+-->
+<style>
+    @page { size: letter; margin: 0; }
+    body { margin: 0; padding: 0; font-family: Helvetica, Arial, sans-serif; color: #12293A; font-size: 12px; }
+    table { border-collapse: collapse; }
+    td { padding: 0; vertical-align: top; }
+    .k { font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase; color: #64748B; }
+    .v { font-size: 12.5px; font-weight: bold; }
+</style>
+</head>
+<body>
+<table style="width:816px;"><tr><td style="padding:30px 48px 0 48px;">
+
+    <table style="width:720px;"><tr>
+        <td style="width:360px; vertical-align:bottom;"><img src="{{imagen.logo}}" alt="Tu Doctor en Casa" style="height:42px;"></td>
+        <td style="width:360px; text-align:right; vertical-align:bottom;">
+            <div style="font-size:10px; font-weight:bold; letter-spacing:1.6px; text-transform:uppercase; color:#2D89CA;">Certificado de afiliación</div>
+            <div style="font-size:22px; font-weight:bold; margin-top:4px;">{{certificado.codigo}}</div>
+        </td>
+    </tr></table>
+
+    <table style="width:720px; margin-top:14px; background:{{tema.fondo}}; color:{{tema.texto}};">
+        <tr><td style="padding:18px 28px;">
+            <table style="width:664px;"><tr>
+                <td style="width:400px;">
+                    <div style="font-size:10px; font-weight:bold; letter-spacing:1.6px; text-transform:uppercase; color:{{tema.subtitulo}};">Plan</div>
+                    <div style="font-size:38px; line-height:1; font-weight:bold; color:{{tema.titulo}}; margin-top:8px;">{{plan.nombre}}</div>
+                    <div style="font-size:12px; color:{{tema.subtitulo}}; margin-top:6px;">{{plan.subtitulo}}</div>
+                </td>
+                <td style="width:264px; text-align:right;">
+                    <!-- si:con_cobertura -->
+                    <div style="font-size:10px; font-weight:bold; letter-spacing:1.6px; text-transform:uppercase; color:{{tema.subtitulo}};">{{cobertura.titulo}}</div>
+                    <div style="font-size:30px; line-height:1; font-weight:bold; color:{{tema.valor}}; margin-top:6px;">{{cobertura.valor}}</div>
+                    <div style="font-size:11px; color:{{tema.subtitulo}}; margin-top:6px;">{{cobertura.nota}}</div>
+                    <!-- fin:con_cobertura -->
+                </td>
+            </tr></table>
+            <table style="width:664px; margin-top:12px; border-top:1px solid {{tema.divisor}};"><tr>
+                <td style="width:166px; padding-top:8px;"><div style="font-size:9.5px; text-transform:uppercase; color:{{tema.subtitulo}};">Vigencia desde</div><div style="font-size:13px; font-weight:bold; margin-top:4px;">{{vigencia.desde}}</div></td>
+                <td style="width:166px; padding-top:8px;"><div style="font-size:9.5px; text-transform:uppercase; color:{{tema.subtitulo}};">Vigencia hasta</div><div style="font-size:13px; font-weight:bold; margin-top:4px;">{{vigencia.hasta}}</div></td>
+                <td style="width:166px; padding-top:8px;"><div style="font-size:9.5px; text-transform:uppercase; color:{{tema.subtitulo}};">Período facturado</div><div style="font-size:13px; font-weight:bold; margin-top:4px;">{{periodo.facturado}}</div></td>
+                <td style="width:166px; padding-top:8px;"><div style="font-size:9.5px; text-transform:uppercase; color:{{tema.subtitulo}};">Estado de pago</div><div style="font-size:13px; font-weight:bold; margin-top:4px;">{{pago.estado}}</div></td>
+            </tr></table>
+        </td></tr>
+    </table>
+
+    <table style="width:720px; margin-top:14px;">
+        <tr>
+            <td style="width:240px; padding:0 4px 8px 4px;"><div class="k">Contratante</div><div class="v" style="margin-top:3px;">{{contratante.nombre}}</div></td>
+            <td style="width:240px; padding:0 4px 8px 4px;"><div class="k">C.I. / RIF</div><div class="v" style="margin-top:3px;">{{contratante.documento}}</div></td>
+            <td style="width:240px; padding:0 4px 8px 4px;"><div class="k">Agente</div><div class="v" style="margin-top:3px;">{{agente.nombre}}</div></td>
+        </tr>
+        <tr>
+            <td style="width:240px; padding:0 4px 8px 4px;"><div class="k">Tarifa anual</div><div class="v" style="margin-top:3px;">{{tarifa.anual}}</div></td>
+            <td style="width:240px; padding:0 4px 8px 4px;"><div class="k">Afiliación inicial</div><div class="v" style="margin-top:3px;">{{afiliacion.fecha_inicial}}</div></td>
+            <td style="width:240px; padding:0 4px 8px 4px;"><div class="k">Emisión</div><div class="v" style="margin-top:3px;">{{certificado.emision}}</div></td>
+        </tr>
+    </table>
+
+    <!-- si:individual -->
+    <div style="font-size:15px; font-weight:bold; margin-top:6px;">Afiliado</div>
+    <table style="width:720px; margin-top:8px; border:1px solid #EFEFEF;">
+        <tr style="background:#F6F6F6;"><td class="k" style="width:300px; padding:8px 16px;">Nombre y apellido</td><td class="k" style="width:140px; padding:8px 0;">Documento</td><td class="k" style="width:130px; padding:8px 0;">Nacimiento</td><td class="k" style="width:120px; padding:8px 0;">Parentesco</td></tr>
+        <!-- inicio:afiliados -->
+        <tr><td style="padding:7px 16px; border-top:1px solid #EFEFEF; font-weight:bold;">{{afiliado.nombre}}</td><td style="padding:7px 0; border-top:1px solid #EFEFEF;">{{afiliado.documento}}</td><td style="padding:7px 0; border-top:1px solid #EFEFEF;">{{afiliado.nacimiento}}</td><td style="padding:7px 0; border-top:1px solid #EFEFEF;">{{afiliado.parentesco}}</td></tr>
+        <!-- fin:afiliados -->
+    </table>
+    <!-- fin:individual -->
+
+    <!-- si:grupo -->
+    <table style="width:720px; margin-top:4px; background:#F6F6F6;"><tr>
+        <td style="width:110px; padding:12px 0 12px 18px; font-size:32px; font-weight:bold; color:#2D89CA;">{{afiliados.total}}</td>
+        <td style="width:592px; padding:12px 18px 12px 0;"><div style="font-size:14px; font-weight:bold;">{{afiliados.titulo}}</div><div style="font-size:11px; color:#35657D; margin-top:2px;">La relación completa de afiliados se encuentra en {{relacion.paginas}}.</div></td>
+    </tr></table>
+    <!-- fin:grupo -->
+
+    <div style="font-size:15px; font-weight:bold; margin-top:14px;">Beneficios del plan {{plan.nombre}} ({{beneficios.total}})</div>
+    <table style="width:720px; margin-top:8px;">
+        <tr><td class="k" style="width:530px; padding:0 12px 6px 12px; border-bottom:2px solid #26B4E8;">Descripción</td><td class="k" style="width:190px; padding:0 12px 6px 0; border-bottom:2px solid #26B4E8;">Detalle</td></tr>
+        <!-- inicio:beneficios -->
+        <!-- si:seccion --><tr><td colspan="2" style="padding:6px 12px 2px 12px; font-size:10px; font-weight:bold; text-transform:uppercase; color:#2D89CA;">{{beneficio.seccion}}</td></tr><!-- fin:seccion -->
+        <!-- si:no_seccion --><tr><td style="padding:3px 12px; font-size:11.5px; border-bottom:1px solid #F0F0F0;">{{beneficio.descripcion}}</td><td style="padding:3px 12px 3px 0; font-size:11.5px; font-weight:bold; border-bottom:1px solid #F0F0F0;">{{beneficio.detalle}}</td></tr><!-- fin:no_seccion -->
+        <!-- fin:beneficios -->
+    </table>
+
+    <table style="width:720px; margin-top:24px;"><tr>
+        <td style="width:220px; text-align:center;"><img src="{{imagen.firma}}" alt="Firma" style="height:60px;"><div style="border-top:1px solid #12293A; margin-top:4px; padding-top:4px; font-size:10px;">Firma autorizada</div></td>
+        <td style="width:280px; text-align:center;"><!-- si:pagado --><img src="{{imagen.sello}}" alt="Sello" style="height:80px;"><!-- fin:pagado --></td>
+        <td style="width:220px; text-align:right;"><img src="{{imagen.qr}}" alt="QR" style="width:90px; height:90px;"><div style="font-size:9px; color:#64748B;">Verificación: {{certificado.verificacion}}</div></td>
+    </tr></table>
+
+</td></tr></table>
+</body>
+</html>

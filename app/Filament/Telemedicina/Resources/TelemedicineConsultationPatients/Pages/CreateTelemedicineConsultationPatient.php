@@ -478,11 +478,25 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                             ->label('Estado de la clave')
                             ->content(fn (): string => $this->clinicalOtpStatusMessage())
                             ->visible(fn (): bool => filled($this->pendingClinicalOverridePublicId)),
+                        \Filament\Forms\Components\Toggle::make('use_own_code')
+                            ->label('Usar la clave que yo solicité')
+                            ->helperText('Su usuario tiene permiso para autorizar este servicio sin esperar a que le dicten la clave. Queda registrado y se avisa a los autorizadores.')
+                            ->live()
+                            ->visible(fn (): bool => $this->canUseOwnClinicalOverrideCode())
+                            ->dehydrated(fn (): bool => $this->canUseOwnClinicalOverrideCode()),
+                        \Filament\Forms\Components\Textarea::make('own_code_reason')
+                            ->label('¿Por qué usa su propia clave?')
+                            ->placeholder('Ej.: El autorizador no respondió y el paciente necesita el servicio ahora.')
+                            ->rows(2)
+                            ->visible(fn (\Filament\Schemas\Components\Utilities\Get $get): bool => $this->canUseOwnClinicalOverrideCode() && (bool) $get('use_own_code'))
+                            ->required(fn (\Filament\Schemas\Components\Utilities\Get $get): bool => $this->canUseOwnClinicalOverrideCode() && (bool) $get('use_own_code'))
+                            ->minLength(\App\Support\Otp\SelfAuthorizedOtp::REASON_MIN_LENGTH)
+                            ->maxLength(1000),
                         \App\Filament\Forms\Components\OtpBoxesInput::make('otp_code')
                             ->label('Clave de 6 dígitos')
                             ->length(6)
                             ->autofocus()
-                            ->visible(fn (): bool => filled($this->pendingClinicalOverridePublicId))
+                            ->visible(fn (\Filament\Schemas\Components\Utilities\Get $get): bool => filled($this->pendingClinicalOverridePublicId) && ! ($this->canUseOwnClinicalOverrideCode() && (bool) $get('use_own_code')))
                             ->helperText('Un dígito por casilla. Puede pegar la clave completa. Pídala a quien recibió el WhatsApp o el correo.'),
                     ])
                     ->extraModalFooterActions([
@@ -1101,6 +1115,15 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
         return $out;
     }
 
+    private function canUseOwnClinicalOverrideCode(): bool
+    {
+        $user = Auth::user();
+
+        return filled($this->pendingClinicalOverridePublicId)
+            && $user instanceof User
+            && \App\Support\Otp\SelfAuthorizedOtp::userCan($user, \App\Enums\SystemOtpCodeKind::ClinicalLimitOverride);
+    }
+
     /**
      * @param  array<string, mixed>  $data
      */
@@ -1121,7 +1144,21 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
             return;
         }
 
-        $code = preg_replace('/\D+/', '', (string) ($data['otp_code'] ?? '')) ?? '';
+        $useOwn = (bool) ($data['use_own_code'] ?? false) && $this->canUseOwnClinicalOverrideCode();
+        $challenge = $useOwn ? $this->pendingClinicalChallenge($user) : null;
+
+        try {
+            $code = $useOwn && $challenge !== null
+                ? \App\Support\Otp\SelfAuthorizedOtp::resolveCode($challenge, $user, \App\Enums\SystemOtpCodeKind::ClinicalLimitOverride, true, $data['own_code_reason'] ?? null, null)
+                : (string) ($data['otp_code'] ?? '');
+        } catch (\RuntimeException $exception) {
+            Notification::make()->title('No se pudo usar su clave')->body($exception->getMessage())->danger()->send();
+            $action->halt();
+
+            return;
+        }
+
+        $code = preg_replace('/\D+/', '', $code) ?? '';
 
         if ($code === '') {
             $this->sendOrResendClinicalOverride($user, $patient, $entitlement, (string) ($data['reason'] ?? ''));
@@ -1144,6 +1181,16 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
 
         $this->verifiedClinicalOverrideIds[$entitlement->channel->value] = (int) $challenge->id;
         $this->pendingClinicalOverridePublicId = null;
+
+        if ($useOwn) {
+            [$emails, $phones] = ClinicalServiceOverrideOtp::recipientContacts();
+
+            try {
+                \App\Support\Otp\SelfAuthorizedOtp::recordUse(\App\Enums\SystemOtpCodeKind::ClinicalLimitOverride, $challenge, $user, (string) ($data['own_code_reason'] ?? ''), 'Paciente: '.($patient->full_name ?? '#'.$patient->id).' · '.$entitlement->channel->shortLabel(), $emails, $phones);
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        }
         Notification::make()
             ->title('Autorización lista')
             ->body('Puede guardar la consulta. Esta clave cubre un solo servicio extra ('.$entitlement->channel->shortLabel().').')
@@ -1233,6 +1280,18 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
         }
 
         $this->pendingClinicalOverridePublicId = $issued['challenge']->public_id;
+
+        if (! ($issued['delivered'] ?? true)) {
+            Notification::make()
+                ->title('La clave no se pudo entregar')
+                ->body('No llegó a ningún autorizador. Como tiene permiso, marque «Usar la clave que yo solicité» para continuar.')
+                ->warning()
+                ->persistent()
+                ->send();
+
+            return;
+        }
+
         Notification::make()
             ->title('Clave enviada')
             ->body('WhatsApp: '.$issued['phones'].' · Correo: '.$issued['emails'].'. Tiene 5 minutos. Ingrese los 6 dígitos en esta misma ventana.')

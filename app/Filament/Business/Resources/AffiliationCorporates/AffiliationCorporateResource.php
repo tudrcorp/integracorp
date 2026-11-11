@@ -8,6 +8,7 @@ use App\Filament\Business\Resources\AffiliationCorporates\Pages\CorporatePopulat
 use App\Filament\Business\Resources\AffiliationCorporates\Pages\CreateAffiliationCorporate;
 use App\Filament\Business\Resources\AffiliationCorporates\Pages\EditAffiliationCorporate;
 use App\Filament\Business\Resources\AffiliationCorporates\Pages\ListAffiliationCorporates;
+use App\Filament\Business\Resources\AffiliationCorporates\Pages\ManageAffiliationCorporateAffiliates;
 use App\Filament\Business\Resources\AffiliationCorporates\Pages\ViewAffiliationCorporate;
 use App\Filament\Business\Resources\AffiliationCorporates\RelationManagers\AffiliationCorporatePlansRelationManager;
 use App\Filament\Business\Resources\AffiliationCorporates\RelationManagers\CorporateAffiliatesRelationManager;
@@ -178,6 +179,7 @@ class AffiliationCorporateResource extends Resource
             'create' => CreateAffiliationCorporate::route('/create'),
             'certificate-generator' => CorporateCertificateGenerator::route('/generador-certificado'),
             'population' => CorporatePopulationUpdates::route('/{record}/poblacion'),
+            'affiliates' => ManageAffiliationCorporateAffiliates::route('/{record}/afiliados'),
             'population-detail' => CorporatePopulationUpdateDetail::route('/{record}/poblacion/{update}'),
             'view' => ViewAffiliationCorporate::route('/{record}'),
             'edit' => EditAffiliationCorporate::route('/{record}/edit'),

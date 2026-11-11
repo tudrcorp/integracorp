@@ -3,6 +3,7 @@
 namespace App\Filament\Business\Resources\AffiliationCorporates\Tables;
 
 use App\Exceptions\CorporatePaymentFrequencyChangeBlockedException;
+use App\Filament\Business\Resources\AffiliationCorporates\Actions\RecalculateCorporateTotalsAction;
 use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource;
 use App\Filament\Exports\AffiliationCorporateExporter;
 use App\Filament\Shared\Affiliations\AffiliationDateCorrectionActions;
@@ -16,6 +17,7 @@ use App\Models\AffiliationCorporate;
 use App\Models\Agency;
 use App\Models\User;
 use App\Services\AffiliationCorporateBusinessDocumentsService;
+use App\Support\AffiliationCorporates\ActivePopulationTotals;
 use App\Support\AffiliationCorporates\AffiliationCorporatesRankingQuery;
 use App\Support\AffiliationCorporates\CorporatePaymentFrequency;
 use App\Support\AffiliationCorporates\CorporatePaymentFrequencyChanger;
@@ -70,10 +72,10 @@ class AffiliationCorporatesTable
             // ->query(AffiliationCorporate::query()->where('ownerAccountManagers', Auth::user()->id))
             ->query(function (Builder $query) {
                 if (Auth::user()->is_accountManagers) {
-                    return AffiliationCorporate::query()->where('ownerAccountManagers', Auth::user()->id);
+                    return ActivePopulationTotals::applyToQuery(AffiliationCorporate::query()->where('ownerAccountManagers', Auth::user()->id));
                 }
 
-                return AffiliationCorporate::query();
+                return ActivePopulationTotals::applyToQuery(AffiliationCorporate::query());
             })
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
                 'agency',
@@ -93,6 +95,15 @@ class AffiliationCorporatesTable
                 'id' => 'affiliation-corporates-main-table',
             ])
             ->columns([
+                TextColumn::make('view_affiliates')
+                    ->label('')
+                    ->state(fn ($record): ?string => $record->trashed() ? null : 'Ver afiliado(s)')
+                    ->badge()
+                    ->color('primary')
+                    ->icon('heroicon-m-user-group')
+                    ->tooltip('Gestionar los afiliados de esta afiliación sin abrir el formulario')
+                    ->url(fn ($record): ?string => $record->trashed() ? null : \App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateResource::getUrl('affiliates', ['record' => $record]))
+                    ->extraCellAttributes(['class' => 'w-1 whitespace-nowrap']),
                 TextColumn::make('code')
                     ->label('Código')
                     ->icon(function ($record) {
@@ -188,13 +199,13 @@ class AffiliationCorporatesTable
                     ->icon(Heroicon::OutlinedUser)
                     ->searchable()
                     ->wrap(),
-                TextColumn::make('accountManager.name')
-                    ->label('Account manager')
-                    ->icon(Heroicon::OutlinedShieldCheck)
-                    ->badge()
-                    ->color('warning')
-                    ->placeholder('—')
-                    ->searchable(),
+                // TextColumn::make('accountManager.name')
+                //     ->label('Account manager')
+                //     ->icon(Heroicon::OutlinedShieldCheck)
+                //     ->badge()
+                //     ->color('warning')
+                //     ->placeholder('—')
+                //     ->searchable(),
 
                 ColumnGroup::make('Plan afiliado', [
                     TextColumn::make('payment_frequency')
@@ -205,144 +216,130 @@ class AffiliationCorporatesTable
                         ->searchable(),
                     TextColumn::make('poblation')
                         ->label('Población')
+                        ->tooltip(fn (AffiliationCorporate $record): string => self::activeTotalsTooltip($record))
+                        ->state(fn (AffiliationCorporate $record): int => ActivePopulationTotals::forRecord($record)['persons'])
                         ->alignCenter()
                         ->suffix(' pers.')
                         ->badge()
-                        ->color(function (mixed $state): string {
-                            if ((int) $state > 0) {
-                                return 'warning';
-                            }
-
-                            return 'danger';
-                        })
-                        ->searchable()
-                        ->sortable(),
+                        ->icon(fn (AffiliationCorporate $record): ?string => ActivePopulationTotals::forRecord($record)['differs'] || ActivePopulationTotals::forRecord($record)['without_fee'] > 0 ? 'heroicon-m-exclamation-triangle' : null)
+                        ->color(fn (mixed $state): string => (int) $state > 0 ? 'warning' : 'danger')
+                        ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('active_population', $direction)),
                     TextColumn::make('fee_anual')
                         ->label('Tarifa anual')
+                        ->tooltip(fn (AffiliationCorporate $record): string => self::activeTotalsTooltip($record))
+                        ->state(fn (AffiliationCorporate $record): float => ActivePopulationTotals::forRecord($record)['fee_anual'])
                         ->alignCenter()
                         ->money('USD')
-                        ->color(function (mixed $state): string {
-                            if ((float) $state > 0) {
-                                return 'warning';
-                            }
-
-                            return 'danger';
-                        })
-                        ->searchable()
-                        ->sortable(),
+                        ->color(fn (mixed $state): string => (float) $state > 0 ? 'warning' : 'danger')
+                        ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('active_fee_anual', $direction)),
                     TextColumn::make('total_amount')
                         ->label('Total a pagar')
+                        ->tooltip(fn (AffiliationCorporate $record): string => self::activeTotalsTooltip($record))
+                        ->state(fn (AffiliationCorporate $record): float => ActivePopulationTotals::forRecord($record)['total_amount'])
                         ->alignCenter()
                         ->money('USD')
                         ->weight('semibold')
-                        ->color(function (mixed $state): string {
-                            if ((float) $state > 0) {
-                                return 'warning';
-                            }
-
-                            return 'danger';
-                        })
-                        ->searchable()
-                        ->sortable(),
+                        ->color(fn (mixed $state): string => (float) $state > 0 ? 'warning' : 'danger')
+                        ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('active_fee_anual', $direction)),
                 ])
                     ->extraHeaderAttributes([
                         'class' => self::COLUMN_GROUP_HEADER_CLASS,
                     ]),
 
-                TextColumn::make('rif')
-                    ->label('RIF')
-                    ->prefix('J-')
-                    ->icon(Heroicon::OutlinedIdentification)
-                    ->badge()
-                    ->color('verde')
-                    ->copyable()
-                    ->copyMessage('RIF copiado')
-                    ->searchable(),
-                TextColumn::make('email')
-                    ->label('Correo contratante')
-                    ->icon(Heroicon::OutlinedEnvelope)
-                    ->copyable()
-                    ->copyMessage('Correo copiado')
-                    ->searchable(),
-                TextColumn::make('phone')
-                    ->label('Teléfono contratante')
-                    ->icon(Heroicon::OutlinedPhone)
-                    ->copyable()
-                    ->copyMessage('Teléfono copiado')
-                    ->searchable(),
-                TextColumn::make('address')
-                    ->label('Dirección')
-                    ->icon(Heroicon::OutlinedMapPin)
-                    ->searchable()
-                    ->wrap()
-                    ->lineClamp(2)
-                    ->tooltip(fn (AffiliationCorporate $record): string => trim((string) $record->address))
-                    ->sortable()
-                    ->extraCellAttributes(fn (): array => [
-                        'class' => 'min-w-52 sm:min-w-64 lg:min-w-72 max-w-[28rem] align-top',
-                    ]),
-                TextColumn::make('city.definition')
-                    ->label('Ciudad')
-                    ->icon(Heroicon::OutlinedBuildingOffice2)
-                    ->searchable(),
-                TextColumn::make('state.definition')
-                    ->label('Estado')
-                    ->icon(Heroicon::OutlinedMap)
-                    ->searchable(),
-                TextColumn::make('country.name')
-                    ->label('País')
-                    ->icon(Heroicon::OutlinedGlobeAmericas)
-                    ->searchable(),
+                // TextColumn::make('rif')
+                //     ->label('RIF')
+                //     ->prefix('J-')
+                //     ->icon(Heroicon::OutlinedIdentification)
+                //     ->badge()
+                //     ->color('verde')
+                //     ->copyable()
+                //     ->copyMessage('RIF copiado')
+                //     ->searchable(),
+                // TextColumn::make('email')
+                //     ->label('Correo contratante')
+                //     ->icon(Heroicon::OutlinedEnvelope)
+                //     ->copyable()
+                //     ->copyMessage('Correo copiado')
+                //     ->searchable(),
+                // TextColumn::make('phone')
+                //     ->label('Teléfono contratante')
+                //     ->icon(Heroicon::OutlinedPhone)
+                //     ->copyable()
+                //     ->copyMessage('Teléfono copiado')
+                //     ->searchable(),
+                // TextColumn::make('address')
+                //     ->label('Dirección')
+                //     ->icon(Heroicon::OutlinedMapPin)
+                //     ->searchable()
+                //     ->wrap()
+                //     ->lineClamp(2)
+                //     ->tooltip(fn (AffiliationCorporate $record): string => trim((string) $record->address))
+                //     ->sortable()
+                //     ->extraCellAttributes(fn (): array => [
+                //         'class' => 'min-w-52 sm:min-w-64 lg:min-w-72 max-w-[28rem] align-top',
+                //     ]),
+                // TextColumn::make('city.definition')
+                //     ->label('Ciudad')
+                //     ->icon(Heroicon::OutlinedBuildingOffice2)
+                //     ->searchable(),
+                // TextColumn::make('state.definition')
+                //     ->label('Estado')
+                //     ->icon(Heroicon::OutlinedMap)
+                //     ->searchable(),
+                // TextColumn::make('country.name')
+                //     ->label('País')
+                //     ->icon(Heroicon::OutlinedGlobeAmericas)
+                //     ->searchable(),
 
-                ColumnGroup::make('Información ILS', [
-                    TextColumn::make('vaucher_ils')
-                        ->label('Voucher ILS')
-                        ->badge()
-                        ->alignCenter()
-                        ->color('success')
-                        ->searchable()
-                        ->copyable()
-                        ->copyMessage('Voucher copiado'),
-                    TextColumn::make('date_payment_initial_ils')
-                        ->label('Pago ILS desde')
-                        ->icon(Heroicon::OutlinedCalendarDays)
-                        ->alignCenter()
-                        ->formatStateUsing(function (mixed $state): ?string {
-                            if (blank($state)) {
-                                return null;
-                            }
-                            try {
-                                return Carbon::parse($state)->format('d/m/Y');
-                            } catch (\Throwable) {
-                                return (string) $state;
-                            }
-                        })
-                        ->placeholder('—')
-                        ->searchable(),
-                    TextColumn::make('date_payment_final_ils')
-                        ->label('Pago ILS hasta')
-                        ->icon(Heroicon::OutlinedCalendarDays)
-                        ->alignCenter()
-                        ->formatStateUsing(function (mixed $state): ?string {
-                            if (blank($state)) {
-                                return null;
-                            }
-                            try {
-                                return Carbon::parse($state)->format('d/m/Y');
-                            } catch (\Throwable) {
-                                return (string) $state;
-                            }
-                        })
-                        ->placeholder('—')
-                        ->searchable(),
-                ])
-                    ->extraHeaderAttributes([
-                        'class' => self::COLUMN_GROUP_HEADER_CLASS,
-                    ]),
-                TextColumn::make('created_by')
-                    ->label('Creado por')
-                    ->icon(Heroicon::OutlinedUserPlus)
-                    ->searchable(),
+                // ColumnGroup::make('Información ILS', [
+                //     TextColumn::make('vaucher_ils')
+                //         ->label('Voucher ILS')
+                //         ->badge()
+                //         ->alignCenter()
+                //         ->color('success')
+                //         ->searchable()
+                //         ->copyable()
+                //         ->copyMessage('Voucher copiado'),
+                //     TextColumn::make('date_payment_initial_ils')
+                //         ->label('Pago ILS desde')
+                //         ->icon(Heroicon::OutlinedCalendarDays)
+                //         ->alignCenter()
+                //         ->formatStateUsing(function (mixed $state): ?string {
+                //             if (blank($state)) {
+                //                 return null;
+                //             }
+                //             try {
+                //                 return Carbon::parse($state)->format('d/m/Y');
+                //             } catch (\Throwable) {
+                //                 return (string) $state;
+                //             }
+                //         })
+                //         ->placeholder('—')
+                //         ->searchable(),
+                //     TextColumn::make('date_payment_final_ils')
+                //         ->label('Pago ILS hasta')
+                //         ->icon(Heroicon::OutlinedCalendarDays)
+                //         ->alignCenter()
+                //         ->formatStateUsing(function (mixed $state): ?string {
+                //             if (blank($state)) {
+                //                 return null;
+                //             }
+                //             try {
+                //                 return Carbon::parse($state)->format('d/m/Y');
+                //             } catch (\Throwable) {
+                //                 return (string) $state;
+                //             }
+                //         })
+                //         ->placeholder('—')
+                //         ->searchable(),
+                // ])
+                //     ->extraHeaderAttributes([
+                //         'class' => self::COLUMN_GROUP_HEADER_CLASS,
+                //     ]),
+                // TextColumn::make('created_by')
+                //     ->label('Creado por')
+                //     ->icon(Heroicon::OutlinedUserPlus)
+                //     ->searchable(),
 
                 // Solo lectura: se cambian con «Corregir emisión y vigencia», que arrastra avisos y renovación.
                 TextColumn::make('activated_at')
@@ -456,6 +453,7 @@ class AffiliationCorporatesTable
             ->checkIfRecordIsSelectableUsing(fn ($record): bool => ! $record->trashed())
             ->recordActions([
                 ActionGroup::make([
+                    RecalculateCorporateTotalsAction::make(),
                     /**REGENERAR CERTIFICADO Y CARNETS */
                     Action::make('regenerate')
                         ->label('Regenerar Documentos')
@@ -1631,5 +1629,24 @@ class AffiliationCorporatesTable
             'module' => 'affiliation_corporates',
             ...$context,
         ]);
+    }
+
+    /**
+     * Detalle de los totales vivos frente a lo guardado en la afiliación.
+     */
+    private static function activeTotalsTooltip(AffiliationCorporate $record): string
+    {
+        $totals = ActivePopulationTotals::forRecord($record);
+        $lines = ['Calculado con '.$totals['persons'].' afiliado(s) activo(s).'];
+
+        if ($totals['differs']) {
+            $lines[] = 'Guardado en la afiliación: '.$totals['stored']['persons'].' pers. · US$ '.number_format($totals['stored']['fee_anual'], 2, ',', '.').' anual · US$ '.number_format($totals['stored']['total_amount'], 2, ',', '.').' por cuota. La cobranza usa lo guardado: corríjalo con «Recalcular totales».';
+        }
+
+        if ($totals['without_fee'] > 0) {
+            $lines[] = $totals['without_fee'].' afiliado(s) activo(s) sin tarifa.';
+        }
+
+        return implode(' ', $lines);
     }
 }

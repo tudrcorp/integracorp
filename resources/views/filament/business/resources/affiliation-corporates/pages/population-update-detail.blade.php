@@ -62,6 +62,12 @@
             </span>
         </div>
 
+        @if (\Illuminate\Support\Facades\Cache::has(\App\Jobs\SyncCorporatePopulationItemsJob::busyKey((int) $update->getKey())))
+            <div wire:poll.5s class="rounded-xl px-4 py-3 text-sm ring-1 ring-inset {{ $tone['info'] }}">
+                Sincronizando fichas con el archivo en segundo plano… Le llegará un aviso al terminar. Mientras tanto la carga no se puede aprobar.
+            </div>
+        @endif
+
         @if (filled($update->error))
             <div class="rounded-xl px-4 py-3 text-sm ring-1 ring-inset {{ $tone['danger'] }}">{{ $update->error }}</div>
         @endif

@@ -58,6 +58,13 @@ class SystemOtpCodesTable
                     ->badge()
                     ->color(fn (string $state): string => SystemOtpCode::statusColor($state))
                     ->tooltip(fn (string $state): string => SystemOtpCode::statusHint($state)),
+                TextColumn::make('self_authorized')
+                    ->label('Autoautorizada')
+                    ->state(fn (SystemOtpCode $record): ?string => isset($record->details['Autoautorizada por']) ? 'Sí, por '.$record->details['Autoautorizada por'] : null)
+                    ->badge()
+                    ->color('warning')
+                    ->tooltip(fn (SystemOtpCode $record): ?string => $record->details['Motivo de autoautorización'] ?? null)
+                    ->placeholder('No'),
                 TextColumn::make('expires_at')
                     ->label('Vence')
                     ->dateTime('h:i:s A')

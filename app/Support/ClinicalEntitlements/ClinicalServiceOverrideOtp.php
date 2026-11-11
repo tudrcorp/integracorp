@@ -12,6 +12,7 @@ use App\Models\ClinicalServiceOverrideChallenge;
 use App\Models\TelemedicinePatient;
 use App\Models\User;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\Otp\SelfAuthorizedOtp;
 use App\Support\Otp\SystemOtpCodeRegistry;
 use App\Support\SecurityAudit;
 use App\Support\SystemNotificationRecipients;
@@ -70,20 +71,7 @@ final class ClinicalServiceOverrideOtp
             );
         }
 
-        $key = SystemNotificationKey::TelemedicineServiceLimitOverride;
-        if (! SystemNotificationRecipients::isActive($key)) {
-            throw ClinicalEntitlementException::unauthorized(
-                'No se puede autorizar fuera de límite: la alerta está pausada en el centro de notificaciones.'
-            );
-        }
-
-        $emails = SystemNotificationRecipients::emails($key);
-        $phones = SystemNotificationRecipients::phones($key);
-        if ($emails === [] && $phones === []) {
-            throw ClinicalEntitlementException::unauthorized(
-                'No se puede autorizar fuera de límite: configure destinatarios en el centro de notificaciones.'
-            );
-        }
+        [$emails, $phones] = self::recipientsFor($user);
 
         $patient->loadMissing(['plan']);
 
@@ -155,20 +143,7 @@ final class ClinicalServiceOverrideOtp
             );
         }
 
-        $key = SystemNotificationKey::TelemedicineServiceLimitOverride;
-        if (! SystemNotificationRecipients::isActive($key)) {
-            throw ClinicalEntitlementException::unauthorized(
-                'No se puede reenviar: la alerta está pausada en el centro de notificaciones.'
-            );
-        }
-
-        $emails = SystemNotificationRecipients::emails($key);
-        $phones = SystemNotificationRecipients::phones($key);
-        if ($emails === [] && $phones === []) {
-            throw ClinicalEntitlementException::unauthorized(
-                'No hay destinatarios en el centro de notificaciones.'
-            );
-        }
+        [$emails, $phones] = self::recipientsFor($user);
 
         $digits = (int) config('clinical-entitlements.otp.digits', 6);
         $ttl = (int) config('clinical-entitlements.otp.ttl_minutes', 5);
@@ -250,6 +225,51 @@ final class ClinicalServiceOverrideOtp
                 ? $challenge->channel->value
                 : $challenge->channel,
         ]);
+    }
+
+    /**
+     * Destinatarios de la clave (también reciben el aviso si el médico usa la suya).
+     *
+     * @return array{0: list<string>, 1: list<string>}
+     */
+    public static function recipientContacts(): array
+    {
+        $key = SystemNotificationKey::TelemedicineServiceLimitOverride;
+
+        return SystemNotificationRecipients::isActive($key)
+            ? [SystemNotificationRecipients::emails($key), SystemNotificationRecipients::phones($key)]
+            : [[], []];
+    }
+
+    /**
+     * Sin destinatarios, quien puede usar su propia clave sigue igual.
+     *
+     * @return array{0: list<string>, 1: list<string>}
+     */
+    private static function recipientsFor(User $user): array
+    {
+        $key = SystemNotificationKey::TelemedicineServiceLimitOverride;
+        $selfAllowed = SelfAuthorizedOtp::keepsUndeliveredChallenge($user, SystemOtpCodeKind::ClinicalLimitOverride);
+
+        if (! SystemNotificationRecipients::isActive($key)) {
+            if ($selfAllowed) {
+                return [[], []];
+            }
+
+            throw ClinicalEntitlementException::unauthorized(
+                'No se puede autorizar fuera de límite: la alerta está pausada en el centro de notificaciones.'
+            );
+        }
+
+        $emails = SystemNotificationRecipients::emails($key);
+        $phones = SystemNotificationRecipients::phones($key);
+        if ($emails === [] && $phones === [] && ! $selfAllowed) {
+            throw ClinicalEntitlementException::unauthorized(
+                'No se puede autorizar fuera de límite: configure destinatarios en el centro de notificaciones.'
+            );
+        }
+
+        return [$emails, $phones];
     }
 
     public static function generateNumericCode(int $digits): string
@@ -343,7 +363,8 @@ final class ClinicalServiceOverrideOtp
             'phones_sent' => $phonesSent,
         ]);
 
-        if ($emailsSent === 0 && $phonesSent === 0) {
+        $delivered = $emailsSent > 0 || $phonesSent > 0;
+        if (! $delivered && ! SelfAuthorizedOtp::keepsUndeliveredChallenge(User::query()->find($challenge->user_id), SystemOtpCodeKind::ClinicalLimitOverride)) {
             $challenge->forceFill(['consumed_at' => now()])->save();
             throw ClinicalEntitlementException::unauthorized(
                 'No se pudo entregar la clave por correo ni WhatsApp. Intente de nuevo o revise los destinatarios.'
@@ -352,7 +373,7 @@ final class ClinicalServiceOverrideOtp
 
         return [
             'challenge' => $challenge->fresh() ?? $challenge,
-            'delivered' => true,
+            'delivered' => $delivered,
             'emails' => $emailsSent,
             'phones' => $phonesSent,
         ];

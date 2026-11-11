@@ -245,7 +245,7 @@ it('ofrece solo las partes que tiene la emisión y las nombra en el correo', fun
         ->and(CertificateDeliveryParts::availableFor($single))->toBe([CertificateDeliveryParts::CERTIFICATE])
         ->and(CertificateDeliveryParts::clean(['carnets', 'certificate', 'certificate', 'otro', 5], $issue))->toBe(['certificate', 'carnets'])
         ->and(CertificateDeliveryParts::clean(['carnets'], $single))->toBe([])
-        ->and(CertificateDeliveryParts::pageKinds(['certificate', 'carnets']))->toBe(['cert', 'cont', 'carnet'])
+        ->and(CertificateDeliveryParts::pageKinds(['certificate', 'carnets']))->toBe(['cert', 'cont', 'custom', 'carnet'])
         ->and(CertificateDeliveryParts::describe(CertificateDeliveryParts::ORDER, 3))->toBe('el certificado de afiliación, la relación de afiliados y los 3 carnets de afiliado')
         ->and(CertificateDeliveryParts::describe(['affiliates'], 0))->toBe('la relación de afiliados')
         ->and(CertificateDeliveryParts::subject(['affiliates', 'carnets'], 2))->toBe('Documentos de afiliación')

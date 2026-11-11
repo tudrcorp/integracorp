@@ -35,6 +35,7 @@ class AffiliationCertificateIssue extends Model
         'affiliation_id',
         'affiliation_code',
         'plan_name',
+        'plan_certificate_template_id',
         'valid_from',
         'valid_until',
         'paid_until',

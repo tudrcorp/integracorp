@@ -10,6 +10,9 @@
         <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Plan</div>
         <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $planLabel }}</div>
         <div class="text-xs text-gray-500 dark:text-gray-400">{{ $statusLabel }} · pago {{ \Illuminate\Support\Str::lower($frequency) }}</div>
+        <div class="mt-1 text-xs font-medium {{ ($templateVersion ?? null) ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-500 dark:text-gray-400' }}">
+            Certificado: {{ ($templateVersion ?? null) ? 'diseño propio del plan (v'.$templateVersion.')' : 'diseño predeterminado' }}
+        </div>
     </div>
     <div class="rounded-xl bg-gray-50 px-4 py-3 dark:bg-white/5">
         <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Vigencia</div>

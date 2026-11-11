@@ -465,6 +465,7 @@ class CorporateCertificateGenerator extends Page
         return new HtmlString(view('filament.business.resources.affiliations.pages.certificate-generator-summary', [
             'planLabel' => (string) (CorporateAffiliationContractedPlan::plan($affiliation)?->description ?? 'Sin plan'),
             'statusLabel' => (string) $affiliation->status,
+            'templateVersion' => \App\Support\Affiliations\Certificates\PlanCertificateTemplates::activeFor(CorporateAffiliationContractedPlan::plan($affiliation)?->id)?->version,
             'frequency' => (string) ($affiliation->payment_frequency ?: 'anual'),
             'period' => CorporateCertificateDocument::paymentPeriod($affiliation),
             'affiliatesCount' => self::printableCount($affiliationId),

@@ -97,6 +97,15 @@ class AffiliationsTable
                 'id' => 'affiliations-main-table',
             ])
             ->columns([
+                TextColumn::make('view_affiliates')
+                    ->label('')
+                    ->state(fn ($record): ?string => $record->trashed() ? null : 'Ver afiliado(s)')
+                    ->badge()
+                    ->color('primary')
+                    ->icon('heroicon-m-user-group')
+                    ->tooltip('Gestionar los afiliados de esta afiliación sin abrir el formulario')
+                    ->url(fn ($record): ?string => $record->trashed() ? null : \App\Filament\Business\Resources\Affiliations\AffiliationResource::getUrl('affiliates', ['record' => $record]))
+                    ->extraCellAttributes(['class' => 'w-1 whitespace-nowrap']),
                 TextColumn::make('code')
                     ->label('Código')
                     ->icon(function ($record) {

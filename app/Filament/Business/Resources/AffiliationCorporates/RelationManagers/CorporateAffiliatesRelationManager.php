@@ -487,14 +487,25 @@ class CorporateAffiliatesRelationManager extends RelationManager
                             };
                         })
                         ->tooltip(fn (AffiliateCorporate $record): ?string => implode(' · ', CorporateAffiliateIlsVoucherManager::statusFor($record)['lines']) ?: null),
-                    TextColumn::make('vaucherIls')
-                        ->label('Voucher anterior')
-                        ->tooltip('Voucher único cargado antes de los vouchers por beneficio. Queda como histórico.')
+                    TextColumn::make('ils_current_voucher')
+                        ->label('Voucher')
+                        ->tooltip(fn (AffiliateCorporate $record): ?string => implode(' · ', CorporateAffiliateIlsVoucherManager::statusFor($record)['lines']) ?: null)
+                        ->state(fn (AffiliateCorporate $record): ?string => self::currentIlsVoucherCodes($record))
                         ->icon(Heroicon::Ticket)
                         ->badge()
                         ->color('info')
                         ->placeholder('—')
-                        ->searchable()
+                        ->searchable(query: fn (Builder $query, string $search): Builder => $query->where(fn (Builder $inner): Builder => $inner
+                            ->whereHas('ilsVouchers', fn (Builder $vouchers): Builder => $vouchers->where('voucher_code', 'like', '%'.$search.'%'))
+                            ->orWhere('vaucherIls', 'like', '%'.$search.'%'))),
+                    TextColumn::make('vaucherIls')
+                        ->label('Voucher anterior (histórico)')
+                        ->tooltip('Voucher único cargado antes de los vouchers por beneficio. Ya no se actualiza: el vigente es la columna «Voucher».')
+                        ->icon(Heroicon::Ticket)
+                        ->badge()
+                        ->color('gray')
+                        ->placeholder('—')
+                        ->toggleable(isToggledHiddenByDefault: true)
                         ->sortable(),
                     TextColumn::make('ils_status')
                         ->label('Estado anterior')
@@ -502,14 +513,16 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         ->badge()
                         ->state(fn (AffiliateCorporate $record): string => $this->affiliateHasVoucherIls($record) ? 'Cargado' : 'Pendiente')
                         ->color(fn (AffiliateCorporate $record): string => $this->affiliateHasVoucherIls($record) ? 'success' : 'warning'),
-                    TextColumn::make('dateInit')
+                    TextColumn::make('ils_current_from')
                         ->label('Desde')
-                        ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
+                        ->state(fn (AffiliateCorporate $record): ?string => self::currentIlsPeriod($record)['from'])
+                        ->tooltip(fn (AffiliateCorporate $record): ?string => self::currentIlsPeriod($record)['hint'])
                         ->placeholder('—')
                         ->toggleable(),
-                    TextColumn::make('dateEnd')
+                    TextColumn::make('ils_current_to')
                         ->label('Hasta')
-                        ->formatStateUsing(fn (mixed $state): ?string => FilamentDateDisplay::toDmy($state))
+                        ->state(fn (AffiliateCorporate $record): ?string => self::currentIlsPeriod($record)['to'])
+                        ->tooltip(fn (AffiliateCorporate $record): ?string => self::currentIlsPeriod($record)['hint'])
                         ->placeholder('—')
                         ->toggleable(),
                     TextColumn::make('numberDays')
@@ -518,11 +531,12 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         ->badge()
                         ->color('warning')
                         ->getStateUsing(function (AffiliateCorporate $record): string {
-                            if ($record->dateEnd === null) {
+                            $end = self::currentIlsPeriod($record)['end'];
+                            if ($end === null) {
                                 return '—';
                             }
 
-                            $days = AffiliateVaucherIlsRemainingDays::remainingDaysUntilEnd($record->dateEnd);
+                            $days = AffiliateVaucherIlsRemainingDays::remainingDaysUntilEnd($end);
 
                             return $days === null ? '—' : (string) $days;
                         })
@@ -532,12 +546,17 @@ class CorporateAffiliatesRelationManager extends RelationManager
                         ->suffix(' días')
                         ->badge()
                         ->color('gray')
-                        ->state(fn (AffiliateCorporate $record): string => filled($record->numberDays) ? (string) $record->numberDays : '—')
+                        ->state(function (AffiliateCorporate $record): string {
+                            $voucher = $record->ilsVouchers->filter(fn ($voucher): bool => $voucher->date_end !== null)->sortBy(fn ($voucher): string => $voucher->date_end->format('Y-m-d'))->first();
+                            $days = $voucher !== null ? $voucher->number_days : $record->numberDays;
+
+                            return filled($days) ? (string) $days : '—';
+                        })
                         ->toggleable(isToggledHiddenByDefault: true),
                     IconColumn::make('has_document_ils')
                         ->alignment(Alignment::Center)
                         ->label('Comprobante')
-                        ->getStateUsing(fn (AffiliateCorporate $record): bool => filled($record->document_ils))
+                        ->getStateUsing(fn (AffiliateCorporate $record): bool => $record->ilsVouchers->contains(fn ($voucher): bool => filled($voucher->document_path)) || filled($record->document_ils))
                         ->boolean()
                         ->trueIcon('heroicon-o-check-circle')
                         ->falseIcon('heroicon-o-x-circle')
@@ -616,11 +635,13 @@ class CorporateAffiliatesRelationManager extends RelationManager
                     ->falseLabel('Pendiente')
                     ->queries(
                         true: fn (Builder $query): Builder => $query->where(function (Builder $query): void {
-                            $query->whereNotNull('vaucherIls')
+                            $query->whereHas('ilsVouchers')
+                                ->orWhereNotNull('vaucherIls')
                                 ->orWhereNotNull('document_ils');
                         }),
                         false: fn (Builder $query): Builder => $query->where(function (Builder $query): void {
-                            $query->whereNull('vaucherIls')
+                            $query->whereDoesntHave('ilsVouchers')
+                                ->whereNull('vaucherIls')
                                 ->whereNull('document_ils');
                         }),
                     ),
@@ -1151,7 +1172,58 @@ class CorporateAffiliatesRelationManager extends RelationManager
 
     private function affiliateHasVoucherIls(AffiliateCorporate $record): bool
     {
-        return filled($record->vaucherIls) || filled($record->document_ils);
+        return $record->ilsVouchers->isNotEmpty() || filled($record->vaucherIls) || filled($record->document_ils);
+    }
+
+    /**
+     * Voucher(es) vigentes: los cargados por beneficio. Si el afiliado todavía no
+     * tiene ninguno, el voucher único anterior (para no mostrar vacío lo que sí existe).
+     */
+    public static function currentIlsVoucherCodes(AffiliateCorporate $record): ?string
+    {
+        $codes = $record->ilsVouchers
+            ->sortByDesc(fn ($voucher): string => (string) $voucher->date_end?->format('Y-m-d'))
+            ->pluck('voucher_code')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($codes->isEmpty()) {
+            return filled($record->vaucherIls) ? (string) $record->vaucherIls : null;
+        }
+
+        return $codes->count() > 1 ? $codes->first().' +'.($codes->count() - 1) : (string) $codes->first();
+    }
+
+    /**
+     * Vigencia del ILS: con vouchers por beneficio, desde el inicio más antiguo
+     * hasta el vencimiento más próximo (el que manda para renovar). Sin ellos, la
+     * del voucher único anterior.
+     *
+     * @return array{from: string|null, to: string|null, end: string|null, hint: string|null}
+     */
+    public static function currentIlsPeriod(AffiliateCorporate $record): array
+    {
+        $vouchers = $record->ilsVouchers->filter(fn ($voucher): bool => $voucher->date_end !== null);
+
+        if ($vouchers->isEmpty()) {
+            return [
+                'from' => FilamentDateDisplay::toDmy($record->dateInit),
+                'to' => FilamentDateDisplay::toDmy($record->dateEnd),
+                'end' => $record->dateEnd !== null ? (string) $record->dateEnd : null,
+                'hint' => filled($record->vaucherIls) ? 'Voucher único anterior (histórico).' : null,
+            ];
+        }
+
+        $from = $vouchers->min(fn ($voucher) => $voucher->date_init);
+        $to = $vouchers->min(fn ($voucher) => $voucher->date_end);
+
+        return [
+            'from' => $from?->format('d/m/Y'),
+            'to' => $to?->format('d/m/Y'),
+            'end' => $to?->format('Y-m-d'),
+            'hint' => $vouchers->count() > 1 ? 'Varios vouchers por beneficio: se muestra el inicio más antiguo y el vencimiento más próximo.' : null,
+        ];
     }
 
     /**

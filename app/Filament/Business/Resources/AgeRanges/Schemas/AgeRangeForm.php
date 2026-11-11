@@ -22,13 +22,19 @@ class AgeRangeForm
                 TextInput::make('code')
                     ->required(),
                 TextInput::make('range')
-                    ->required(),
+                    ->required()
+                    ->disabledOn('edit')
+                    ->helperText(fn (string $operation): ?string => $operation === 'edit' ? 'Las edades se cambian desde la ficha del plan (botón «Editar rango de edad»): así se validan y se actualizan en todo el sistema.' : null),
                 TextInput::make('status'),
                 TextInput::make('created_by'),
                 TextInput::make('age_init')
-                    ->numeric(),
+                    ->numeric()
+                    ->disabledOn('edit')
+                    ->helperText(fn (string $operation): ?string => $operation === 'edit' ? 'Las edades se cambian desde la ficha del plan (botón «Editar rango de edad»): así se validan y se actualizan en todo el sistema.' : null),
                 TextInput::make('age_end')
-                    ->numeric(),
+                    ->numeric()
+                    ->disabledOn('edit')
+                    ->helperText(fn (string $operation): ?string => $operation === 'edit' ? 'Las edades se cambian desde la ficha del plan (botón «Editar rango de edad»): así se validan y se actualizan en todo el sistema.' : null),
             ]);
     }
 }
