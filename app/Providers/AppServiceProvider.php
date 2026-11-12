@@ -104,6 +104,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Créditos pendientes de bajas (sin aviso donde descontarlos): se aplican al aviso que se emita.
+        \App\Models\Collection::created(static function (\App\Models\Collection $collection): void {
+            static $ready = null;
+            $ready ??= \Illuminate\Support\Facades\Schema::hasTable('affiliate_movements');
+
+            if ($ready) {
+                \App\Support\Affiliations\Movements\AffiliateMovements::applyPendingCredits($collection);
+            }
+        });
+
         /** Bitácora del panel de Telemedicina (Operaciones → Bitácora del panel). */
         TelemedicinePanelLivewireMonitor::register();
 

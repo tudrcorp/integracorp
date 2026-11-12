@@ -198,7 +198,7 @@ final class ActivePopulationTotals
         }
 
         try {
-            $result = DB::transaction(static function () use ($owner): array {
+            $result = DB::transaction(static function () use ($owner, $user, $reason): array {
                 $locked = AffiliationCorporate::query()->lockForUpdate()->findOrFail($owner->getKey());
                 AfilliationCorporatePlan::query()->where('affiliation_corporate_id', $locked->getKey())->lockForUpdate()->get();
 
@@ -215,15 +215,13 @@ final class ActivePopulationTotals
                     'rows' => array_map(static fn (array $row): array => ['id' => $row['id'], 'total_persons' => $row['before']], $preview['rows']),
                 ];
 
-                if (! $live['differs'] && (! $preview['rows_updatable'] || collect($preview['rows'])->every(static fn (array $row): bool => $row['before'] === $row['after']))) {
-                    throw new RuntimeException('Los totales ya cuadran con la población activa: no hay nada que recalcular.');
+                $billing = \App\Support\Affiliations\ActiveBilling\ActivePopulationBilling::plan($locked);
+                if (! $live['differs'] && $billing['collections'] === [] && (! $preview['rows_updatable'] || collect($preview['rows'])->every(static fn (array $row): bool => $row['before'] === $row['after']))) {
+                    throw new RuntimeException('Los totales y los avisos ya cuadran con la población activa: no hay nada que recalcular.');
                 }
 
-                $locked->forceFill([
-                    'poblation' => $live['persons'],
-                    'fee_anual' => $live['fee_anual'],
-                    'total_amount' => $live['total_amount'],
-                ])->save();
+                /** Totales y avisos POR PAGAR del año contra la población activa. */
+                $applied = \App\Support\Affiliations\ActiveBilling\ActivePopulationBilling::sync($locked, $user, 'Recalcular totales: '.$reason);
 
                 if ($preview['rows_updatable']) {
                     foreach ($preview['rows'] as $row) {
@@ -246,6 +244,7 @@ final class ActivePopulationTotals
                     ],
                     'rows_updated' => $preview['rows_updatable'],
                     'unresolved_total' => $preview['unresolved_total'],
+                    'collections' => $applied['collections'],
                 ];
             });
         } finally {
@@ -259,10 +258,11 @@ final class ActivePopulationTotals
             'after' => $result['after'],
             'rows_updated' => $result['rows_updated'],
             'unresolved_affiliates' => $result['unresolved_total'],
+            'collections' => $result['collections'],
             'reason' => $reason,
         ], $user);
 
-        return ['before' => $result['before'], 'after' => $result['after'], 'rows_updated' => $result['rows_updated']];
+        return ['before' => $result['before'], 'after' => $result['after'], 'rows_updated' => $result['rows_updated'], 'collections' => $result['collections']];
     }
 
     /**

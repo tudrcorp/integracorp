@@ -3,7 +3,9 @@
 namespace App\Filament\Administration\Resources\Affiliations\RelationManagers;
 
 use App\Filament\Shared\Affiliations\Actions\AffiliateFichaAction;
+use App\Filament\Shared\Affiliations\AffiliateMovementActions;
 use App\Models\Affiliate;
+use App\Models\Affiliation;
 use App\Models\AgeRange;
 use App\Models\Plan;
 use App\Support\Affiliations\AffiliateFicha\AffiliateFichaData;
@@ -36,6 +38,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AffiliatesRelationManager extends RelationManager
@@ -200,6 +203,19 @@ class AffiliatesRelationManager extends RelationManager
                             ])->columnSpanFull()->columns(2),
 
                     ])->columnSpanFull()->columns(2),
+                ...AffiliateMovementActions::includeFields(
+                    fn (): Affiliation => $this->getOwnerRecord(),
+                    fn (Get $get): Affiliate => (new Affiliate)->forceFill([
+                        'affiliation_id' => $this->getOwnerRecord()->getKey(),
+                        'full_name' => (string) $get('full_name'),
+                        'nro_identificacion' => (string) $get('nro_identificacion'),
+                        'plan_id' => $get('plan_id'),
+                        'coverage_id' => $get('coverage_id'),
+                        'age' => $get('age'),
+                        'fee' => (float) $get('fee'),
+                        'status' => 'ACTIVO',
+                    ]),
+                ),
             ]);
     }
 
@@ -370,30 +386,7 @@ class AffiliatesRelationManager extends RelationManager
                         ->label('Editar')
                         ->icon('heroicon-s-pencil')
                         ->color('warning'),
-                    Action::make('changet_status')
-                        ->label('Dar de Baja')
-                        ->icon('heroicon-s-trash')
-                        ->color('danger')
-                        ->requiresConfirmation()
-                        ->action(function (Affiliate $record): void {
-
-                            // ... Actualizo la afiliacion
-                            $owner = $this->getOwnerRecord();
-                            $owner->fee_anual = $owner->fee_anual - $record->fee;
-                            $owner->total_amount = $owner->total_amount - $record->total_amount;
-                            $owner->family_members = $owner->family_members - 1;
-                            $owner->save();
-
-                            // ... Actualizo el familiar
-                            $record->update([
-                                'status' => 'INACTIVO',
-                            ]);
-
-                            Notification::make()
-                                ->success()
-                                ->title('Afiliacion de Baja')
-                                ->send();
-                        }),
+                    AffiliateMovementActions::exclude(fn (): Affiliation => $this->getOwnerRecord(), 'administration.affiliates'),
                 ])->hidden(function ($record): bool {
                     if ($this->getOwnerRecord()->status == 'EXCLUIDO') {
                         return true;
@@ -407,15 +400,31 @@ class AffiliatesRelationManager extends RelationManager
                 CreateAction::make()
                     ->label('Agregar Familiar')
                     ->icon('heroicon-s-user-plus')
-                    // Actualizo el total de familiarles en la afiliacion
-                    ->after(function (array $data) {
-                        $record = $this->getOwnerRecord();
-                        $record->fee_anual = $record->fee_anual + $data['fee'];
-                        $record->total_amount = $record->total_amount + $data['total_amount'];
-                        $record->family_members = $record->family_members + 1;
-                        $record->save();
+                    ->using(function (array $data, CreateAction $action): Affiliate {
+                        $owner = $this->getOwnerRecord();
 
-                    }),
+                        try {
+                            return DB::transaction(function () use ($data, $owner): Affiliate {
+                                $affiliate = new Affiliate;
+                                $affiliate->fill(AffiliateMovementActions::strip($data));
+                                $affiliate->forceFill(['affiliation_id' => $owner->getKey(), 'status' => 'ACTIVO']);
+                                $affiliate->save();
+                                AffiliateMovementActions::notifyDone(AffiliateMovementActions::registerInclusion($owner, $affiliate, $data, 'administration.affiliates'));
+
+                                return $affiliate;
+                            });
+                        } catch (\RuntimeException $exception) {
+                            if ($exception instanceof \App\Support\Affiliations\PersonIdentity\DuplicatePersonIdentityException) {
+                                throw $exception;
+                            }
+
+                            Notification::make()->title('No se incluyó al familiar')->body($exception->getMessage())->danger()->persistent()->send();
+                            $action->halt();
+
+                            throw $exception;
+                        }
+                    })
+                    ->successNotification(null),
             ]);
     }
 }

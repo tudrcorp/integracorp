@@ -254,6 +254,7 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @php($movementLines = \App\Support\Collections\CollectionMovementBreakdown::forInvoice($data['invoice_number'] ?? null))
                     <tr>
                         <td class="desc-col">
                             <p class="plan-line">
@@ -274,9 +275,10 @@
                                 PERIODO DE COBRO: {{ $data['period_label'] }}@endif
                             </p>
                         </td>
-                        <td class="amount-col">US${{ number_format($data['total_amount'], 2) }}</td>
+                        <td class="amount-col">US${{ number_format((float) $data['total_amount'] - \App\Support\Collections\CollectionMovementBreakdown::total($movementLines), 2) }}</td>
 
                     </tr>
+                    @include('documents.partials.aviso-movement-lines', ['movementLines' => $movementLines])
                     <tr class="total-row">
                         <td colspan="2">Monto Total: US${{ number_format($data['total_amount'], 2) }}</td>
 

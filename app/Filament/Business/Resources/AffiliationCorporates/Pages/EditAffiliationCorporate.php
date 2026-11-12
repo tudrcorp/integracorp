@@ -13,6 +13,8 @@ use Illuminate\Support\HtmlString;
 
 class EditAffiliationCorporate extends EditRecord
 {
+    use \App\Filament\Business\Concerns\KeepsLiveAffiliationTotalsOnSave;
+
     protected static string $resource = AffiliationCorporateResource::class;
 
     public function getTitle(): string|Htmlable

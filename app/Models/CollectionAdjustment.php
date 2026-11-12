@@ -29,6 +29,12 @@ class CollectionAdjustment extends Model
     /** Monto ajustado o aviso emitido por un cambio de población corporativa. */
     public const MODE_POPULATION = 'poblacion';
 
+    /** Monto ajustado por un cambio de valores de la cotización de su afiliación (o su reverso). */
+    public const MODE_QUOTE = 'cotizacion';
+
+    /** Monto y personas recalculados contra la población activa de la afiliación. */
+    public const MODE_ACTIVE_POPULATION = 'poblacion-activa';
+
     protected $table = 'collection_adjustments';
 
     protected $fillable = [

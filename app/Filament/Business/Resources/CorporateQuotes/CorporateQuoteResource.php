@@ -111,6 +111,7 @@ class CorporateQuoteResource extends Resource
         return [
             DetailCoporateQuotesRelationManager::class,
             CorporateQuoteDataRelationManager::class,
+            \App\Filament\Shared\Quotes\QuoteValueAdjustmentsRelationManager::class,
         ];
     }
 

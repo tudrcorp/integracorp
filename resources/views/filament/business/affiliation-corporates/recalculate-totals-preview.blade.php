@@ -64,4 +64,27 @@
             @endif
         </div>
     @endif
+
+    @isset($billing)
+        <div class="mt-3 text-sm">
+            @if ($billing['blocker'])
+                <p class="rounded-lg bg-rose-50 px-3 py-2 text-rose-800 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-200 dark:ring-rose-400/30">{{ $billing['blocker'] }}</p>
+            @elseif ($billing['collections'] !== [])
+                <p class="font-medium text-gray-950 dark:text-white">Avisos POR PAGAR del año que se alinean:</p>
+                <ul class="mt-1 divide-y divide-gray-950/5 rounded-lg ring-1 ring-gray-950/5 dark:divide-white/10 dark:ring-white/10">
+                    @foreach ($billing['collections'] as $collection)
+                        <li class="flex items-center justify-between px-3 py-1.5" wire:key="rt-collection-{{ $collection['id'] }}">
+                            <span class="text-gray-700 dark:text-gray-200">{{ $collection['invoice'] }} · vence {{ $collection['due'] ?? '—' }}</span>
+                            <span>{{ $money($collection['before_cents'] / 100) }} → <strong>{{ $money($collection['after_cents'] / 100) }}</strong> · {{ $collection['persons_after'] }} pers.</span>
+                        </li>
+                    @endforeach
+                </ul>
+            @else
+                <p class="text-gray-500 dark:text-gray-400">Los avisos POR PAGAR del año ya cuadran con la población activa.</p>
+            @endif
+            @foreach ($billing['skipped'] as $note)
+                <p class="mt-1 text-xs text-amber-700 dark:text-amber-300">{{ $note }}</p>
+            @endforeach
+        </div>
+    @endisset
 </div>

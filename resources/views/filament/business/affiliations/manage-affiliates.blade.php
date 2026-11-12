@@ -35,5 +35,12 @@
             'pageClass' => $this->relationManagerPageClass(),
             'lazy' => true,
         ], key('affiliates-'.$this->getRecord()->getKey()))
+
+        @livewire(\App\Livewire\Affiliations\AffiliateMovementsHistory::class, [
+            'affiliationType' => $this->getRecord() instanceof \App\Models\AffiliationCorporate ? \App\Models\AffiliateMovement::TYPE_CORPORATE : \App\Models\AffiliateMovement::TYPE_INDIVIDUAL,
+            'affiliationId' => (int) $this->getRecord()->getKey(),
+            'canRevert' => \App\Support\Filament\UserNavigationAccess::isSuperAdmin(auth()->user()) || (int) (auth()->user()?->is_business_admin ?? 0) === 1,
+            'lazy' => true,
+        ], key('movements-'.$this->getRecord()->getKey()))
     </div>
 </x-filament-panels::page>

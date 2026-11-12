@@ -81,6 +81,33 @@ class AffiliateCorporateController extends Controller
         }
     }
 
+    /**
+     * Crea el afiliado corporativo ACTIVO sin tocar totales: de la afiliación, la fila de plan,
+     * la cobranza y operaciones se encarga {@see \App\Support\Affiliations\Movements\AffiliateMovements}.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function createAffiliateRecord(array $data, AffiliationCorporate $owner): AffiliateCorporate
+    {
+        $fee = round((float) ($data['fee'] ?? 0), 2);
+        $frequency = (string) ($data['payment_frequency'] ?? $owner->payment_frequency);
+        $perPeriod = round(\App\Services\CorporateAffiliateRemovalService::annualFeeToPerPeriodAmount($fee, $frequency), 2);
+
+        $data['total_amount'] = $perPeriod;
+        $data['subtotal_anual'] = $fee;
+        $data['subtotal_payment_frequency'] = $perPeriod;
+        $data['subtotal_daily'] = round($fee / 30, 2);
+        $data['payment_frequency'] = $frequency;
+        $data['status'] = 'ACTIVO';
+        $data['created_by'] = Auth::user()?->id;
+        $data['affiliation_corporate_id'] = $owner->getKey();
+        $data['business_unit_id'] = $data['business_unit_id'] ?? $owner->business_unit_id;
+        $data['business_line_id'] = $data['business_line_id'] ?? $owner->business_line_id;
+        $data['specific_business_unit'] = $data['specific_business_unit'] ?? $owner->specific_business_unit;
+
+        return AffiliateCorporate::query()->create($data);
+    }
+
     public static function clearAffiliate(AffiliateCorporate $record, AffiliationCorporate $owner): void
     {
         CorporateAffiliateRemovalService::deactivate($record, $owner);

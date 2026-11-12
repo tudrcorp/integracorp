@@ -33,6 +33,8 @@ class ViewIndividualQuote extends ViewRecord
                 ->extraAttributes([
                     'class' => self::TICKET_BUTTON_CLASS,
                 ]),
+            \App\Filament\Shared\Quotes\AdjustQuoteValuesAction::make()
+                ->extraAttributes(['class' => self::WARNING_BUTTON_CLASS]),
             Action::make('back')
                 ->label('Regresar')
                 ->button()

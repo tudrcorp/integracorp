@@ -14,6 +14,7 @@ use App\Mail\UploadPayment;
 use App\Models\AffiliationCorporate;
 use App\Models\User;
 use App\Support\AffiliationCorporateRifLabel;
+use App\Support\AffiliationCorporates\ActivePopulationTotals;
 use App\Support\AffiliationPaymentBcvRateCalculator;
 use App\Support\AffiliationPaymentTotalAdjustment;
 use App\Support\BcvOfficialRate;
@@ -91,10 +92,10 @@ class AffiliationCorporatesTable
                 ]);
 
                 if (Auth::user()->is_accountManagers) {
-                    return $base->where('ownerAccountManagers', Auth::user()->id);
+                    $base->where('ownerAccountManagers', Auth::user()->id);
                 }
 
-                return $base;
+                return ActivePopulationTotals::applyToQuery($base);
             })
             ->defaultSort('created_at', 'desc')
             ->paginationPageOptions([10, 25, 50, 100])
@@ -169,46 +170,32 @@ class AffiliationCorporatesTable
                         ->searchable(),
                     TextColumn::make('poblation')
                         ->label('Población')
+                        ->tooltip(fn (AffiliationCorporate $record): string => self::activeTotalsTooltip($record))
+                        ->state(fn (AffiliationCorporate $record): int => ActivePopulationTotals::forRecord($record)['persons'])
                         ->alignCenter()
                         ->suffix(' persona(s)')
                         ->badge()
-                        ->color(function (mixed $state): string {
-                            if ($state > 0) {
-                                return 'warning';
-                            }
-
-                            return 'danger';
-                        })
-                        ->sortable()
-                        ->searchable(),
+                        ->icon(fn (AffiliationCorporate $record): ?string => ActivePopulationTotals::forRecord($record)['differs'] || ActivePopulationTotals::forRecord($record)['without_fee'] > 0 ? 'heroicon-m-exclamation-triangle' : null)
+                        ->color(fn (mixed $state): string => (int) $state > 0 ? 'warning' : 'danger')
+                        ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('active_population', $direction)),
                     TextColumn::make('fee_anual')
                         ->label('Tarifa Anual')
+                        ->tooltip(fn (AffiliationCorporate $record): string => self::activeTotalsTooltip($record))
+                        ->state(fn (AffiliationCorporate $record): float => ActivePopulationTotals::forRecord($record)['fee_anual'])
                         ->alignCenter()
                         ->money()
                         ->badge()
-                        ->color(function (mixed $state): string {
-                            if ($state > 0) {
-                                return 'warning';
-                            }
-
-                            return 'danger';
-                        })
-                        ->sortable()
-                        ->searchable(),
+                        ->color(fn (mixed $state): string => (float) $state > 0 ? 'warning' : 'danger')
+                        ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('active_fee_anual', $direction)),
                     TextColumn::make('total_amount')
                         ->label('Total a Pagar')
+                        ->tooltip(fn (AffiliationCorporate $record): string => self::activeTotalsTooltip($record))
+                        ->state(fn (AffiliationCorporate $record): float => ActivePopulationTotals::forRecord($record)['total_amount'])
                         ->alignCenter()
                         ->money()
                         ->badge()
-                        ->color(function (mixed $state): string {
-                            if ($state > 0) {
-                                return 'warning';
-                            }
-
-                            return 'danger';
-                        })
-                        ->sortable()
-                        ->searchable(),
+                        ->color(fn (mixed $state): string => (float) $state > 0 ? 'warning' : 'danger')
+                        ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('active_fee_anual', $direction)),
                 ])
                     ->extraHeaderAttributes(['class' => self::COLUMN_GROUP_HEADER_CLASS]),
                 ColumnGroup::make('Contratante', [
@@ -2059,5 +2046,21 @@ class AffiliationCorporatesTable
             'ACTIVA' => ['border-l-4 border-emerald-400/80'],
             default => ['border-l-4 border-transparent'],
         };
+    }
+
+    private static function activeTotalsTooltip(AffiliationCorporate $record): string
+    {
+        $totals = ActivePopulationTotals::forRecord($record);
+        $lines = ['Calculado con '.$totals['persons'].' afiliado(s) activo(s).'];
+
+        if ($totals['differs']) {
+            $lines[] = 'Guardado en la afiliación: '.$totals['stored']['persons'].' pers. · US$ '.number_format($totals['stored']['fee_anual'], 2, ',', '.').' anual · US$ '.number_format($totals['stored']['total_amount'], 2, ',', '.').' por cuota. Pendiente de alinear con la población activa.';
+        }
+
+        if ($totals['without_fee'] > 0) {
+            $lines[] = $totals['without_fee'].' afiliado(s) activo(s) sin tarifa.';
+        }
+
+        return implode(' ', $lines);
     }
 }
