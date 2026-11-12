@@ -48,6 +48,20 @@ final class OperationReportWriter
             if ($data->totals !== null) {
                 fputcsv($handle, array_map(self::cell(...), $data->totals), escape: '');
             }
+
+            foreach ($data->sections as $section) {
+                fputcsv($handle, [], escape: '');
+                fputcsv($handle, [$section['title']], escape: '');
+                fputcsv($handle, $section['headings'], escape: '');
+
+                foreach ($section['rows'] as $row) {
+                    fputcsv($handle, array_map(self::cell(...), $row), escape: '');
+                }
+
+                if (($section['totals'] ?? null) !== null) {
+                    fputcsv($handle, array_map(self::cell(...), $section['totals']), escape: '');
+                }
+            }
         } finally {
             fclose($handle);
         }
@@ -59,20 +73,32 @@ final class OperationReportWriter
         $writer->openToFile($path);
 
         try {
-            $writer->addRow(Row::fromValues(
-                $data->headings,
-                (new Style)->setFontBold()->setFontColor('FFFFFF')->setBackgroundColor('052F60'),
-            ));
+            $headerStyle = (new Style)->setFontBold()->setFontColor('FFFFFF')->setBackgroundColor('052F60');
+            $totalStyle = (new Style)->setFontBold()->setBackgroundColor('E2E8F0');
+            $sectionStyle = (new Style)->setFontBold()->setFontColor('052F60');
+
+            $writer->addRow(Row::fromValues($data->headings, $headerStyle));
 
             foreach ($data->rows as $row) {
                 $writer->addRow(Row::fromValues(array_map(self::cell(...), $row)));
             }
 
             if ($data->totals !== null) {
-                $writer->addRow(Row::fromValues(
-                    array_map(self::cell(...), $data->totals),
-                    (new Style)->setFontBold()->setBackgroundColor('E2E8F0'),
-                ));
+                $writer->addRow(Row::fromValues(array_map(self::cell(...), $data->totals), $totalStyle));
+            }
+
+            foreach ($data->sections as $section) {
+                $writer->addRow(Row::fromValues([]));
+                $writer->addRow(Row::fromValues([$section['title']], $sectionStyle));
+                $writer->addRow(Row::fromValues($section['headings'], $headerStyle));
+
+                foreach ($section['rows'] as $row) {
+                    $writer->addRow(Row::fromValues(array_map(self::cell(...), $row)));
+                }
+
+                if (($section['totals'] ?? null) !== null) {
+                    $writer->addRow(Row::fromValues(array_map(self::cell(...), $section['totals']), $totalStyle));
+                }
             }
         } finally {
             $writer->close();
@@ -101,6 +127,23 @@ final class OperationReportWriter
 
         $numericColumns = array_values(array_keys(array_intersect($keep, $data->numericColumns)));
 
+        $sections = [];
+
+        foreach ($data->sections as $section) {
+            $sectionRows = array_map(
+                static fn (array $row): array => array_map(self::cell(...), $row),
+                $section['rows'],
+            );
+
+            $sections[] = [
+                'title' => $section['title'],
+                'headings' => $section['headings'],
+                'rowChunks' => array_chunk($sectionRows, self::PDF_ROWS_PER_TABLE),
+                'totals' => ($section['totals'] ?? null) === null ? null : array_map(self::cell(...), $section['totals']),
+                'numericColumns' => $section['numericColumns'] ?? [],
+            ];
+        }
+
         $pdf = Pdf::loadView('documents.operation-report', [
             'title' => $data->title,
             'headings' => $pick($data->headings),
@@ -109,6 +152,7 @@ final class OperationReportWriter
             'numericColumns' => $numericColumns,
             'criteria' => $data->criteria,
             'notice' => $notice,
+            'sections' => $sections,
             'generatedAt' => now(),
             'logoDataUri' => self::logoDataUri(),
         ])

@@ -35,6 +35,7 @@ it('fusiona mensajes de cupón desde el payload en cumple-anim', function (): vo
         ->and($cumpleAnim)->toContain('birthday_coupon_status_')
         ->and($cumpleAnim)->toContain('scriptBirthdayGreetingText')
         ->and($cumpleAnim)->toContain('celebrantDisplayName')
+        ->and($cumpleAnim)->toContain('shortGreetingName')
         ->and($cumpleAnim)->toContain('Te preparamos cuatro regalos')
         ->and($cumpleAnim)->toContain('MobileCouponCarousel3D')
         ->and($cumpleAnim)->toContain('CouponClickOnceProvider')

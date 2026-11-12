@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -32,10 +33,7 @@ class ProspectAgent extends Model
         'instagram',
         'initial_observ',
         'reference_by',
-        'initial_observ',
-        'instagram',
-        'classification',
-
+        'travel_agency_id',
     ];
 
     public function prospect_agent_observations()
@@ -97,6 +95,16 @@ class ProspectAgent extends Model
     public function country()
     {
         return $this->belongsTo(Country::class);
+    }
+
+    /**
+     * Agencia de viaje creada al pasar el prospecto a «Aliado activo».
+     *
+     * @return BelongsTo<TravelAgency, $this>
+     */
+    public function travelAgency(): BelongsTo
+    {
+        return $this->belongsTo(TravelAgency::class);
     }
 
     public function created_by()

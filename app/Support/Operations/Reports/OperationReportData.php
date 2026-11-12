@@ -8,7 +8,8 @@ namespace App\Support\Operations\Reports;
  * Contenido de un reporte listo para escribir en cualquier formato.
  *
  * Las filas son un iterable perezoso: el detalle y la tabla completa se leen
- * por lotes y nunca se cargan enteros en memoria.
+ * por lotes y nunca se cargan enteros en memoria. Las secciones adicionales
+ * (p. ej. conciliación) se escriben debajo de la tabla principal.
  */
 final readonly class OperationReportData
 {
@@ -20,6 +21,7 @@ final readonly class OperationReportData
      * @param  list<string>  $criteria  Periodo y filtros en texto, para el encabezado del PDF.
      * @param  list<int>|null  $pdfColumns  Columnas que caben en el PDF horizontal; null = todas.
      * @param  int|null  $totalRows  Filas antes de aplicar el tope del PDF (sólo resúmenes).
+     * @param  list<array{title: string, headings: list<string>, rows: list<list<scalar|null>>, totals?: list<scalar|null>|null, numericColumns?: list<int>}>  $sections
      */
     public function __construct(
         public string $title,
@@ -30,5 +32,6 @@ final readonly class OperationReportData
         public array $criteria = [],
         public ?array $pdfColumns = null,
         public ?int $totalRows = null,
+        public array $sections = [],
     ) {}
 }

@@ -10,6 +10,7 @@ use App\Models\AfilliationCorporatePlan;
 use App\Models\User;
 use App\Services\CorporateAffiliateRemovalService;
 use App\Support\AffiliationCorporates\Population\PopulationUpdateApplier;
+use App\Support\Affiliations\ActiveBilling\ActivePopulationBilling;
 use App\Support\SecurityAudit;
 use App\Support\Upgrades\UpgradeFirstPaymentBilling;
 use Illuminate\Database\Eloquent\Builder;
@@ -77,6 +78,22 @@ final class ActivePopulationTotals
     }
 
     /**
+     * Quita las columnas de población activa para poder hacer COUNT/SUM sobre la
+     * misma query del listado (widgets) sin chocar con ONLY_FULL_GROUP_BY.
+     *
+     * @param  Builder<AffiliationCorporate>  $query
+     * @return Builder<AffiliationCorporate>
+     */
+    public static function withoutLiveSelects(Builder $query): Builder
+    {
+        $base = $query->getQuery();
+        $base->columns = null;
+        $base->bindings['select'] = [];
+
+        return $query;
+    }
+
+    /**
      * Totales vivos de una fila de la tabla (usa las subconsultas si están; si no, consulta).
      *
      * @return array{persons: int, fee_anual: float, total_amount: float, without_fee: int, stored: array{persons: int, fee_anual: float, total_amount: float}, differs: bool}
@@ -127,6 +144,7 @@ final class ActivePopulationTotals
      *     live: array{persons: int, fee_anual: float, total_amount: float, without_fee: int, stored: array{persons: int, fee_anual: float, total_amount: float}, differs: bool},
      *     rows: list<array{id: int, label: string, fee: float, before: int, after: int}>,
      *     rows_updatable: bool,
+     *     plan_rows_amounts_differ: bool,
      *     unresolved: list<string>,
      *     unresolved_total: int,
      *     blocking: string|null
@@ -168,14 +186,37 @@ final class ActivePopulationTotals
             'after' => $counts[(int) $row->getKey()] ?? 0,
         ])->values()->all();
 
+        $planRowsAmountsDiffer = $unresolvedTotal === 0 && $rows !== [] && self::planRowsDiffer($owner);
+
         return [
             'live' => $live,
             'rows' => $rows,
             'rows_updatable' => $unresolvedTotal === 0 && $rows !== [],
+            'plan_rows_amounts_differ' => $planRowsAmountsDiffer,
             'unresolved' => $unresolved,
             'unresolved_total' => $unresolvedTotal,
             'blocking' => self::blockingReason($owner, $live),
         ];
+    }
+
+    /**
+     * Indica si las filas de plan no cuadran con la suma de tarifas de afiliados activos.
+     */
+    public static function planRowsDiffer(AffiliationCorporate $owner): bool
+    {
+        $report = CorporatePlanRowSync::sync($owner, [], null, false);
+
+        if ($report['created'] > 0) {
+            return true;
+        }
+
+        foreach ($report['rows'] as $row) {
+            if (($row['before'] ?? null) !== ($row['after'] ?? null)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -215,23 +256,23 @@ final class ActivePopulationTotals
                     'rows' => array_map(static fn (array $row): array => ['id' => $row['id'], 'total_persons' => $row['before']], $preview['rows']),
                 ];
 
-                $billing = \App\Support\Affiliations\ActiveBilling\ActivePopulationBilling::plan($locked);
-                if (! $live['differs'] && $billing['collections'] === [] && (! $preview['rows_updatable'] || collect($preview['rows'])->every(static fn (array $row): bool => $row['before'] === $row['after']))) {
-                    throw new RuntimeException('Los totales y los avisos ya cuadran con la población activa: no hay nada que recalcular.');
+                $billing = ActivePopulationBilling::plan($locked);
+                $personsRowsChanged = $preview['rows_updatable'] && collect($preview['rows'])->contains(static fn (array $row): bool => $row['before'] !== $row['after']);
+                if (! $live['differs'] && $billing['collections'] === [] && ! $personsRowsChanged && ! $preview['plan_rows_amounts_differ']) {
+                    throw new RuntimeException('Los totales, subtotales de plan y los avisos ya cuadran con la población activa: no hay nada que recalcular.');
                 }
 
                 /** Totales y avisos POR PAGAR del año contra la población activa. */
-                $applied = \App\Support\Affiliations\ActiveBilling\ActivePopulationBilling::sync($locked, $user, 'Recalcular totales: '.$reason);
+                $applied = ActivePopulationBilling::sync($locked, $user, 'Recalcular totales: '.$reason);
 
+                $syncReport = ['updated' => 0, 'created' => 0];
                 if ($preview['rows_updatable']) {
-                    foreach ($preview['rows'] as $row) {
-                        $planRow = AfilliationCorporatePlan::query()->find($row['id']);
-                        if ($planRow instanceof AfilliationCorporatePlan && (int) $planRow->total_persons !== $row['after']) {
-                            $planRow->total_persons = $row['after'];
-                            CorporateAffiliateRemovalService::recalculateCorporatePlanRowTotals($planRow);
-                            $planRow->save();
-                        }
-                    }
+                    $syncReport = CorporatePlanRowSync::sync(
+                        $locked,
+                        [],
+                        (string) ($user->email ?? $user->getKey()),
+                        true,
+                    );
                 }
 
                 return [
@@ -242,9 +283,10 @@ final class ActivePopulationTotals
                         'total_amount' => $live['total_amount'],
                         'rows' => $preview['rows_updatable'] ? array_map(static fn (array $row): array => ['id' => $row['id'], 'total_persons' => $row['after']], $preview['rows']) : null,
                     ],
-                    'rows_updated' => $preview['rows_updatable'],
+                    'rows_updated' => $preview['rows_updatable'] && (($syncReport['updated'] ?? 0) > 0 || ($syncReport['created'] ?? 0) > 0),
                     'unresolved_total' => $preview['unresolved_total'],
                     'collections' => $applied['collections'],
+                    'plan_rows_sync' => $syncReport,
                 ];
             });
         } finally {
@@ -259,10 +301,17 @@ final class ActivePopulationTotals
             'rows_updated' => $result['rows_updated'],
             'unresolved_affiliates' => $result['unresolved_total'],
             'collections' => $result['collections'],
+            'plan_rows_sync' => $result['plan_rows_sync'] ?? null,
             'reason' => $reason,
         ], $user);
 
-        return ['before' => $result['before'], 'after' => $result['after'], 'rows_updated' => $result['rows_updated'], 'collections' => $result['collections']];
+        return [
+            'before' => $result['before'],
+            'after' => $result['after'],
+            'rows_updated' => $result['rows_updated'],
+            'collections' => $result['collections'],
+            'plan_rows_sync' => $result['plan_rows_sync'] ?? null,
+        ];
     }
 
     /**

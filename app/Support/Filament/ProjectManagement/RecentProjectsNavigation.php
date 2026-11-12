@@ -9,6 +9,7 @@ use App\Models\ProjectManagement\Project;
 use Filament\Navigation\NavigationItem;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Throwable;
 
 final class RecentProjectsNavigation
 {
@@ -17,31 +18,36 @@ final class RecentProjectsNavigation
      */
     public static function items(): array
     {
-        if (! Schema::hasTable('projects')) {
+        try {
+            if (! Schema::hasTable('projects')) {
+                return [];
+            }
+
+            $columns = ['id', 'name', 'color', 'icon'];
+            if (! Schema::hasColumn('projects', 'color')) {
+                $columns = ['id', 'name'];
+            }
+
+            return Project::query()
+                ->latest('id')
+                ->limit(5)
+                ->get($columns)
+                ->values()
+                ->map(function (Project $project, int $index): NavigationItem {
+                    $icon = filled($project->icon ?? null)
+                        ? (string) $project->icon
+                        : ProjectManagementProjectAppearance::DEFAULT_ICON;
+
+                    return NavigationItem::make(Str::limit($project->name, 34))
+                        ->group('PROYECTOS RECIENTES')
+                        ->icon($icon)
+                        ->sort($index + 1)
+                        ->url(fn (): string => ProjectResource::getUrl('edit', ['record' => $project], panel: 'projects'));
+                })
+                ->all();
+        } catch (Throwable) {
+            // Si la conexión/default está mal (p. ej. sqlite sin archivo), no tumbar el panel.
             return [];
         }
-
-        $columns = ['id', 'name', 'color', 'icon'];
-        if (! Schema::hasColumn('projects', 'color')) {
-            $columns = ['id', 'name'];
-        }
-
-        return Project::query()
-            ->latest('id')
-            ->limit(5)
-            ->get($columns)
-            ->values()
-            ->map(function (Project $project, int $index): NavigationItem {
-                $icon = filled($project->icon ?? null)
-                    ? (string) $project->icon
-                    : ProjectManagementProjectAppearance::DEFAULT_ICON;
-
-                return NavigationItem::make(Str::limit($project->name, 34))
-                    ->group('PROYECTOS RECIENTES')
-                    ->icon($icon)
-                    ->sort($index + 1)
-                    ->url(fn (): string => ProjectResource::getUrl('edit', ['record' => $project], panel: 'projects'));
-            })
-            ->all();
     }
 }

@@ -44,7 +44,9 @@ use App\Models\Supplier;
 use App\Observers\ObservationCommercialStructureObserver;
 use App\Observers\OrgStructureRrhhObserver;
 use App\Observers\PlanGeneratorObserver;
+use App\Observers\ProspectAgentTravelAgencyObserver;
 use App\Observers\SupplierReportPdfObserver;
+use App\Support\Filesystem\WindowsSafeFilesystem;
 use App\Support\LivePresence\LivePresenceRecorder;
 use App\Support\LivePresence\QueueActivityRecorder;
 use App\Support\LivePresence\SecurityAuthListener;
@@ -68,6 +70,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\Validated;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
@@ -85,6 +88,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->app->singleton('files', fn (): Filesystem => new WindowsSafeFilesystem);
+        }
+
         /** Bitácora del panel de Telemedicina: una instancia por petición. */
         $this->app->scoped(TelemedicinePanelLog::class);
 
@@ -208,6 +215,7 @@ class AppServiceProvider extends ServiceProvider
         ObservationCommercialStructure::observe(ObservationCommercialStructureObserver::class);
         PlanGenerator::observe(PlanGeneratorObserver::class);
         Supplier::observe(SupplierReportPdfObserver::class);
+        \App\Models\ProspectAgent::observe(ProspectAgentTravelAgencyObserver::class);
         /** Dashboard de proveedores: quién registró/actualizó, bitácora del equipo y caché. */
         Supplier::observe(\App\Observers\ProviderActivityObserver::class);
         \App\Models\DoctorNurse::observe(\App\Observers\ProviderActivityObserver::class);

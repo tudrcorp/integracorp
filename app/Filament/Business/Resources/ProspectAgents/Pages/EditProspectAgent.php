@@ -4,7 +4,11 @@ namespace App\Filament\Business\Resources\ProspectAgents\Pages;
 
 use App\Filament\Business\Resources\ProspectAgents\ProspectAgentDeletionActions;
 use App\Filament\Business\Resources\ProspectAgents\ProspectAgentResource;
+use App\Filament\Business\Resources\TravelAgencies\TravelAgencyResource;
 use App\Models\ProspectAgent;
+use App\Models\TravelAgency;
+use App\Support\ProspectAgents\ProspectAgentToTravelAgencyConverter;
+use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -81,5 +85,34 @@ class EditProspectAgent extends EditRecord
         $data['updated_by'] = Auth::user()->name;
 
         return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        /** @var ProspectAgent $prospect */
+        $prospect = $this->getRecord()->refresh();
+
+        if (! ProspectAgentToTravelAgencyConverter::isEligible($prospect)) {
+            return;
+        }
+
+        $agency = ProspectAgentToTravelAgencyConverter::existingAgency($prospect)
+            ?? ProspectAgentToTravelAgencyConverter::convertIfEligible($prospect);
+
+        if (! $agency instanceof TravelAgency) {
+            return;
+        }
+
+        Notification::make()
+            ->success()
+            ->title('Aliado activo en Agencias de viaje')
+            ->body('El prospecto ya figura en el listado de agencias de viaje. Puedes abrir su ficha para completar IDs, comisión o crédito.')
+            ->actions([
+                Action::make('verAgencia')
+                    ->label('Ver agencia')
+                    ->url(TravelAgencyResource::getUrl('edit', ['record' => $agency]))
+                    ->button(),
+            ])
+            ->send();
     }
 }

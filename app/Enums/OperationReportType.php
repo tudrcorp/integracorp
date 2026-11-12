@@ -11,6 +11,8 @@ namespace App\Enums;
  * de servicio). Los de inventario salen del inventario propio (Diagnomóvil):
  * existencias por ubicación y el libro de entradas y salidas. El de facturación
  * sale de las facturas de medicamentos al paciente (una fila por factura).
+ * El de medicamentos por caso sale de lo prescrito por el médico
+ * (`telemedicine_patient_medications`), con costos de cotización y orden de servicio.
  */
 enum OperationReportType: string
 {
@@ -33,12 +35,15 @@ enum OperationReportType: string
     case InventoryIdle = 'inventory_idle';
     case InventoryReconciliation = 'inventory_reconciliation';
     case MedicationInvoices = 'medication_invoices';
+    case CaseMedications = 'case_medications';
 
     public const GROUP_SERVICES = 'services';
 
     public const GROUP_INVENTORY = 'inventory';
 
     public const GROUP_BILLING = 'billing';
+
+    public const GROUP_MEDICATIONS = 'medications';
 
     public function label(): string
     {
@@ -62,6 +67,7 @@ enum OperationReportType: string
             self::InventoryIdle => 'Productos sin movimiento',
             self::InventoryReconciliation => 'Conciliación de existencias',
             self::MedicationInvoices => 'Facturas a pacientes',
+            self::CaseMedications => 'Medicamentos por caso (cubiertos y no cubiertos)',
         };
     }
 
@@ -87,6 +93,7 @@ enum OperationReportType: string
             self::InventoryIdle => 'Productos con existencia que no tuvieron salidas en el periodo.',
             self::InventoryReconciliation => 'Diferencias entre almacén, ficha de inventario y movimientos registrados.',
             self::MedicationInvoices => 'Facturas al paciente por lo no cubierto (medicamentos, laboratorios, estudios, especialistas), con totales por cobrar y cobrados.',
+            self::CaseMedications => 'Medicamentos asignados por el médico a cada caso: detalle (sin indicaciones), cobertura, costos de cotización y de orden de servicio, más conciliación por caso y paciente.',
         };
     }
 
@@ -112,17 +119,19 @@ enum OperationReportType: string
             self::InventoryIdle => 'heroicon-o-pause-circle',
             self::InventoryReconciliation => 'heroicon-o-clipboard-document-check',
             self::MedicationInvoices => 'heroicon-o-receipt-percent',
+            self::CaseMedications => 'heroicon-o-beaker',
         };
     }
 
     /**
-     * Sección del selector: servicios, inventario o facturación.
+     * Sección del selector: servicios, inventario, facturación o medicamentos.
      */
     public function group(): string
     {
         return match (true) {
             str_starts_with($this->value, 'inventory_') => self::GROUP_INVENTORY,
             $this === self::MedicationInvoices => self::GROUP_BILLING,
+            $this === self::CaseMedications => self::GROUP_MEDICATIONS,
             default => self::GROUP_SERVICES,
         };
     }
@@ -130,6 +139,11 @@ enum OperationReportType: string
     public function isMedicationInvoices(): bool
     {
         return $this === self::MedicationInvoices;
+    }
+
+    public function isCaseMedications(): bool
+    {
+        return $this === self::CaseMedications;
     }
 
     public function isInventory(): bool
@@ -163,6 +177,7 @@ enum OperationReportType: string
             self::InventoryBalance, self::InventoryReconciliation => ['producto por ubicación', 'productos por ubicación'],
             self::InventoryGeneral, self::InventoryLowStock, self::InventoryConsumption, self::InventoryIdle => ['producto', 'productos'],
             self::MedicationInvoices => ['factura', 'facturas'],
+            self::CaseMedications => ['medicamento', 'medicamentos'],
             default => ['servicio', 'servicios'],
         };
     }
@@ -195,7 +210,14 @@ enum OperationReportType: string
      */
     public function isDetail(): bool
     {
-        return in_array($this, [self::ServiceDetail, self::DeniedCases, self::FullTable, self::InventoryMovements, self::MedicationInvoices], true);
+        return in_array($this, [
+            self::ServiceDetail,
+            self::DeniedCases,
+            self::FullTable,
+            self::InventoryMovements,
+            self::MedicationInvoices,
+            self::CaseMedications,
+        ], true);
     }
 
     /**
@@ -204,7 +226,7 @@ enum OperationReportType: string
      */
     public function hasManyRows(): bool
     {
-        if ($this === self::MedicationInvoices) {
+        if ($this === self::MedicationInvoices || $this === self::CaseMedications) {
             // Se acota y va a cola solo si de verdad es grande (ver OperationReportGenerator::shouldQueue).
             return false;
         }

@@ -2,17 +2,43 @@
     $live = $preview['live'];
     $money = fn (float $value): string => 'US$ '.number_format($value, 2, ',', '.');
     $rowsChange = collect($preview['rows'])->contains(fn (array $row): bool => $row['before'] !== $row['after']);
+    $comparisonRows = [
+        [
+            'rowLabel' => 'Población',
+            'before' => $live['stored']['persons'].' pers.',
+            'after' => $live['persons'].' pers.',
+            'changes' => $live['stored']['persons'] !== $live['persons'],
+        ],
+        [
+            'rowLabel' => 'Tarifa anual',
+            'before' => $money($live['stored']['fee_anual']),
+            'after' => $money($live['fee_anual']),
+            'changes' => abs($live['stored']['fee_anual'] - $live['fee_anual']) >= 0.01,
+        ],
+        [
+            'rowLabel' => 'Cuota ('.mb_strtolower((string) $record->payment_frequency).')',
+            'before' => $money($live['stored']['total_amount']),
+            'after' => $money($live['total_amount']),
+            'changes' => abs($live['stored']['total_amount'] - $live['total_amount']) >= 0.01,
+        ],
+    ];
 @endphp
 
-<div class="space-y-3 text-sm">
+<div class="space-y-3 text-sm" wire:ignore>
     @if ($preview['blocking'])
         <div class="rounded-lg bg-rose-50 px-3 py-2 text-rose-800 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-200 dark:ring-rose-400/30">
             <strong>No se puede recalcular:</strong> {{ $preview['blocking'] }}
         </div>
-    @elseif (! $live['differs'] && ! ($preview['rows_updatable'] && $rowsChange))
+    @elseif (! $live['differs'] && ! ($preview['rows_updatable'] && $rowsChange) && ! ($preview['plan_rows_amounts_differ'] ?? false) && ($billing['collections'] ?? []) === [])
         <div class="rounded-lg bg-emerald-50 px-3 py-2 text-emerald-800 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-200 dark:ring-emerald-400/30">
             Los totales guardados ya cuadran con la población activa. No hay nada que recalcular.
         </div>
+    @endif
+
+    @if ($preview['plan_rows_amounts_differ'] ?? false)
+        <p class="rounded-lg bg-amber-50 px-3 py-2 text-amber-900 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-400/30">
+            Los subtotales de las filas de plan no coinciden con la suma de tarifas de los afiliados activos. Al guardar se alinearán.
+        </p>
     @endif
 
     <div class="overflow-x-auto rounded-lg ring-1 ring-gray-950/5 dark:ring-white/10">
@@ -25,15 +51,11 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-950/5 dark:divide-white/10">
-                @foreach ([
-                    ['Población', $live['stored']['persons'].' pers.', $live['persons'].' pers.', $live['stored']['persons'] !== $live['persons']],
-                    ['Tarifa anual', $money($live['stored']['fee_anual']), $money($live['fee_anual']), abs($live['stored']['fee_anual'] - $live['fee_anual']) >= 0.01],
-                    ['Cuota ('.mb_strtolower((string) $record->payment_frequency).')', $money($live['stored']['total_amount']), $money($live['total_amount']), abs($live['stored']['total_amount'] - $live['total_amount']) >= 0.01],
-                ] as [$label, $before, $after, $changes])
+                @foreach ($comparisonRows as $comparisonRow)
                     <tr>
-                        <td class="px-3 py-2 font-medium text-gray-700 dark:text-gray-200">{{ $label }}</td>
-                        <td class="px-3 py-2 text-gray-500 dark:text-gray-400 {{ $changes ? 'line-through' : '' }}">{{ $before }}</td>
-                        <td class="px-3 py-2 {{ $changes ? 'font-semibold text-amber-700 dark:text-amber-300' : 'text-gray-950 dark:text-white' }}">{{ $after }}</td>
+                        <td class="px-3 py-2 font-medium text-gray-700 dark:text-gray-200">{{ $comparisonRow['rowLabel'] }}</td>
+                        <td class="px-3 py-2 text-gray-500 dark:text-gray-400 {{ $comparisonRow['changes'] ? 'line-through' : '' }}">{{ $comparisonRow['before'] }}</td>
+                        <td class="px-3 py-2 {{ $comparisonRow['changes'] ? 'font-semibold text-amber-700 dark:text-amber-300' : 'text-gray-950 dark:text-white' }}">{{ $comparisonRow['after'] }}</td>
                     </tr>
                 @endforeach
             </tbody>

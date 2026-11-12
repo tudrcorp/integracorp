@@ -94,6 +94,8 @@ it('expone resumen y copias testigo desde el centro de notificaciones', function
         ->toContain('Email mal escrito o inválido')
         ->toContain('registerRunConfiguration')
         ->toContain('recordValidationBatch')
+        ->toContain('marketingtudoctorgroup@gmail.com')
+        ->toContain('CELEBRATION_BCC_EMAILS')
         ->not->toContain('ScheduledNotificationPhones::all()');
 
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Services/NotificationMasiveService.php'))

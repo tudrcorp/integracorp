@@ -21,6 +21,8 @@ class AffiliationCorporatesByAgentTable extends TableWidget
 
     protected string $view = 'filament.widgets.affiliation-corporates-ranking-table-widget';
 
+    protected static bool $isLazy = false;
+
     protected static ?int $sort = 5;
 
     protected int|string|array $columnSpan = 1;
@@ -58,7 +60,7 @@ class AffiliationCorporatesByAgentTable extends TableWidget
         $this->filterYear = $year;
         $this->filterMonth = $month;
         $this->selectedAgentIdForAffiliations = null;
-        $this->resetPage();
+        $this->resetRankingTablePage();
         $this->flushCachedTableRecords();
 
         $this->dispatch('affiliation-corporates-agent-filter-end');
@@ -71,7 +73,7 @@ class AffiliationCorporatesByAgentTable extends TableWidget
             $this->filteredAgencyCode = $agencyCode;
             $this->filteredAgencyName = $agencyName;
             $this->selectedAgentIdForAffiliations = null;
-            $this->resetPage();
+            $this->resetRankingTablePage();
             $this->flushCachedTableRecords();
         }
 
@@ -90,7 +92,7 @@ class AffiliationCorporatesByAgentTable extends TableWidget
         $this->filteredAgencyCode = null;
         $this->filteredAgencyName = null;
         $this->selectedAgentIdForAffiliations = null;
-        $this->resetPage();
+        $this->resetRankingTablePage();
         $this->flushCachedTableRecords();
 
         $this->dispatch('affiliation-corporates-agent-filter-end');

@@ -45,6 +45,7 @@ class TravelAgency extends Model
         'parent_id',
         'registration_token',
         'agency_registration_token',
+        'prospect_agent_id',
 
         'logo',
         'nameSecundario',
@@ -96,6 +97,16 @@ class TravelAgency extends Model
         return $this->hasMany(TravelAgent::class)
             ->orderByDesc('created_at')
             ->orderByDesc('id');
+    }
+
+    /**
+     * Prospecto de Captación del que nació esta agencia (si aplica).
+     *
+     * @return BelongsTo<ProspectAgent, $this>
+     */
+    public function prospectAgent(): BelongsTo
+    {
+        return $this->belongsTo(ProspectAgent::class);
     }
 
     public function parentAgency(): BelongsTo

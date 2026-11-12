@@ -156,6 +156,56 @@ it('arma el almanaque del mes y el detalle de una sola persona', function (): vo
         ->toBe('guardia-oficinas-2099-03-ana-almanaque-pdf.pdf');
 });
 
+it('muestra todos los colaboradores del día en el almanaque sin ocultarlos con +N más', function (): void {
+    $month = Carbon::parse('2099-04-01');
+    $monday = TdgCalendarDay::query()->firstOrCreate(['calendar_date' => '2099-04-06']);
+    $offices = [
+        TdgCalendarOffice::CentralLido,
+        TdgCalendarOffice::FarmadocSanBernardino,
+        TdgCalendarOffice::FarmadocLasDelicias,
+        TdgCalendarOffice::HomeOffice,
+        TdgCalendarOffice::CentralLido,
+        TdgCalendarOffice::FarmadocSanBernardino,
+    ];
+    $names = [];
+
+    foreach ($offices as $index => $office) {
+        $person = RrhhColaborador::query()->create([
+            'fullName' => sprintf('Persona Almanaque %02d PDF', $index + 1),
+            'status' => 'activo',
+            'created_by' => 'pest',
+        ]);
+        $names[] = $person->fullName;
+
+        TdgCalendarOfficeAssignment::query()->create([
+            'tdg_calendar_day_id' => $monday->id,
+            'office' => $office,
+            'rrhh_colaborador_id' => $person->id,
+        ]);
+    }
+
+    $document = TdgCalendarSchedulePdf::document(TdgCalendarSchedulePdf::OFFICES, $month, null);
+    $dayCell = collect($document['weeks'])
+        ->flatten(1)
+        ->first(fn (array $day): bool => $day['in_month'] && $day['day'] === 6);
+
+    expect($dayCell)->not->toBeNull()
+        ->and($dayCell['lines'])->toHaveCount(6)
+        ->and($dayCell)->not->toHaveKey('extra');
+
+    $html = view('documents.tdg-calendar-schedule', [
+        'document' => $document,
+        'generatedAt' => '12/11/2026 09:45',
+    ])->render();
+
+    expect($html)->not->toContain(' más</div>')
+        ->not->toMatch('/\+\d+\s+más/');
+
+    foreach ($names as $name) {
+        expect($html)->toContain(mb_substr($name, 0, 17));
+    }
+});
+
 it('rechaza la descarga a quien no puede ver la guardia', function (): void {
     $stranger = schedulePdfUser('Ajeno', ['NEGOCIOS'], id: 987650041);
     $request = Request::create('/guardias/cronograma/pdf?tipo=oficinas&mes=2099-03', 'GET');

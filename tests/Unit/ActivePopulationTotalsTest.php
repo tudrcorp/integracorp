@@ -16,6 +16,10 @@ use Illuminate\Support\Str;
 uses(Tests\TestCase::class);
 
 beforeEach(function (): void {
+    if (DB::connection()->getDriverName() === 'sqlite') {
+        test()->markTestSkipped('Requiere el esquema MySQL de desarrollo (transacción revertida).');
+    }
+
     DB::beginTransaction();
     Mail::fake();
     Queue::fake();
@@ -82,6 +86,25 @@ it('calcula población, tarifa y cuota con los afiliados activos, igual en la ta
         ->and($fromTable['differs'])->toBeTrue()
         ->and($fromTable['stored'])->toBe(['persons' => 5, 'fee_anual' => 999.0, 'total_amount' => 249.75])
         ->and(array_diff_key($direct, ['stored' => 1]))->toBe(array_diff_key($fromTable, ['stored' => 1]));
+});
+
+it('recalcula subtotales de plan aunque la población de la fila ya sea la correcta', function (): void {
+    $f = aptFixture();
+    $f['row']->forceFill([
+        'total_persons' => 3,
+        'subtotal_anual' => 999,
+        'subtotal_quarterly' => 249.75,
+        'subtotal_biannual' => 499.5,
+    ])->save();
+
+    expect(ActivePopulationTotals::preview($f['owner'])['plan_rows_amounts_differ'])->toBeTrue();
+
+    ActivePopulationTotals::recalculate($f['owner'], aptActor(), 'Los subtotales de plan no cuadraban con las tarifas.');
+
+    $row = $f['row']->fresh();
+    expect((int) $row->total_persons)->toBe(3)
+        ->and((float) $row->subtotal_anual)->toBe(200.0)
+        ->and((float) $row->subtotal_quarterly)->toBe(50.0);
 });
 
 it('recalcula la afiliación y sus filas de plan, deja traza y no repite si ya cuadra', function (): void {

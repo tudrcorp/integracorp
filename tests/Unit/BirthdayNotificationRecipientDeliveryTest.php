@@ -306,7 +306,8 @@ it('copia en oculto el correo animado y avisa por whatsapp al número fijo', fun
     Mail::assertQueued(NotificationMasiveMailBirthday::class, function (NotificationMasiveMailBirthday $mail): bool {
         return $mail->hasTo('cumple@example.com')
             && $mail->hasBcc('solrodriguez@tudrencasa.com')
-            && $mail->hasBcc('aaular@tudrencasa.com');
+            && $mail->hasBcc('marketingtudoctorgroup@gmail.com')
+            && ! $mail->hasBcc('aaular@tudrencasa.com');
     });
 
     BirthdayNotificationRunReport::queueWitnessWhatsAppCopies(

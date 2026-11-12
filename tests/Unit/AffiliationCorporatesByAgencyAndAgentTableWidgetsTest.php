@@ -46,7 +46,9 @@ it('define el widget de afiliaciones por agencia con columnas requeridas', funct
         ->not->toContain('->tooltip(')
         ->toContain('dispatchPeriodToAgentTable')
         ->toContain('syncPeriodToAgentTable')
-        ->toContain('affiliation-corporates-period-changed');
+        ->toContain('affiliation-corporates-period-changed')
+        ->toContain('protected static bool $isLazy = false')
+        ->toContain('resetRankingTablePage');
 });
 
 it('define el widget de afiliaciones por agente con columnas requeridas', function (): void {
@@ -67,7 +69,18 @@ it('define el widget de afiliaciones por agente con columnas requeridas', functi
         ->toContain("->label('Ver afiliaciones')")
         ->toContain('#[On(\'affiliation-corporates-period-changed\')]')
         ->toContain('applyPeriodFilter')
-        ->toContain('rankingPeriodLabel()');
+        ->toContain('rankingPeriodLabel()')
+        ->toContain('protected static bool $isLazy = false')
+        ->toContain('resetRankingTablePage');
+});
+
+it('protege resetPage de ranking corporativo si la tabla aún no está inicializada', function (): void {
+    $concern = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/AffiliationCorporates/Widgets/Concerns/InteractsWithAffiliationCorporatesRankingTable.php');
+
+    expect($concern)->not->toBeFalse()
+        ->toContain('function resetRankingTablePage')
+        ->toContain('isset($this->table)')
+        ->toContain('bootedInteractsWithTable()');
 });
 
 it('coloca las tablas lado a lado en la misma fila', function (): void {

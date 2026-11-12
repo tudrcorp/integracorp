@@ -21,6 +21,8 @@ class AffiliationsByAgencyTable extends TableWidget
 
     protected string $view = 'filament.widgets.affiliations-ranking-table-widget';
 
+    protected static bool $isLazy = false;
+
     protected static ?int $sort = 6;
 
     protected int|string|array $columnSpan = 1;
@@ -52,7 +54,7 @@ class AffiliationsByAgencyTable extends TableWidget
 
     protected function syncPeriodToAgentTable(): void
     {
-        $this->resetPage();
+        $this->resetRankingTablePage();
         $this->flushCachedTableRecords();
 
         $this->dispatch('affiliations-agent-filter-start');

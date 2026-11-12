@@ -55,8 +55,7 @@
         }
 
         .calendar td {
-            padding: 4px;
-            height: 68px;
+            padding: 3px;
         }
 
         .day-out {
@@ -65,20 +64,15 @@
         }
 
         .day-number {
-            font-size: 10px;
+            font-size: 9px;
             font-weight: bold;
+            margin-bottom: 1px;
         }
 
         .line {
-            font-size: 7px;
-            line-height: 1.25;
+            font-size: 6.5px;
+            line-height: 1.2;
             color: #0f172a;
-        }
-
-        .extra {
-            font-size: 7px;
-            color: #0369a1;
-            font-weight: bold;
         }
 
         .section-title {
@@ -150,9 +144,6 @@
                                 @foreach ($day['lines'] as $line)
                                     <div class="line">{{ $line }}</div>
                                 @endforeach
-                                @if ($day['extra'] > 0)
-                                    <div class="extra">+{{ $day['extra'] }} más</div>
-                                @endif
                             @endif
                         </td>
                     @endforeach
@@ -205,7 +196,7 @@
 
     <table class="footer">
         <tr>
-            <td>Generado el {{ $generatedAt }}. El almanaque resume el mes; el detalle lista cada asignación.</td>
+            <td>Generado el {{ $generatedAt }}. El almanaque muestra todas las asignaciones del mes; el detalle las agrupa por colaborador.</td>
         </tr>
     </table>
 </body>

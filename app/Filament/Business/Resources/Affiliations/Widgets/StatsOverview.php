@@ -4,6 +4,7 @@ namespace App\Filament\Business\Resources\Affiliations\Widgets;
 
 use App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations;
 use App\Filament\Widgets\Concerns\InteractsWithPageTable;
+use App\Support\Affiliations\ActivePopulationIndividualTotals;
 use Carbon\Carbon;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -27,9 +28,9 @@ class StatsOverview extends StatsOverviewWidget
         $now = Carbon::now();
         $mesActualNombre = $now->translatedFormat('F');
 
-        $stats = $this->getPageTableQuery()
-            ->reorder()
-            ->where('status', 'ACTIVA')
+        $stats = ActivePopulationIndividualTotals::withoutLiveSelects(
+            $this->getPageTableQuery()->reorder()->where('status', 'ACTIVA'),
+        )
             ->selectRaw('COUNT(*) as total_count')
             ->selectRaw('SUM(CASE WHEN MONTH(created_at) = ? AND YEAR(created_at) = ? THEN 1 ELSE 0 END) as month_count', [
                 $now->month,

@@ -14,6 +14,7 @@ use App\Models\OperationInventoryUbication;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\OperationsDashboardMetrics;
+use App\Support\Operations\Reports\CaseMedicationReportBuilder;
 use App\Support\Operations\Reports\MedicationInvoiceReportBuilder;
 use App\Support\Operations\Reports\OperationInventoryReportAccess;
 use App\Support\Operations\Reports\OperationInventoryReportBuilder;
@@ -51,8 +52,9 @@ use UnitEnum;
 /**
  * Generador de reportes de Operaciones: servicios (`operation_service_statistics`),
  * inventario propio (Diagnomóvil), solo para analistas TDG con permiso de inventario
- * ({@see OperationInventoryReportAccess}), y facturas de medicamentos, con su permiso
- * propio ({@see MedicationInvoiceReportBuilder::allows()}).
+ * ({@see OperationInventoryReportAccess}), facturas de medicamentos con su permiso
+ * ({@see MedicationInvoiceReportBuilder::allows()}), y medicamentos cubiertos/no
+ * cubiertos por caso ({@see CaseMedicationReportBuilder}).
  *
  * Tres pasos en una sola pantalla: tipo, periodo (con filtros opcionales
  * plegados) y formato. Lo pequeño se descarga al instante; el detalle grande
@@ -107,9 +109,10 @@ class GeneradorDeReportes extends Page
 
     public function getSubheading(): string|Htmlable|null
     {
-        return OperationInventoryReportAccess::allows()
-            ? 'Elija el reporte, el periodo y el formato. Hay reportes de servicios y del inventario Diagnomóvil.'
-            : 'Elija el reporte, el periodo y el formato. Los datos salen de la trazabilidad de servicios de Operaciones.';
+        return 'Elija el reporte, el periodo y el formato. Incluye servicios, medicamentos por caso'
+            .(OperationInventoryReportAccess::allows() ? ', inventario Diagnomóvil' : '')
+            .(MedicationInvoiceReportBuilder::allows() ? ' y facturas a pacientes' : '')
+            .'.';
     }
 
     public function form(Schema $schema): Schema
@@ -139,6 +142,7 @@ class GeneradorDeReportes extends Page
                     ->description(fn (Get $get): string => match (true) {
                         self::selectedType($get)?->isInventory() ?? false => 'Por fecha del movimiento de inventario.',
                         self::selectedType($get)?->isMedicationInvoices() ?? false => 'Por fecha de emisión de la factura.',
+                        self::selectedType($get)?->isCaseMedications() ?? false => 'Por fecha en que el médico asignó el medicamento al caso.',
                         default => 'Por fecha de inicio del servicio.',
                     })
                     ->visible(fn (Get $get): bool => self::selectedType($get)?->usesPeriod() ?? true)
@@ -189,9 +193,23 @@ class GeneradorDeReportes extends Page
                                             ->live(),
                                     ]),
                             ]),
+                        Section::make('Filtros de medicamentos (opcional)')
+                            ->description('Déjelo vacío para incluir cubiertos y no cubiertos. El reporte trae detalle sin indicaciones y una conciliación por caso y paciente.')
+                            ->visible(fn (Get $get): bool => self::selectedType($get)?->isCaseMedications() ?? false)
+                            ->compact()
+                            ->schema([
+                                Select::make('coverages')
+                                    ->label('Cobertura')
+                                    ->multiple()
+                                    ->placeholder('Todas')
+                                    ->options(CaseMedicationReportBuilder::coverageOptions())
+                                    ->live(),
+                            ]),
                         Section::make('Filtros (opcional)')
                             ->description('Déjelos vacíos para incluir todo.')
-                            ->visible(fn (Get $get): bool => ! (self::selectedType($get)?->isInventory() ?? false) && ! (self::selectedType($get)?->isMedicationInvoices() ?? false))
+                            ->visible(fn (Get $get): bool => ! (self::selectedType($get)?->isInventory() ?? false)
+                                && ! (self::selectedType($get)?->isMedicationInvoices() ?? false)
+                                && ! (self::selectedType($get)?->isCaseMedications() ?? false))
                             ->collapsible()
                             ->collapsed()
                             ->compact()
@@ -429,7 +447,7 @@ class GeneradorDeReportes extends Page
                 'from' => $get('from'),
                 'to' => $get('to'),
                 'statuses' => $get('statuses'),
-                'coverages' => $get('coverages'),
+                'coverages' => $type->isInventory() || $type->isMedicationInvoices() ? [] : $get('coverages'),
                 'business_lines' => $get('business_lines'),
                 'services' => $get('services'),
                 'service_providers' => $get('service_providers'),
@@ -500,7 +518,10 @@ class GeneradorDeReportes extends Page
      */
     private static function typeGroups(): array
     {
-        $groups = [['label' => 'Servicios', 'types' => OperationReportType::forGroup(OperationReportType::GROUP_SERVICES)]];
+        $groups = [
+            ['label' => 'Servicios', 'types' => OperationReportType::forGroup(OperationReportType::GROUP_SERVICES)],
+            ['label' => 'Medicamentos', 'types' => OperationReportType::forGroup(OperationReportType::GROUP_MEDICATIONS)],
+        ];
 
         if (OperationInventoryReportAccess::allows()) {
             $groups[] = ['label' => 'Inventario Diagnomóvil', 'types' => OperationReportType::forGroup(OperationReportType::GROUP_INVENTORY)];

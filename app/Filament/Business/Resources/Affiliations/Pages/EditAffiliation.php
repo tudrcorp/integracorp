@@ -54,9 +54,7 @@ class EditAffiliation extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [
-
-        ];
+        return [];
     }
 
     protected function getSavedNotificationTitle(): ?string
