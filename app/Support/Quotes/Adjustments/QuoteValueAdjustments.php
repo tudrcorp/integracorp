@@ -577,8 +577,7 @@ final class QuoteValueAdjustments
             }
 
             $model = $isCorporate ? AffiliateCorporate::class : Affiliate::class;
-            $affiliates = $model::query()->withTrashed()->whereIn('id', $ids)->lockForUpdate()->get()->all();
-            self::restoreRate($affiliates, isset($group['before']) ? array_map(static fn ($v) => $v === null ? null : (string) $v, (array) $group['before']) : null, (int) $group['rate_delta_cents'], $frequency, $dryRun);
+            self::restoreRate($model, $ids, isset($group['before']) ? (array) $group['before'] : null, (int) $group['rate_delta_cents'], $frequency, $dryRun);
         }
 
         // Ajustes de la primera versión dejaban «población contratada»: al revertir deja de existir.
@@ -606,8 +605,9 @@ final class QuoteValueAdjustments
      * (conserva sus upgrades); quien no tenía (vacía o en cero) recibe la tarifa nueva. Nunca
      * queda negativa. Devuelve la tarifa anterior de cada uno para el reverso exacto.
      *
-     * En la vista previa va en una sola sentencia (se revierte); al aplicar, uno por uno para que
-     * quede en la auditoría de cambios.
+     * Va por lotes (pocas sentencias aunque sean miles de afiliados: en producción, uno por uno
+     * superaba los 30 s del request). La traza por afiliado es el mapa que devuelve, guardado en
+     * el ajuste.
      *
      * @param  class-string<Model>  $model
      * @param  list<Model>  $affiliates
@@ -620,67 +620,103 @@ final class QuoteValueAdjustments
             $previous[(int) $affiliate->getKey()] = $affiliate->getRawOriginal('fee') !== null ? (string) $affiliate->getRawOriginal('fee') : null;
         }
 
-        if ($affiliates === [] || $deltaCents === 0) {
+        if ($previous === [] || $deltaCents === 0) {
             return $previous;
         }
 
-        if ($dryRun) {
-            $delta = self::decimal($deltaCents);
-            $rate = self::decimal($newRateCents);
-            foreach (array_chunk(array_keys($previous), 1000) as $chunk) {
-                $model::query()->withTrashed()->whereIn('id', $chunk)->update([
-                    'fee' => DB::raw('CASE WHEN fee IS NULL OR fee <= 0 THEN '.$rate.' ELSE GREATEST(0, fee + '.$delta.') END'),
-                ]);
-            }
-
-            return $previous;
+        $delta = self::decimal($deltaCents);
+        $rate = self::decimal($newRateCents);
+        foreach (array_chunk(array_keys($previous), 1000) as $chunk) {
+            $model::query()->withTrashed()->whereIn('id', $chunk)->toBase()->update([
+                'fee' => DB::raw('CASE WHEN fee IS NULL OR fee <= 0 THEN '.$rate.' ELSE GREATEST(0, fee + '.$delta.') END'),
+                'updated_at' => now(),
+            ]);
         }
 
-        foreach ($affiliates as $affiliate) {
-            $current = $affiliate->fee === null ? 0 : self::cents($affiliate->fee);
-            self::setAffiliateFee($affiliate, $current <= 0 ? $newRateCents : max(0, $current + $deltaCents), $frequency);
+        if (! $dryRun) {
+            self::refreshInstallments($model, array_keys($previous), $frequency);
         }
 
         return $previous;
     }
 
     /**
-     * Deja a cada afiliado con la tarifa que tenía antes del ajuste.
+     * Deja a cada afiliado con la tarifa que tenía antes del ajuste (una sentencia por valor).
      *
-     * @param  list<Model>  $affiliates
+     * @param  class-string<Model>  $model
+     * @param  list<int>  $ids
      * @param  array<int|string, string|null>|null  $previous  null en ajustes antiguos: se resta la diferencia
      */
-    private static function restoreRate(array $affiliates, ?array $previous, int $deltaCents, string $frequency, bool $dryRun): void
+    private static function restoreRate(string $model, array $ids, ?array $previous, int $deltaCents, string $frequency, bool $dryRun): void
     {
-        foreach ($affiliates as $affiliate) {
-            $key = (int) $affiliate->getKey();
-            $target = $previous !== null && array_key_exists($key, $previous)
-                ? $previous[$key]
-                : self::decimal(self::cents($affiliate->fee) - $deltaCents);
+        if ($ids === []) {
+            return;
+        }
 
-            if ($dryRun) {
-                $affiliate->newQuery()->withTrashed()->whereKey($key)->update(['fee' => $target]);
-
-                continue;
+        if ($previous === null) {
+            foreach (array_chunk($ids, 1000) as $chunk) {
+                $model::query()->withTrashed()->whereIn('id', $chunk)->toBase()->update(['fee' => DB::raw('fee - '.self::decimal($deltaCents)), 'updated_at' => now()]);
+            }
+        } else {
+            $byValue = [];
+            foreach ($ids as $id) {
+                $value = array_key_exists($id, $previous) ? $previous[$id] : null;
+                $byValue[$value === null ? 'null' : self::decimal(self::cents($value))][] = $id;
             }
 
-            self::setAffiliateFee($affiliate, $target === null ? null : self::cents($target), $frequency);
+            foreach ($byValue as $value => $group) {
+                foreach (array_chunk($group, 1000) as $chunk) {
+                    $model::query()->withTrashed()->whereIn('id', $chunk)->toBase()->update(['fee' => $value === 'null' ? null : $value, 'updated_at' => now()]);
+                }
+            }
+        }
+
+        if (! $dryRun) {
+            self::refreshInstallments($model, $ids, $frequency);
         }
     }
 
-    private static function setAffiliateFee(Model $affiliate, ?int $feeCents, string $frequency): void
+    /**
+     * Subtotales derivados de la tarifa: anual = tarifa y cuota = tarifa ÷ cuotas; quien tiene
+     * upgrades de cobro único se recalcula aparte (su cuota los deja fuera).
+     *
+     * @param  class-string<Model>  $model
+     * @param  list<int>  $ids
+     */
+    private static function refreshInstallments(string $model, array $ids, string $frequency): void
     {
-        $affiliate->fee = $feeCents === null ? null : self::decimal($feeCents);
-        $annual = ($feeCents ?? 0) / 100;
+        $divisor = match (mb_strtoupper(trim($frequency))) {
+            'SEMESTRAL' => 2,
+            'TRIMESTRAL' => 4,
+            'MENSUAL' => 12,
+            default => 1,
+        };
+        $isCorporate = $model === AffiliateCorporate::class;
 
-        if ($affiliate instanceof AffiliateCorporate) {
-            $affiliate->subtotal_anual = $feeCents === null ? null : self::decimal($feeCents);
-            $affiliate->subtotal_payment_frequency = $feeCents === null ? null : UpgradeFirstPaymentBilling::affiliateRegular($affiliate, $annual, $frequency);
-        } elseif ($affiliate instanceof Affiliate) {
-            $affiliate->total_amount = $feeCents === null ? null : UpgradeFirstPaymentBilling::affiliateRegular($affiliate, $annual, $frequency);
+        foreach (array_chunk($ids, 1000) as $chunk) {
+            $values = $isCorporate
+                ? ['subtotal_anual' => DB::raw('fee'), 'subtotal_payment_frequency' => DB::raw('CASE WHEN fee IS NULL THEN NULL ELSE ROUND(fee / '.$divisor.', 2) END')]
+                : ['total_amount' => DB::raw('CASE WHEN fee IS NULL THEN NULL ELSE ROUND(fee / '.$divisor.', 2) END')];
+            $model::query()->withTrashed()->whereIn('id', $chunk)->toBase()->update($values);
+
+            $upgradeTable = $isCorporate ? 'affiliate_corporate_upgrades' : 'affiliate_upgrades';
+            if (! UpgradeFirstPaymentBilling::hasColumn($upgradeTable, 'billing_mode')) {
+                continue;
+            }
+
+            $withOneTime = DB::table($upgradeTable)
+                ->whereIn($isCorporate ? 'affiliate_corporate_id' : 'affiliate_id', $chunk)
+                ->where('status', \App\Models\AffiliateUpgrade::STATUS_ACTIVE)
+                ->where('billing_mode', UpgradeFirstPaymentBilling::MODE)
+                ->distinct()
+                ->pluck($isCorporate ? 'affiliate_corporate_id' : 'affiliate_id')
+                ->all();
+
+            foreach ($model::query()->withTrashed()->whereIn('id', $withOneTime)->get() as $affiliate) {
+                $regular = $affiliate->fee === null ? null : UpgradeFirstPaymentBilling::affiliateRegular($affiliate, (float) $affiliate->fee, $frequency);
+                $affiliate->forceFill($isCorporate ? ['subtotal_payment_frequency' => $regular] : ['total_amount' => $regular])->saveQuietly();
+            }
         }
-
-        $affiliate->save();
     }
 
     /**
