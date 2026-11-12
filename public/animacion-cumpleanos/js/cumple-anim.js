@@ -168,13 +168,33 @@ function mobileChromeEnterStyle(progress) {
   };
 }
 
+function shortGreetingName(fullName) {
+  const normalized = String(fullName || '').trim().replace(/\s+/g, ' ');
+  if (!normalized) {
+    return '';
+  }
+
+  const parts = normalized.split(' ').filter(Boolean);
+  const count = parts.length;
+
+  if (count <= 1) {
+    return parts[0] || '';
+  }
+
+  if (count <= 3) {
+    return `${parts[0]} ${parts[1]}`;
+  }
+
+  return `${parts[0]} ${parts[count - 2]}`;
+}
+
 function celebrantDisplayName() {
   const raw = window.TWEAK_DEFAULTS?.nombre;
   if (typeof raw !== 'string') {
     return '';
   }
 
-  return raw.trim();
+  return shortGreetingName(raw);
 }
 
 function scriptBirthdayGreetingText() {

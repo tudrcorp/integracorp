@@ -29,6 +29,19 @@ trait InteractsWithCorporateQuoteRequestsRankingTable
     }
 
     /**
+     * Evita «$table must not be accessed before initialization» cuando un evento
+     * Livewire llega antes de que Filament termine de montar la TableWidget.
+     */
+    protected function resetRankingTablePage(): void
+    {
+        if (! isset($this->table)) {
+            $this->bootedInteractsWithTable();
+        }
+
+        $this->resetPage();
+    }
+
+    /**
      * @return array<string, string>
      */
     public function getRankingYearFilterOptions(): array

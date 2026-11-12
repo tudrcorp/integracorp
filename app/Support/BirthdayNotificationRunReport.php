@@ -29,7 +29,7 @@ final class BirthdayNotificationRunReport
     /** @var list<string> */
     private const CELEBRATION_BCC_EMAILS = [
         'solrodriguez@tudrencasa.com',
-        'aaular@tudrencasa.com',
+        'marketingtudoctorgroup@gmail.com',
     ];
 
     /** @var list<string> */

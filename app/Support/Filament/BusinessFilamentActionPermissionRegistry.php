@@ -72,6 +72,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const RECALCULATE_CORPORATE_TOTALS = 'recalcular-totales-afiliacion-corporativa';
 
+    public const RECALCULATE_INDIVIDUAL_TOTALS = 'recalcular-totales-afiliacion-individual';
+
     public const DESIGN_PLAN_CERTIFICATE = 'disenar-certificado-plan';
 
     public const SELF_OTP_POPULATION_APPLY = 'usar-clave-propia-aplicar-poblacion';
@@ -365,6 +367,11 @@ final class BusinessFilamentActionPermissionRegistry
             ],
             self::RECALCULATE_CORPORATE_TOTALS => [
                 'name' => 'Recalcular población, tarifa anual y total de una afiliación corporativa con sus afiliados activos',
+                'group' => 'AFILIACIONES',
+                'modules' => [self::OWNER_MODULE],
+            ],
+            self::RECALCULATE_INDIVIDUAL_TOTALS => [
+                'name' => 'Recalcular población, tarifa anual y total de una afiliación individual con sus afiliados activos',
                 'group' => 'AFILIACIONES',
                 'modules' => [self::OWNER_MODULE],
             ],

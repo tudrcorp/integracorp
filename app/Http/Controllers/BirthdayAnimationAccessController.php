@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Support\Birthday\BirthdayCelebrationAccessIssuer;
 use App\Support\Birthday\BirthdayCouponWhatsAppMessages;
+use App\Support\Birthday\BirthdayGreetingDisplayName;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 
@@ -19,7 +20,7 @@ class BirthdayAnimationAccessController extends Controller
             abort(404, 'Enlace de cumpleaños no válido o expirado.');
         }
 
-        $guestName = trim($access->full_name);
+        $guestName = BirthdayGreetingDisplayName::from($access->full_name);
         $showTweaks = filter_var($request->query('editor'), FILTER_VALIDATE_BOOL);
 
         return view('public.birthday-animation', [

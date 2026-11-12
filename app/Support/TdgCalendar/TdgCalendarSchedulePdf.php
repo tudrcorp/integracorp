@@ -132,7 +132,7 @@ final class TdgCalendarSchedulePdf
      *     scope_label: string,
      *     person_name: ?string,
      *     weekdays: list<string>,
-     *     weeks: list<list<array{day: int, in_month: bool, lines: list<string>, extra: int}>>,
+     *     weeks: list<list<array{day: int, in_month: bool, lines: list<string>}>>,
      *     people: list<array{name: string, days: list<array{date: string, weekday: string, places: string}>}>
      * }
      */
@@ -173,8 +173,7 @@ final class TdgCalendarSchedulePdf
                 $week[] = [
                     'day' => (int) $cursor->format('j'),
                     'in_month' => $cursor->isSameMonth($month),
-                    'lines' => array_slice($lines, 0, 3),
-                    'extra' => max(0, count($lines) - 3),
+                    'lines' => $lines,
                 ];
 
                 $cursor->addDay();

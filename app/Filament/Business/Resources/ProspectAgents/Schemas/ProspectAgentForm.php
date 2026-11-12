@@ -411,7 +411,6 @@ class ProspectAgentForm
                                                     ->columnSpanFull(),
                                                 Textarea::make('initial_observ')
                                                     ->label('Observaciones iniciales')
-                                                    ->maxLength(100)
                                                     ->rows(6)
                                                     ->columnSpanFull()
                                                     ->placeholder('Notas breves sobre el primer contacto o contexto.'),

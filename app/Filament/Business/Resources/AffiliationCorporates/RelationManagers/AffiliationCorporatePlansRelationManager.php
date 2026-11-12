@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\AffiliationCorporates\RelationManagers;
 
+use App\Filament\Business\Resources\AffiliationCorporates\Actions\RecalculateCorporateTotalsAction;
 use App\Models\AffiliateCorporate;
 use App\Models\AfilliationCorporatePlan;
 use App\Models\AgeRange;
@@ -256,6 +257,7 @@ class AffiliationCorporatePlansRelationManager extends RelationManager
                         ->numeric()),
             ])
             ->headerActions([
+                RecalculateCorporateTotalsAction::forOwner(fn (): \App\Models\AffiliationCorporate => $this->getOwnerRecord()),
                 Action::make('edit_subtotals_modal')
                     ->label('Editar subtotales')
                     ->icon(Heroicon::PencilSquare)

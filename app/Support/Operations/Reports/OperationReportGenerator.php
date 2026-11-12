@@ -56,6 +56,11 @@ final class OperationReportGenerator
             return $rowCount > ($format === OperationReportFormat::Pdf ? self::PDF_ROW_LIMIT : self::SYNC_ROW_LIMIT);
         }
 
+        if ($type->isCaseMedications()) {
+            // Como facturas: lo chico se descarga al instante; PDF grande o Excel/CSV enormes van a cola.
+            return $rowCount > ($format === OperationReportFormat::Pdf ? self::PDF_ROW_LIMIT : self::SYNC_ROW_LIMIT);
+        }
+
         if ($format === OperationReportFormat::Pdf) {
             return $type->hasManyRows();
         }
@@ -102,7 +107,9 @@ final class OperationReportGenerator
         $relativePath = self::userDirectory($userId).'/'.$filename;
         $disk->makeDirectory(self::userDirectory($userId));
 
-        $rowLimit = $format === OperationReportFormat::Pdf && ($type->hasManyRows() || $type->isMedicationInvoices()) ? self::PDF_ROW_LIMIT : null;
+        $rowLimit = $format === OperationReportFormat::Pdf && ($type->hasManyRows() || $type->isMedicationInvoices() || $type->isCaseMedications())
+            ? self::PDF_ROW_LIMIT
+            : null;
         $data = OperationReportBuilder::build($type, $filters, $rowLimit);
         $notice = $rowLimit === null ? null : self::pdfLimitNotice($type, $filters, $data);
 

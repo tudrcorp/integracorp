@@ -4,6 +4,7 @@ namespace App\Filament\Business\Resources\Affiliations\Widgets;
 
 use App\Filament\Business\Resources\Affiliations\Pages\ListAffiliations;
 use App\Filament\Widgets\Concerns\InteractsWithPageTable;
+use App\Support\Affiliations\ActivePopulationIndividualTotals;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\RawJs;
@@ -42,8 +43,9 @@ class AffiliationSupplierChart extends ChartWidget
 
     protected function getData(): array
     {
-        $stats = $this->getPageTableQuery()
-            ->reorder()
+        $stats = ActivePopulationIndividualTotals::withoutLiveSelects(
+            $this->getPageTableQuery()->reorder(),
+        )
             ->selectRaw("
                 SUM(CASE WHEN service_providers LIKE '%ATENMEDI%' THEN 1 ELSE 0 END) as atenmedi_count,
                 SUM(CASE WHEN service_providers LIKE '%ILS%' THEN 1 ELSE 0 END) as ils_count,

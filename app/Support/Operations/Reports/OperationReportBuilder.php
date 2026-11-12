@@ -178,6 +178,10 @@ final class OperationReportBuilder
             return MedicationInvoiceReportBuilder::count($filters);
         }
 
+        if ($type->isCaseMedications()) {
+            return CaseMedicationReportBuilder::count($filters);
+        }
+
         if ($type->isInventory()) {
             return OperationInventoryReportBuilder::count($type, $filters);
         }
@@ -189,6 +193,10 @@ final class OperationReportBuilder
     {
         if ($type->isMedicationInvoices()) {
             return MedicationInvoiceReportBuilder::build($type, $filters, $rowLimit);
+        }
+
+        if ($type->isCaseMedications()) {
+            return CaseMedicationReportBuilder::build($type, $filters, $rowLimit);
         }
 
         if ($type->isInventory()) {

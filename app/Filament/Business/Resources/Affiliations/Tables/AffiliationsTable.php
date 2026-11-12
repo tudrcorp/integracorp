@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\Affiliations\Tables;
 
+use App\Filament\Business\Resources\Affiliations\Actions\RecalculateIndividualTotalsAction;
 use App\Filament\Resources\Affiliations\AffiliationResource;
 use App\Filament\Shared\Affiliations\AffiliationDateCorrectionActions;
 use App\Filament\Shared\Affiliations\AffiliationDeletionActions;
@@ -18,6 +19,7 @@ use App\Models\User;
 use App\Services\AffiliationBusinessDocumentsService;
 use App\Support\AffiliationPaymentBcvRateCalculator;
 use App\Support\AffiliationPaymentTotalAdjustment;
+use App\Support\Affiliations\ActivePopulationIndividualTotals;
 use App\Support\Affiliations\AffiliationsRankingQuery;
 use App\Support\Affiliations\PlanChange\IndividualAffiliationPlanChanger;
 use App\Support\AffiliationWhiteCompany;
@@ -68,10 +70,12 @@ class AffiliationsTable
             // ->query(Affiliation::query()->where('ownerAccountManagers', Auth::user()->id))
             ->query(function (Builder $query) {
                 if (Auth::user()->is_accountManagers) {
-                    return Affiliation::query()->where('ownerAccountManagers', Auth::user()->id);
+                    return ActivePopulationIndividualTotals::applyToQuery(
+                        Affiliation::query()->where('ownerAccountManagers', Auth::user()->id),
+                    );
                 }
 
-                return Affiliation::query();
+                return ActivePopulationIndividualTotals::applyToQuery(Affiliation::query());
             })
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
                 'individual_quote',
@@ -172,45 +176,31 @@ class AffiliationsTable
                         ->searchable(),
                     TextColumn::make('family_members')
                         ->label('Población')
+                        ->tooltip(fn (Affiliation $record): string => self::activeTotalsTooltip($record))
+                        ->state(fn (Affiliation $record): int => ActivePopulationIndividualTotals::forRecord($record)['persons'])
                         ->alignCenter()
                         ->suffix(' pers.')
                         ->badge()
-                        ->color(function (mixed $state): string {
-                            if ((int) $state > 0) {
-                                return 'warning';
-                            }
-
-                            return 'danger';
-                        })
-                        ->searchable()
-                        ->sortable(),
+                        ->icon(fn (Affiliation $record): ?string => ActivePopulationIndividualTotals::forRecord($record)['differs'] || ActivePopulationIndividualTotals::forRecord($record)['without_fee'] > 0 ? 'heroicon-m-exclamation-triangle' : null)
+                        ->color(fn (mixed $state): string => (int) $state > 0 ? 'warning' : 'danger')
+                        ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('active_population', $direction)),
                     TextColumn::make('fee_anual')
                         ->label('Tarifa anual')
+                        ->tooltip(fn (Affiliation $record): string => self::activeTotalsTooltip($record))
+                        ->state(fn (Affiliation $record): float => ActivePopulationIndividualTotals::forRecord($record)['fee_anual'])
                         ->alignCenter()
                         ->money('USD')
-                        ->color(function (mixed $state): string {
-                            if ((float) $state > 0) {
-                                return 'warning';
-                            }
-
-                            return 'danger';
-                        })
-                        ->searchable()
-                        ->sortable(),
+                        ->color(fn (mixed $state): string => (float) $state > 0 ? 'warning' : 'danger')
+                        ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('active_fee_anual', $direction)),
                     TextColumn::make('total_amount')
                         ->label('Total a pagar')
+                        ->tooltip(fn (Affiliation $record): string => self::activeTotalsTooltip($record))
+                        ->state(fn (Affiliation $record): float => ActivePopulationIndividualTotals::forRecord($record)['total_amount'])
                         ->alignCenter()
                         ->money('USD')
                         ->weight('semibold')
-                        ->color(function (mixed $state): string {
-                            if ((float) $state > 0) {
-                                return 'warning';
-                            }
-
-                            return 'danger';
-                        })
-                        ->searchable()
-                        ->sortable(),
+                        ->color(fn (mixed $state): string => (float) $state > 0 ? 'warning' : 'danger')
+                        ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('active_fee_anual', $direction)),
                     TextColumn::make('businessUnit.definition')
                         ->label('Unidad de negocio')
                         ->badge()
@@ -468,6 +458,7 @@ class AffiliationsTable
             ->checkIfRecordIsSelectableUsing(fn ($record): bool => ! $record->trashed())
             ->recordActions([
                 ActionGroup::make([
+                    RecalculateIndividualTotalsAction::make(),
 
                     Action::make('upload')
                         ->label('Comprobante de Pago')
@@ -2480,5 +2471,21 @@ class AffiliationsTable
             'module' => 'affiliations',
             ...$context,
         ]);
+    }
+
+    private static function activeTotalsTooltip(Affiliation $record): string
+    {
+        $totals = ActivePopulationIndividualTotals::forRecord($record);
+        $lines = ['Calculado con '.$totals['persons'].' afiliado(s) activo(s).'];
+
+        if ($totals['differs']) {
+            $lines[] = 'Guardado en la afiliación: '.$totals['stored']['persons'].' pers. · US$ '.number_format($totals['stored']['fee_anual'], 2, ',', '.').' anual · US$ '.number_format($totals['stored']['total_amount'], 2, ',', '.').' por cuota. Pendiente de alinear: use «Recalcular totales».';
+        }
+
+        if ($totals['without_fee'] > 0) {
+            $lines[] = $totals['without_fee'].' afiliado(s) activo(s) sin tarifa.';
+        }
+
+        return implode(' ', $lines);
     }
 }

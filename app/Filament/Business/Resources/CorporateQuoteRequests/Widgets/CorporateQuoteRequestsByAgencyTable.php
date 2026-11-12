@@ -21,6 +21,8 @@ class CorporateQuoteRequestsByAgencyTable extends TableWidget
 
     protected string $view = 'filament.widgets.corporate-quote-requests-ranking-table-widget';
 
+    protected static bool $isLazy = false;
+
     protected static ?int $sort = 2;
 
     protected int|string|array $columnSpan = 1;
@@ -51,7 +53,7 @@ class CorporateQuoteRequestsByAgencyTable extends TableWidget
 
     protected function syncPeriodToAgentTable(): void
     {
-        $this->resetPage();
+        $this->resetRankingTablePage();
         $this->flushCachedTableRecords();
 
         $this->dispatch('corporate-quote-requests-agent-filter-start');

@@ -41,6 +41,21 @@ it('formulario ProspectAgent usa pestañas con estilos del sistema', function ()
         ->toContain('discardEmptyContact');
 });
 
+it('las observaciones iniciales del prospecto no tienen tope de caracteres', function (): void {
+    $source = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Business/Resources/ProspectAgents/Schemas/ProspectAgentForm.php');
+    $fieldStart = strpos($source, "Textarea::make('initial_observ')");
+
+    expect($fieldStart)->not->toBeFalse();
+
+    $field = substr($source, (int) $fieldStart);
+    $field = substr($field, 0, (int) strpos($field, ']),'));
+
+    expect($field)
+        ->toContain("->label('Observaciones iniciales')")
+        ->not->toContain('maxLength')
+        ->not->toContain('->max(');
+});
+
 it('configura el infolist ProspectAgent sin error', function (): void {
     $schema = Schema::make();
     $configured = ProspectAgentInfolist::configure($schema);

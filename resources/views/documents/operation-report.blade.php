@@ -6,8 +6,10 @@
     /** @var list<int> $numericColumns */
     /** @var list<string> $criteria */
     /** @var string|null $notice */
+    /** @var array<int, array<string, mixed>> $sections */
     /** @var \Illuminate\Support\Carbon $generatedAt */
     /** @var string $logoDataUri */
+    $sections = $sections ?? [];
     $brandBlue = '#052F60';
     $brandCyan = '#00ADEF';
     $columnCount = max(1, count($headings));
@@ -90,6 +92,12 @@
             border-top: 2px solid {{ $brandBlue }};
         }
         .empty td { padding: 16px; text-align: center; color: #64748b; font-size: 8pt; }
+        .section-title td {
+            padding: 10px 0 4px 0;
+            font-size: 9pt;
+            font-weight: bold;
+            color: {{ $brandBlue }};
+        }
     </style>
 </head>
 <body>
@@ -156,5 +164,41 @@
             </table>
         @endforeach
     @endif
+
+    @foreach ($sections as $section)
+        <table class="spacer"><tr><td></td></tr></table>
+        <table class="section-title"><tr><td>{{ $section['title'] }}</td></tr></table>
+        @foreach ($section['rowChunks'] as $chunkIndex => $chunk)
+            <table class="data">
+                <thead>
+                    <tr>
+                        @foreach ($section['headings'] as $heading)
+                            <th style="width: {{ round(100 / max(1, count($section['headings'])), 3) }}%;">{{ $heading }}</th>
+                        @endforeach
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($chunk as $row)
+                        <tr>
+                            @foreach ($row as $index => $value)
+                                @php($numeric = in_array($index, $section['numericColumns'] ?? [], true))
+                                <td @class(['num' => $numeric])>{{ $format($value, $numeric) }}</td>
+                            @endforeach
+                        </tr>
+                    @endforeach
+                </tbody>
+                @if ($chunkIndex === count($section['rowChunks']) - 1 && ($section['totals'] ?? null) !== null)
+                    <tfoot>
+                        <tr>
+                            @foreach ($section['totals'] as $index => $value)
+                                @php($numeric = in_array($index, $section['numericColumns'] ?? [], true))
+                                <td @class(['num' => $numeric])>{{ $value === '' ? '' : $format($value, $numeric) }}</td>
+                            @endforeach
+                        </tr>
+                    </tfoot>
+                @endif
+            </table>
+        @endforeach
+    @endforeach
 </body>
 </html>

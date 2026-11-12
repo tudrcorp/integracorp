@@ -21,6 +21,8 @@ class CorporateQuoteRequestsByAgentTable extends TableWidget
 
     protected string $view = 'filament.widgets.corporate-quote-requests-ranking-table-widget';
 
+    protected static bool $isLazy = false;
+
     protected static ?int $sort = 3;
 
     protected int|string|array $columnSpan = 1;
@@ -58,7 +60,7 @@ class CorporateQuoteRequestsByAgentTable extends TableWidget
         $this->filterYear = $year;
         $this->filterMonth = $month;
         $this->selectedAgentIdForRequests = null;
-        $this->resetPage();
+        $this->resetRankingTablePage();
         $this->flushCachedTableRecords();
 
         $this->dispatch('corporate-quote-requests-agent-filter-end');
@@ -71,7 +73,7 @@ class CorporateQuoteRequestsByAgentTable extends TableWidget
             $this->filteredAgencyCode = $agencyCode;
             $this->filteredAgencyName = $agencyName;
             $this->selectedAgentIdForRequests = null;
-            $this->resetPage();
+            $this->resetRankingTablePage();
             $this->flushCachedTableRecords();
         }
 
@@ -90,7 +92,7 @@ class CorporateQuoteRequestsByAgentTable extends TableWidget
         $this->filteredAgencyCode = null;
         $this->filteredAgencyName = null;
         $this->selectedAgentIdForRequests = null;
-        $this->resetPage();
+        $this->resetRankingTablePage();
         $this->flushCachedTableRecords();
 
         $this->dispatch('corporate-quote-requests-agent-filter-end');

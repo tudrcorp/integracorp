@@ -6,6 +6,7 @@ namespace App\Filament\Business\Resources\Affiliations\RelationManagers;
 
 use App\Filament\Business\Concerns\AssignsUpgradesWithIlsVoucher;
 use App\Filament\Business\Concerns\ManagesAffiliateSpecificBusinessUnit;
+use App\Filament\Business\Resources\Affiliations\Actions\RecalculateIndividualTotalsAction;
 use App\Filament\Shared\Affiliations\Actions\AffiliateFichaAction;
 use App\Filament\Shared\Affiliations\AffiliateMovementActions;
 use App\Filament\Shared\Affiliations\CapitationCostColumn;
@@ -916,6 +917,7 @@ class AffiliatesRelationManager extends RelationManager
                 ]),
             ])
             ->headerActions([
+                RecalculateIndividualTotalsAction::forOwner(fn (): Affiliation => $this->getOwnerRecord()),
                 CreateAction::make()
                     ->label('Agregar familiar')
                     ->icon(Heroicon::UserPlus)
