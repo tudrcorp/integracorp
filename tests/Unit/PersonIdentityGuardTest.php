@@ -416,8 +416,11 @@ it('da de baja el duplicado sin plan descontando solo la población', function (
 
     PersonIdentityResolver::deactivate($finding, $side, 'Se cargó dos veces en el padrón; el bueno es el de la otra afiliación.', $this->actor);
 
+    // Desde el 11/11/2026 la baja pasa por el servicio de movimientos: la población se recalcula
+    // con los afiliados activos (aquí no queda ninguno), en vez de restar 1 al valor guardado.
     expect(AffiliateCorporate::query()->findOrFail($duplicateId)->status)->toBe('INACTIVO')
-        ->and((int) $second->fresh()->poblation)->toBe(9)
+        ->and((int) $second->fresh()->poblation)->toBe(AffiliateCorporate::query()->where('affiliation_corporate_id', $second->getKey())->whereIn('status', ['ACTIVO', 'PRE-APROBADA'])->count())
+        ->and(App\Models\AffiliateMovement::query()->where('affiliate_id', $duplicateId)->value('source'))->toBe('business.person-identity-findings')
         ->and($finding->fresh()->status)->toBe(Finding::STATUS_CORRECTED);
 });
 

@@ -12,8 +12,6 @@ use App\Models\CompanyAssociate;
 use App\Models\PersonIdentityFinding as Finding;
 use App\Models\PersonIdentityFindingEvent as Event;
 use App\Models\User;
-use App\Services\CorporateAffiliateRemovalService;
-use App\Support\AffiliationAffiliateFeeCalculator;
 use App\Support\Companies\CompanyAssociateStatusManager;
 use App\Support\Filament\UserNavigationAccess;
 use App\Support\Operations\AffiliatePersonalDataUpdater;
@@ -228,8 +226,8 @@ final class PersonIdentityResolver
             }
 
             $summary = match (true) {
-                $model instanceof Affiliate => self::deactivateIndividual($model),
-                $model instanceof AffiliateCorporate => self::deactivateCorporate($model),
+                $model instanceof Affiliate => self::deactivateIndividual($model, $note, $actor),
+                $model instanceof AffiliateCorporate => self::deactivateCorporate($model, $note, $actor),
                 $model instanceof CompanyAssociate => self::annulAssociate($model, $note),
                 default => throw new RuntimeException('Tipo de registro desconocido.'),
             };
@@ -369,38 +367,25 @@ final class PersonIdentityResolver
         return $changes;
     }
 
-    private static function deactivateIndividual(Affiliate $affiliate): string
+    /**
+     * La baja pasa por el servicio de movimientos: totales, avisos de cobro (prorrateo),
+     * telemedicina e historial con reverso, igual que desde la tabla de afiliados.
+     */
+    private static function deactivateIndividual(Affiliate $affiliate, string $note, User $actor): string
     {
-        /** @var Affiliate $locked */
-        $locked = Affiliate::query()->whereKey($affiliate->getKey())->lockForUpdate()->firstOrFail();
-        $locked->forceFill(['status' => 'INACTIVO'])->save();
+        $owner = $affiliate->affiliation()->first() ?? throw new RuntimeException('La afiliación del registro ya no existe.');
+        $movement = \App\Support\Affiliations\Movements\AffiliateMovements::exclude($owner, $affiliate, now()->toDateString(), 'Persona duplicada: '.$note, $actor, 'business.person-identity-findings');
 
-        $owner = $locked->affiliation()->first();
-
-        if ($owner !== null) {
-            app(AffiliationAffiliateFeeCalculator::class)->recalculateAffiliationTotalsFromAffiliates($owner);
-        }
-
-        return 'Afiliado individual «'.$locked->full_name.'» de '.($owner?->code ?? 'la afiliación').' quedó INACTIVO y se recalcularon los totales de la afiliación.';
+        return 'Afiliado individual «'.$affiliate->full_name.'» de '.$owner->code.' quedó INACTIVO (movimiento #'.$movement->getKey().'): se recalcularon los totales y se ajustaron sus avisos de cobro.';
     }
 
-    private static function deactivateCorporate(AffiliateCorporate $affiliate): string
+    private static function deactivateCorporate(AffiliateCorporate $affiliate, string $note, User $actor): string
     {
         $owner = AffiliationCorporate::query()->find($affiliate->affiliation_corporate_id) ?? throw new RuntimeException('La afiliación corporativa del registro ya no existe.');
         $name = PersonIdentityRecord::nameOf($affiliate)[0];
+        $movement = \App\Support\Affiliations\Movements\AffiliateMovements::exclude($owner, $affiliate, now()->toDateString(), 'Persona duplicada: '.$note, $actor, 'business.person-identity-findings');
 
-        if ((int) $affiliate->plan_id <= 0 && (float) $affiliate->fee <= 0) {
-            /** @var AffiliationCorporate $lockedOwner */
-            $lockedOwner = AffiliationCorporate::query()->whereKey($owner->getKey())->lockForUpdate()->firstOrFail();
-            $lockedOwner->forceFill(['poblation' => max(0, (int) $lockedOwner->poblation - 1)])->save();
-            AffiliateCorporate::query()->whereKey($affiliate->getKey())->lockForUpdate()->firstOrFail()->forceFill(['status' => 'INACTIVO'])->save();
-
-            return 'Afiliado corporativo «'.$name.'» de '.$owner->code.' quedó INACTIVO. No tenía plan ni tarifa asignados, así que solo se descontó de la población (los montos no cambian).';
-        }
-
-        CorporateAffiliateRemovalService::deactivate($affiliate, $owner);
-
-        return 'Afiliado corporativo «'.$name.'» de '.$owner->code.' quedó INACTIVO; se descontaron su tarifa, la población del plan y los totales de la afiliación.';
+        return 'Afiliado corporativo «'.$name.'» de '.$owner->code.' quedó INACTIVO (movimiento #'.$movement->getKey().'): se recalcularon la población, la fila de plan y los totales, y se ajustaron sus avisos de cobro.';
     }
 
     private static function annulAssociate(CompanyAssociate $associate, string $note): string

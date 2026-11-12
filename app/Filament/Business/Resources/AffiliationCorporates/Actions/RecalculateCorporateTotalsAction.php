@@ -35,7 +35,7 @@ final class RecalculateCorporateTotalsAction
             ->visible(fn (AffiliationCorporate $record): bool => ! $record->trashed()
                 && BusinessFilamentActionAccess::userCan(BusinessFilamentActionPermissionRegistry::RECALCULATE_CORPORATE_TOTALS))
             ->modalHeading(fn (AffiliationCorporate $record): string => 'Recalcular totales · '.$record->code)
-            ->modalDescription('Guarda en la afiliación la población, la tarifa anual y la cuota que suman sus afiliados activos (ACTIVO y PRE-APROBADA). Los avisos de cobro ya emitidos no cambian: si hay diferencia por cobrar o devolver, gestiónela en Administración → «Ajustes por población».')
+            ->modalDescription('Guarda en la afiliación la población, la tarifa anual y la cuota que suman sus afiliados activos (ACTIVO y PRE-APROBADA). También deja sus avisos POR PAGAR del año en curso con esa cuota y esa población; los avisos pagados no cambian.')
             ->modalIcon(Heroicon::OutlinedCalculator)
             ->modalIconColor('warning')
             ->modalWidth(Width::ThreeExtraLarge)
@@ -44,7 +44,7 @@ final class RecalculateCorporateTotalsAction
                     ->hiddenLabel()
                     ->content(fn (AffiliationCorporate $record): HtmlString => new HtmlString(view(
                         'filament.business.affiliation-corporates.recalculate-totals-preview',
-                        ['preview' => ActivePopulationTotals::preview($record), 'record' => $record],
+                        ['preview' => ActivePopulationTotals::preview($record), 'record' => $record, 'billing' => \App\Support\Affiliations\ActiveBilling\ActivePopulationBilling::plan($record)],
                     )->render())),
                 Textarea::make('reason')
                     ->label('Motivo del recálculo')
@@ -80,7 +80,8 @@ final class RecalculateCorporateTotalsAction
                     ->body('Población '.$result['before']['poblation'].' → '.$result['after']['poblation']
                         .' · Tarifa anual US$ '.number_format($result['before']['fee_anual'], 2, ',', '.').' → '.number_format($result['after']['fee_anual'], 2, ',', '.')
                         .' · Cuota US$ '.number_format($result['before']['total_amount'], 2, ',', '.').' → '.number_format($result['after']['total_amount'], 2, ',', '.')
-                        .($result['rows_updated'] ? '. Filas de plan actualizadas.' : '. Las filas de plan no se tocaron (hay afiliados sin fila de plan).'))
+                        .($result['rows_updated'] ? '. Filas de plan actualizadas.' : '. Las filas de plan no se tocaron (hay afiliados sin fila de plan).')
+                        .' '.count($result['collections']).' aviso(s) POR PAGAR alineado(s).')
                     ->success()
                     ->persistent()
                     ->send();

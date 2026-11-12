@@ -292,6 +292,7 @@
                             <td class="amount-col">US${{ number_format((float) $upgrade['amount'], 2) }}</td>
                         </tr>
                     @endforeach
+                    @include('documents.partials.aviso-movement-lines', ['movementLines' => \App\Support\Collections\CollectionMovementBreakdown::forInvoice($data['invoice_number'] ?? null)])
                     <tr class="affiliates-row">
                         <td colspan="2">
                             TOTAL DE AFILIADOS ASOCIADOS A LA AFILIACIÓN: {{ (int) ($data['affiliates_count'] ?? 0) }}

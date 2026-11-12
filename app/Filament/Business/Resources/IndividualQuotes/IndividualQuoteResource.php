@@ -108,6 +108,7 @@ class IndividualQuoteResource extends Resource
     {
         return [
             DetailsQuoteRelationManager::class,
+            \App\Filament\Shared\Quotes\QuoteValueAdjustmentsRelationManager::class,
         ];
     }
 

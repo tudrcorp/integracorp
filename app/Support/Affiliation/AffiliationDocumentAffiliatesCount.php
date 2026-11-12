@@ -9,6 +9,9 @@ use App\Models\AffiliationCorporate;
 
 final class AffiliationDocumentAffiliatesCount
 {
+    /** Los documentos que recibe el cliente cuentan solo la población vigente: los dados de baja no. */
+    private const ACTIVE = ['ACTIVO', 'PRE-APROBADA'];
+
     public static function forIndividual(?Affiliation $affiliation): int
     {
         if ($affiliation === null) {
@@ -19,7 +22,7 @@ final class AffiliationDocumentAffiliatesCount
             return (int) $affiliation->affiliates_count;
         }
 
-        return (int) ($affiliation->affiliates()->count() ?: $affiliation->family_members ?? 0);
+        return (int) ($affiliation->affiliates()->whereIn('status', self::ACTIVE)->count() ?: $affiliation->family_members ?? 0);
     }
 
     public static function forCorporate(?AffiliationCorporate $affiliation): int
@@ -34,7 +37,7 @@ final class AffiliationDocumentAffiliatesCount
 
         $familyMembers = $affiliation->getAttribute('family_members');
 
-        return (int) ($affiliation->corporateAffiliates()->count() ?: $familyMembers ?? 0);
+        return (int) ($affiliation->corporateAffiliates()->whereIn('status', self::ACTIVE)->count() ?: $familyMembers ?? 0);
     }
 
     public static function forAffiliationCode(string $code, bool $isCorporate): int
@@ -42,7 +45,7 @@ final class AffiliationDocumentAffiliatesCount
         if ($isCorporate) {
             $affiliation = AffiliationCorporate::query()
                 ->where('code', $code)
-                ->withCount('corporateAffiliates')
+                ->withCount(['corporateAffiliates' => fn ($query) => $query->whereIn('status', self::ACTIVE)])
                 ->first();
 
             return self::forCorporate($affiliation);
@@ -50,7 +53,7 @@ final class AffiliationDocumentAffiliatesCount
 
         $affiliation = Affiliation::query()
             ->where('code', $code)
-            ->withCount('affiliates')
+            ->withCount(['affiliates' => fn ($query) => $query->whereIn('status', self::ACTIVE)])
             ->first();
 
         return self::forIndividual($affiliation);

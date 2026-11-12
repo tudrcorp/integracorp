@@ -288,4 +288,14 @@ class CorporateQuote extends Model
     //     }
     // }
     /* ------------------------------------------------------------------- */
+
+    /**
+     * Ajustes de valores (tarifa y personas) con su efecto en la afiliación.
+     *
+     * @return HasMany<QuoteValueAdjustment, $this>
+     */
+    public function valueAdjustments(): HasMany
+    {
+        return $this->hasMany(QuoteValueAdjustment::class, 'quote_id')->where('quote_type', QuoteValueAdjustment::TYPE_CORPORATE);
+    }
 }

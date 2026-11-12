@@ -12,6 +12,8 @@ use Illuminate\Support\HtmlString;
 
 class EditAffiliation extends EditRecord
 {
+    use \App\Filament\Business\Concerns\KeepsLiveAffiliationTotalsOnSave;
+
     protected static string $resource = AffiliationResource::class;
 
     public function getTitle(): string|Htmlable

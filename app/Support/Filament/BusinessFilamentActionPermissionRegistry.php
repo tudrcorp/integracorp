@@ -133,6 +133,8 @@ final class BusinessFilamentActionPermissionRegistry
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
      */
+    public const ADJUST_QUOTE_VALUES = 'ajustar-valores-cotizacion';
+
     public const OWNER_MODULE = 'NEGOCIOS';
 
     /**
@@ -455,6 +457,11 @@ final class BusinessFilamentActionPermissionRegistry
                 'name' => 'Ficha del afiliado: incluir la información de operaciones y telemedicina (datos clínicos)',
                 'group' => 'AFILIADOS',
                 'modules' => [self::OWNER_MODULE, 'ADMINISTRACION', 'OPERACIONES'],
+            ],
+            self::ADJUST_QUOTE_VALUES => [
+                'name' => 'Cotizaciones: ajustar tarifas y personas (individual y corporativa) con efecto en la afiliación y su cobranza, y revertir el ajuste',
+                'group' => 'COTIZACIONES',
+                'modules' => [self::OWNER_MODULE],
             ],
         ];
     }

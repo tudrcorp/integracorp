@@ -1640,7 +1640,7 @@ class AffiliationCorporatesTable
         $lines = ['Calculado con '.$totals['persons'].' afiliado(s) activo(s).'];
 
         if ($totals['differs']) {
-            $lines[] = 'Guardado en la afiliación: '.$totals['stored']['persons'].' pers. · US$ '.number_format($totals['stored']['fee_anual'], 2, ',', '.').' anual · US$ '.number_format($totals['stored']['total_amount'], 2, ',', '.').' por cuota. La cobranza usa lo guardado: corríjalo con «Recalcular totales».';
+            $lines[] = 'Guardado en la afiliación: '.$totals['stored']['persons'].' pers. · US$ '.number_format($totals['stored']['fee_anual'], 2, ',', '.').' anual · US$ '.number_format($totals['stored']['total_amount'], 2, ',', '.').' por cuota. Pendiente de alinear con la población activa: use «Recalcular totales».';
         }
 
         if ($totals['without_fee'] > 0) {
