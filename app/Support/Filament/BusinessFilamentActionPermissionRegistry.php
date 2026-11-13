@@ -120,6 +120,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const REVERSE_CASH_PAYMENTS = 'reversar-pagos-de-contado';
 
+    public const CLOSE_FISCAL_BOOKS = 'cerrar-reabrir-libros-fiscales';
+
     public const INVOICE_MEDICATIONS_FROM_INVENTORY = 'facturar-medicamentos-inventario';
 
     public const REGISTER_MEDICATION_INVOICE_PAYMENT = 'registrar-pago-factura-medicamentos';
@@ -413,6 +415,11 @@ final class BusinessFilamentActionPermissionRegistry
             self::CAPITATION_BILLING_REPORT => [
                 'name' => 'Centro de reportes: pre-facturación de capitado por proveedor Outsourcing (generar, cerrar y reabrir el mes con razón)',
                 'group' => 'REPORTES',
+                'modules' => ['ADMINISTRACION'],
+            ],
+            self::CLOSE_FISCAL_BOOKS => [
+                'name' => 'Libros de Ventas y de Compras: cerrar el mes declarado y reabrirlo (con razón obligatoria)',
+                'group' => 'ADMINISTRACIÓN',
                 'modules' => ['ADMINISTRACION'],
             ],
             self::DELETE_PENDING_PAYMENT => [
