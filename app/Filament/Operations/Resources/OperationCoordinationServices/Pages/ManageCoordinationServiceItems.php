@@ -10,6 +10,7 @@ use App\Filament\Operations\Resources\OperationServiceOrders\OperationServiceOrd
 use App\Models\OperationCoordinationService;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Operations\CoordinationServiceItemsManager;
+use App\Support\Operations\NonCoveredMedicationAlerts;
 use Filament\Actions\Action;
 use Filament\Pages\Concerns\CanUseDatabaseTransactions;
 use Filament\Panel;
@@ -22,6 +23,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Locked;
 use Throwable;
 
 class ManageCoordinationServiceItems extends Page
@@ -44,6 +46,13 @@ class ManageCoordinationServiceItems extends Page
      */
     public ?array $data = [];
 
+    /**
+     * Llegó desde el aviso de medicamentos no cubiertos con ítems ya marcados:
+     * el asistente abre directo en «Cotización».
+     */
+    #[Locked]
+    public bool $startsOnQuoteStep = false;
+
     public static function getRoutePath(Panel $panel): string
     {
         return '/{record}/manage-items';
@@ -63,6 +72,32 @@ class ManageCoordinationServiceItems extends Page
         );
 
         $this->fillForm();
+        $this->preselectNonCoveredMedications();
+    }
+
+    /**
+     * Marca los medicamentos que el analista eligió en el aviso y prepara el
+     * resto del formulario igual que si los hubiera marcado a mano.
+     */
+    protected function preselectNonCoveredMedications(): void
+    {
+        $keys = NonCoveredMedicationAlerts::preselectedKeys(
+            $this->getRecord(),
+            request()->query(NonCoveredMedicationAlerts::QUERY_PARAMETER),
+        );
+
+        if ($keys === []) {
+            return;
+        }
+
+        $this->form->fill([
+            ...CoordinationServiceItemsManager::formDefaults($this->getRecord()),
+            'managed_service_item_keys' => $keys,
+        ]);
+
+        $this->form->getComponentByStatePath('managed_service_item_keys', withHidden: true)?->callAfterStateUpdated();
+
+        $this->startsOnQuoteStep = true;
     }
 
     public function getTitle(): string|Htmlable

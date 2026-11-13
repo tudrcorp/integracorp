@@ -141,6 +141,11 @@ class OperationsPanelProvider extends PanelProvider
                 PanelsRenderHook::BODY_END,
                 fn () => view('filament.operations.hooks.case-follow-up-chat-panel')
             )
+            /** Aviso con sonido: medicamentos NO CUBIERTOS en Plan Especial 30K/40K/50K (solo analistas TDG). */
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => view('filament.operations.hooks.non-covered-medication-alert')
+            )
             /** Dashboard de Operaciones: tokens de color, animaciones y modo presentación. */
             ->renderHook(
                 PanelsRenderHook::PAGE_START,

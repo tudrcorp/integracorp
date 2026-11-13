@@ -104,6 +104,31 @@ final class TelemedicinePatientPlanBridge
     }
 
     /**
+     * Plan y cobertura vigentes del paciente, con la misma prioridad que {@see plan()}:
+     * primero lo guardado en el paciente; si le falta la cobertura, la del afiliado
+     * vinculado cuando es el mismo plan; sin plan propio, lo del afiliado.
+     *
+     * @return array{plan_id: int, coverage_id: int|null}|null
+     */
+    public static function planAndCoverage(TelemedicinePatient $patient): ?array
+    {
+        $planId = (int) ($patient->plan_id ?? 0);
+        $source = self::sourcePlanAndCoverage($patient);
+
+        if ($planId < 1) {
+            return $source;
+        }
+
+        $coverageId = $patient->coverage_id !== null ? (int) $patient->coverage_id : null;
+
+        if ($coverageId === null && $source !== null && $source['plan_id'] === $planId) {
+            $coverageId = $source['coverage_id'];
+        }
+
+        return ['plan_id' => $planId, 'coverage_id' => $coverageId];
+    }
+
+    /**
      * @return array{plan_id: int, coverage_id: int|null}|null
      */
     public static function pendingAttributes(TelemedicinePatient $patient, bool $onlyMissing = true): ?array

@@ -42,6 +42,7 @@ use App\Support\ClinicalEntitlements\TelemedicineConsultationClinicalUi;
 use App\Support\Filament\FilamentIosActionsMenu;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Operations\LabImagingResultsFollowUpRegistrar;
+use App\Support\Operations\NonCoveredMedicationAlerts;
 use App\Support\Telemedicine\ConsultationClinicalSelections;
 use App\Support\Telemedicine\ConsultationCreateRoute;
 use App\Support\Telemedicine\ConsultationCreateWizardDefaults;
@@ -2029,6 +2030,8 @@ class CreateTelemedicineConsultationPatient extends CreateRecord implements Prov
                             $medication->operation_coordination_service_id = $operationCoordinationService->id;
                             $medication->save();
                         }
+
+                        NonCoveredMedicationAlerts::registerForCoordination($operationCoordinationService);
                     }
                     if ($operationCoordinationService->specific_service == 'LABORATORIOS') {
                         $labs = TelemedicinePatientLab::query()
