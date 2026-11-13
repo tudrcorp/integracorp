@@ -337,23 +337,20 @@
 
     <div class="two-col-section">
         <div class="section-title">Datos del paciente</div>
-        <table class="grid">
+        <table class="grid grid--3">
             <tr>
-                <td>
+                <td style="width: 60%;">
                     <div class="label">Paciente</div>
                     <div class="value">{{ $val($data['name_patient'] ?? null) }}</div>
                 </td>
-                <td>
+                <td style="width: 22%;">
                     <div class="label">Cédula</div>
                     <div class="value-muted">{{ $val($data['ci_patient'] ?? null) }}</div>
                 </td>
-            </tr>
-            <tr>
-                <td>
+                <td style="width: 18%;">
                     <div class="label">Edad</div>
                     <div class="value-muted">{{ \App\Support\PatientAge::forTelemedicinePatientId($data['telemedicine_patient_id'] ?? null, $data['age_patient'] ?? null) }}</div>
                 </td>
-                <td>&nbsp;</td>
             </tr>
         </table>
     </div>

@@ -39,11 +39,16 @@ use Illuminate\Support\HtmlString;
 
 final class ManageCoordinationServiceItemsForm
 {
+    public const QUOTE_STEP_LABEL = 'Cotización';
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
             ->components([
                 Wizard::make(self::steps())
+                    ->startOnStep(fn (Wizard $component, ManageCoordinationServiceItems $livewire): int => $livewire->startsOnQuoteStep
+                        ? self::visibleQuoteStepNumber($component)
+                        : 1)
                     ->extraAttributes([
                         'class' => implode(' ', [
                             'fi-coordination-manage-items-wizard',
@@ -70,6 +75,21 @@ final class ManageCoordinationServiceItemsForm
                             ])
                     ),
             ]);
+    }
+
+    /**
+     * Posición (desde 1) del paso «Cotización» entre los pasos visibles: el
+     * navegador cuenta solo los visibles. Si no está visible, arranca en el primero.
+     */
+    public static function visibleQuoteStepNumber(Wizard $wizard): int
+    {
+        foreach (array_values($wizard->getChildSchema()->getComponents()) as $index => $step) {
+            if ($step instanceof Step && $step->getLabel() === self::QUOTE_STEP_LABEL) {
+                return $index + 1;
+            }
+        }
+
+        return 1;
     }
 
     /**

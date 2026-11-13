@@ -223,6 +223,28 @@ it('las medidas antropométricas van en una sola fila, legibles y sin «— m»'
     expect(file_exists($path))->toBeTrue();
 });
 
+it('paciente, cédula y edad van en una sola fila en el informe inicial y en el de seguimiento', function (string $view): void {
+    $data = [...telemedicineInformeRedesignSampleData(), 'name_patient' => 'NATALIA VALENTINA MONTILLA CARRILLO', 'ci_patient' => '36193559'];
+    $html = view($view, ['data' => $data])->render();
+
+    $section = substr($html, strpos($html, 'Datos del paciente'), 2500);
+    $section = substr($section, 0, strpos($section, '</table>'));
+
+    expect(substr_count($section, '<tr>'))->toBe(1)
+        ->and(substr_count($section, '<td'))->toBe(3)
+        ->and($section)->toContain('grid grid--3')
+        ->toContain('width: 60%;')
+        ->toContain('NATALIA VALENTINA MONTILLA CARRILLO')
+        ->toContain('36193559')
+        ->not->toContain('&nbsp;');
+
+    expect(strpos($section, 'Paciente'))->toBeLessThan(strpos($section, 'Cédula'))
+        ->and(strpos($section, 'Cédula'))->toBeLessThan(strpos($section, 'Edad'));
+})->with([
+    'inicial' => 'documents.informe-medico-largo',
+    'seguimiento' => 'documents.informe-seguimiento',
+]);
+
 it('oculta «Signos vitales» y «Medidas antropométricas» cuando no tienen ningún dato', function (): void {
     $empty = [...telemedicineInformeRedesignSampleData(), 'pa' => null, 'fc' => '', 'fr' => null, 'temp' => ' ', 'saturacion' => null, 'peso' => null, 'estatura' => '', 'imc' => null];
 
