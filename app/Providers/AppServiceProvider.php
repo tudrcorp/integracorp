@@ -62,6 +62,7 @@ use Filament\Support\Colors\Color;
 use Filament\Support\Facades\FilamentColor;
 use Filament\Support\Facades\FilamentTimezone;
 use Filament\Support\Facades\FilamentView;
+use Filament\Tables\View\TablesRenderHook;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Auth\Events\Attempting;
 use Illuminate\Auth\Events\Authenticated;
@@ -130,6 +131,21 @@ class AppServiceProvider extends ServiceProvider
         /** Tema Integracorp: capa opcional sobre los paneles internos; el administrador la activa en «Tema». */
         FilamentView::registerRenderHook(PanelsRenderHook::HEAD_END, fn (): HtmlString => IntegracorpTheme::stylesheet());
         FilamentView::registerRenderHook(PanelsRenderHook::BODY_START, fn (): HtmlString => IntegracorpTheme::previewBanner());
+
+        /** Toggle lista / vista previa junto al buscador en Zona de descarga (todos los paneles). */
+        FilamentView::registerRenderHook(
+            TablesRenderHook::TOOLBAR_SEARCH_BEFORE,
+            fn (): \Illuminate\Contracts\View\View => view('filament.hooks.download-zone-documents-view-toggle'),
+            scopes: [
+                \App\Filament\Business\Resources\DownloadZones\Pages\ListDownloadZones::class,
+                \App\Filament\Marketing\Resources\DownloadZones\Pages\ListDownloadZones::class,
+                \App\Filament\Operations\Resources\DownloadZones\Pages\ListDownloadZones::class,
+                \App\Filament\Administration\Resources\DownloadZones\Pages\ListDownloadZones::class,
+                \App\Filament\Agents\Resources\DownloadZones\Pages\ListDownloadZones::class,
+                \App\Filament\Master\Resources\DownloadZones\Pages\ListDownloadZones::class,
+                \App\Filament\General\Resources\DownloadZones\Pages\ListDownloadZones::class,
+            ],
+        );
 
         if (config('live-presence.enabled', true)) {
             /** Contador de consultas por petición para el monitor en vivo. */

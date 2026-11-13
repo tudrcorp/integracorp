@@ -473,6 +473,7 @@
 }
 
 @import '../download-zone-tabs.css';
+@import '../download-zone-sidebar.css';
 
 /* Mismo estilo que "Crear Ticket" (menu-user): gradiente verde + sombras iOS. Usar con extraAttributes class="ticket-btn-ios ..." */
 @layer components {
