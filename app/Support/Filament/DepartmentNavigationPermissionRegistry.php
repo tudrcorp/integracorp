@@ -364,6 +364,8 @@ final class DepartmentNavigationPermissionRegistry
         OperationAccountsPayableResource::class => ['cuentas-por-pagar-facturas'],
         \App\Filament\Operations\Resources\OperationCashPayments\OperationCashPaymentResource::class => ['pagos-de-contado'],
         \App\Filament\Administration\Resources\OperationCashPayments\OperationCashPaymentResource::class => ['pagos-de-contado'],
+        \App\Filament\Administration\Resources\FiscalBooks\FiscalSalesBookResource::class => ['libro-de-ventas'],
+        \App\Filament\Administration\Resources\FiscalBooks\FiscalPurchasesBookResource::class => ['libro-de-compras'],
         OperationTypeServiceResource::class => ['tipos-servicios'],
         TelemedicineGeneralServiceResource::class => ['servicios-consulta-general'],
         PortalHelpContactResource::class => ['contactos-ayuda-portal'],

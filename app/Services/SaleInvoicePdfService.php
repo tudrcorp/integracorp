@@ -8,11 +8,14 @@ use App\Models\Affiliation;
 use App\Models\AffiliationCorporate;
 use App\Models\Log as AuditLog;
 use App\Models\Sale;
+use App\Models\User;
+use App\Support\Administration\FiscalBooks\FiscalSalesBookSync;
 use App\Support\CorporateDocumentPlanAmounts;
 use App\Support\Filament\Administration\InvoiceDocumentNumber;
 use App\Support\Sales\InvoiceVesLineAmounts;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -57,6 +60,8 @@ final class SaleInvoicePdfService
 
             throw $exception;
         }
+
+        FiscalSalesBookSync::syncSaleSafely($sale, self::fiscalBookUser());
 
         return $path;
     }
@@ -124,7 +129,16 @@ final class SaleInvoicePdfService
             throw $exception;
         }
 
+        FiscalSalesBookSync::syncSaleSafely($sale, self::fiscalBookUser());
+
         return ['path' => $path, 'replaced_path' => $replacedPath];
+    }
+
+    private static function fiscalBookUser(): ?User
+    {
+        $user = Auth::user();
+
+        return $user instanceof User ? $user : null;
     }
 
     /**

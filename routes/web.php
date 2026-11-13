@@ -224,6 +224,11 @@ Route::get('organigrama/exportes/{file}', App\Http\Controllers\OrgChartExportDow
     ->where('file', App\Support\OrgStructure\OrgChartPdfExporter::FILE_PATTERN)
     ->name('org-structure.exports.download');
 
+Route::get('administration/libros-fiscales/{book}/{period}/{format}', App\Http\Controllers\FiscalBookDownloadController::class)
+    ->middleware(['web', 'auth'])
+    ->where(['book' => 'ventas|compras', 'period' => '\d{4}-\d{2}', 'format' => 'xlsx|pdf'])
+    ->name('administration.fiscal-books.download');
+
 Route::get('administration/reportes/descargar/{file}', App\Http\Controllers\AdministrationReportDownloadController::class)
     ->middleware(['web', 'auth'])
     ->where('file', 'reporte-administracion-[a-z0-9-]+\.(xlsx|csv|pdf)')
