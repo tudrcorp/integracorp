@@ -2,7 +2,6 @@
 
 namespace App\Filament\Marketing\Resources\Zones\Schemas;
 
-use App\Models\Zone;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Fieldset;
@@ -17,7 +16,7 @@ class ZoneForm
         return $schema
             ->components([
                 Section::make('Datos de la carpeta / zona')
-                    ->description('Define el nombre, código y orden. La posición determina el orden de las pestañas en Zona de descarga.')
+                    ->description('Define el nombre y código. El orden se ajusta arrastrando las carpetas en el listado.')
                     ->icon('heroicon-o-folder')
                     ->schema([
                         Fieldset::make()
@@ -37,18 +36,6 @@ class ZoneForm
                                             ->required()
                                             ->maxLength(255)
                                             ->helperText('Nombre que verán los usuarios en las pestañas')
-                                            ->columnSpan(1),
-                                        TextInput::make('position')
-                                            ->label('Posición')
-                                            ->numeric()
-                                            ->required()
-                                            ->minValue(1)
-                                            ->default(1)
-                                            ->unique(table: Zone::class, column: 'position')
-                                            ->helperText('Orden de izquierda a derecha en las pestañas. Menor número = más a la izquierda. No puede repetirse.')
-                                            ->validationMessages([
-                                                'unique' => 'Esa posición ya está asignada a otra zona. Elija otro número.',
-                                            ])
                                             ->columnSpan(1),
                                         Select::make('status')
                                             ->label('Estado')

@@ -8,3 +8,4 @@
 @source '../../../../resources/views/filament/business/plan-generators/partials/upgrade-population.blade.php';
 
 @import '../download-zone-tabs.css';
+@import '../download-zone-sidebar.css';

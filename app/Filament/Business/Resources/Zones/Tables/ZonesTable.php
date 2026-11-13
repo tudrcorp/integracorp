@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\Zones\Tables;
 
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -15,20 +16,16 @@ class ZonesTable
     {
         return $table
             ->heading('Carpetas / Zonas')
-            ->description('Orden de las carpetas según la posición. Este orden define cómo se muestran las pestañas en Zona de descarga.')
+            ->description('Arrastra las carpetas para definir el orden. Este orden define cómo se muestran las pestañas en Zona de descarga.')
             ->defaultSort('position', 'asc')
+            ->reorderable('position')
+            ->reorderRecordsTriggerAction(
+                fn (Action $action, bool $isReordering): Action => $action
+                    ->button()
+                    ->label($isReordering ? 'Terminar de ordenar' : 'Reordenar carpetas')
+            )
             ->striped()
             ->columns([
-                TextColumn::make('position')
-                    ->label('Posición')
-                    ->numeric()
-                    ->sortable()
-                    ->alignCenter()
-                    ->badge()
-                    ->color('primary')
-                    ->weight(FontWeight::SemiBold)
-                    ->icon('heroicon-o-bars-3-bottom-left')
-                    ->extraCellAttributes(fn (): array => ['class' => 'w-24']),
                 TextColumn::make('code')
                     ->label('Código')
                     ->searchable()
