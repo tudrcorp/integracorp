@@ -321,7 +321,7 @@ class Affiliation extends Model
             }
             // dd($beneficios_table, $pagador,$afiliates);
 
-            SendNotificacionAfiliacionIndividual::dispatch($pagador, $beneficios_table, $name_pdf, $afiliates, Auth::user())->onQueue('certificates');
+            SendNotificacionAfiliacionIndividual::dispatch($pagador, $beneficios_table, $name_pdf, $afiliates, Auth::user());
             // code...
 
         } catch (\Throwable $th) {
@@ -380,7 +380,7 @@ class Affiliation extends Model
 
             // dd($beneficios_table, $pagador,$afiliates);
 
-            SendNotificacionAfiliacionIndividual::dispatch($pagador, $beneficios_table, $name_pdf, $afiliates, Auth::user())->onQueue('certificates');
+            SendNotificacionAfiliacionIndividual::dispatch($pagador, $beneficios_table, $name_pdf, $afiliates, Auth::user());
             // code...
         } catch (\Throwable $th) {
             dd($th);
