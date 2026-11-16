@@ -7,6 +7,8 @@ use App\Filament\Business\Resources\AffiliationCorporates\AffiliationCorporateRe
 use App\Filament\Business\Resources\AffiliationCorporates\Concerns\OptimizesAffiliationCorporateInfolistPerformance;
 use App\Filament\Shared\Affiliations\AffiliationDateCorrectionActions;
 use App\Models\AffiliationCorporate;
+use App\Models\AffiliationCorporateDocument;
+use App\Support\AffiliationCorporates\ExpedienteDocumentDeletion;
 use App\Support\Filament\FilamentIosActionsMenu;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Filament\RecordPageHeader;
@@ -374,5 +376,101 @@ class ViewAffiliationCorporate extends ViewRecord
                 'Monto por cuota' => RecordPageHeader::money($affiliation->total_amount, hideZero: true),
             ],
         );
+    }
+
+    /**
+     * Descarga un documento del expediente digital. Es una acción de la página (no de la
+     * fila): la ficha construye solo la pestaña activa y una acción anidada en la tabla
+     * no se puede volver a ubicar en la petición siguiente.
+     */
+    public function downloadExpedienteDocumentAction(): Action
+    {
+        return Action::make('downloadExpedienteDocument')
+            ->action(function (array $arguments) {
+                $document = $this->expedienteDocumentFromArguments($arguments);
+
+                if ($document === null || blank($document->file_path) || ! Storage::disk('public')->exists($document->file_path)) {
+                    Notification::make()
+                        ->title('No se encontró el archivo')
+                        ->body('El documento ya no está disponible. Recargue la página.')
+                        ->danger()
+                        ->send();
+
+                    return null;
+                }
+
+                return response()->download(
+                    Storage::disk('public')->path($document->file_path),
+                    ExpedienteDocumentDeletion::displayName($document),
+                );
+            });
+    }
+
+    /**
+     * Elimina un documento del expediente con motivo obligatorio y traza completa
+     * (observación en la bitácora, auditoría y archivo resguardado en privado).
+     */
+    public function deleteExpedienteDocumentAction(): Action
+    {
+        return Action::make('deleteExpedienteDocument')
+            ->modalHeading(fn (array $arguments): string => 'Eliminar «'.(($document = $this->expedienteDocumentFromArguments($arguments)) ? ExpedienteDocumentDeletion::displayName($document) : 'documento').'»')
+            ->modalDescription('El documento sale del expediente y deja de verse aquí. El archivo no se destruye: queda resguardado en el archivo privado del sistema, y en la pestaña Observaciones queda la nota con quién lo eliminó, cuándo y por qué.')
+            ->modalIcon(Heroicon::OutlinedTrash)
+            ->modalIconColor('danger')
+            ->modalSubmitActionLabel('Sí, eliminar documento')
+            ->color('danger')
+            ->schema([
+                Textarea::make('reason')
+                    ->label('Motivo de la eliminación')
+                    ->placeholder('Ej.: el cliente envió una versión corregida de la factura')
+                    ->required()
+                    ->minLength(ExpedienteDocumentDeletion::MIN_REASON_LENGTH)
+                    ->maxLength(500)
+                    ->rows(3),
+            ])
+            ->action(function (array $data, array $arguments): void {
+                $document = $this->expedienteDocumentFromArguments($arguments);
+
+                if ($document === null) {
+                    Notification::make()->title('El documento ya no existe')->body('Quizá otra persona lo eliminó. Recargue la página.')->warning()->send();
+
+                    return;
+                }
+
+                try {
+                    $result = ExpedienteDocumentDeletion::delete($this->record, (int) $document->getKey(), (string) $data['reason'], Auth::user());
+                } catch (\InvalidArgumentException $exception) {
+                    Notification::make()->title('No se eliminó el documento')->body($exception->getMessage())->danger()->send();
+
+                    return;
+                }
+
+                $this->record->unsetRelation('affiliationCorporateDocuments');
+                $this->record->unsetRelation('affiliationCorporateObservations');
+                $this->record->load(['affiliationCorporateDocuments', 'affiliationCorporateObservations.createdBy:id,name,email']);
+
+                Notification::make()
+                    ->title('Documento eliminado')
+                    ->body('«'.$result['document'].'» salió del expediente. La nota quedó en Observaciones.')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    /**
+     * @param  array<string, mixed>  $arguments
+     */
+    private function expedienteDocumentFromArguments(array $arguments): ?AffiliationCorporateDocument
+    {
+        $id = (int) ($arguments['document'] ?? 0);
+
+        if ($id <= 0) {
+            return null;
+        }
+
+        return AffiliationCorporateDocument::query()
+            ->whereKey($id)
+            ->where('affiliation_corporate_id', $this->record->getKey())
+            ->first();
     }
 }
