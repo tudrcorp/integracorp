@@ -4,9 +4,11 @@ namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
 use App\Filament\Shared\Auth\PanelAwareLogin;
+use App\Filament\Shared\Telegram\Pages\ConnectTelegram;
 use App\Filament\Telemedicina\Resources\TelemedicineDoctors\TelemedicineDoctorResource;
 use App\Filament\Telemedicina\Widgets\WelcomeDoctorWidget;
 use App\Http\Middleware\DuplicatedSession;
+use App\Support\Telegram\TelegramUserMenu;
 use Filament\Actions\Action;
 use Filament\Enums\GlobalSearchPosition;
 use Filament\Enums\ThemeMode;
@@ -66,6 +68,7 @@ class TelemedicinaPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Telemedicina/Pages'), for: 'App\Filament\Telemedicina\Pages')
             ->pages([
                 Dashboard::class,
+                ConnectTelegram::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Telemedicina/Widgets'), for: 'App\Filament\Telemedicina\Widgets')
             ->widgets([
@@ -98,6 +101,7 @@ class TelemedicinaPanelProvider extends PanelProvider
                 statusCode: 404,
             )
             ->userMenuItems([
+                TelegramUserMenu::action(),
                 'profile' => fn (Action $action) => $action->label('PERFIL DEL DOCTOR')
                     ->icon('healthicons-f-doctor-male')
                     ->color('no-urgente')

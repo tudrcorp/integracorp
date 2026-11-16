@@ -11,9 +11,11 @@ use App\Filament\Operations\Widgets\StatsOverview;
 use App\Filament\Operations\Widgets\StatsOverviewPlan;
 use App\Filament\Operations\Widgets\TotalAfiliacionesPorEstado;
 use App\Filament\Shared\Auth\PanelAwareLogin;
+use App\Filament\Shared\Telegram\Pages\ConnectTelegram;
 use App\Filament\Widgets\WelcomeUserLiquidGlassWidget;
 use App\Http\Middleware\DuplicatedSession;
 use App\Support\Filament\OperationsPanelNavigationGroups;
+use App\Support\Telegram\TelegramUserMenu;
 use Filament\Actions\Action;
 use Filament\Enums\GlobalSearchPosition;
 use Filament\Enums\ThemeMode;
@@ -66,6 +68,7 @@ class OperationsPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Operations/Pages'), for: 'App\Filament\Operations\Pages')
             ->pages([
                 Dashboard::class,
+                ConnectTelegram::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Operations/Widgets'), for: 'App\Filament\Operations\Widgets')
             ->widgets([
@@ -98,6 +101,7 @@ class OperationsPanelProvider extends PanelProvider
                     ),
             ])
             ->userMenuItems([
+                TelegramUserMenu::action(),
                 'profile' => fn (Action $action) => $action->label('PERFIL DE USUARIO'),
                 'logout' => fn (Action $action) => $action
                     ->label('CERRAR SESIÓN')

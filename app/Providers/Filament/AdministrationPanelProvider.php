@@ -7,9 +7,11 @@ use App\Filament\AvatarProviders\BoringAvatarsProvider;
 use App\Filament\Shared\Auth\PanelAwareLogin;
 use App\Filament\Shared\Renovations\Widgets\CorporateRenovationKpisWidget;
 use App\Filament\Shared\Renovations\Widgets\IndividualRenovationKpisWidget;
+use App\Filament\Shared\Telegram\Pages\ConnectTelegram;
 use App\Filament\Widgets\WelcomeUserLiquidGlassWidget;
 use App\Http\Middleware\DuplicatedSession;
 use App\Support\Filament\AdministrationPanelNavigationGroups;
+use App\Support\Telegram\TelegramUserMenu;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -53,6 +55,7 @@ class AdministrationPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Administration/Pages'), for: 'App\Filament\Administration\Pages')
             ->pages([
                 Dashboard::class,
+                ConnectTelegram::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Administration/Widgets'), for: 'App\Filament\Administration\Widgets')
             ->widgets([
@@ -77,6 +80,7 @@ class AdministrationPanelProvider extends PanelProvider
             ->breadcrumbs(false)
             ->maxContentWidth(Width::Full)
             ->userMenuItems([
+                TelegramUserMenu::action(),
                 'profile' => fn (Action $action) => $action->label('PERFIL'),
                 // ...
                 'logout' => fn (Action $action) => $action

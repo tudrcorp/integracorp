@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Enums\CorporateAgendaInvitationStatus;
+use App\Enums\SystemNotificationKey;
 use App\Jobs\SendNotificacionWhatsApp;
 use App\Models\CorporateAgendaActivity;
 use App\Models\CorporateAgendaActivityParticipant;
 use App\Models\RrhhColaborador;
 use App\Models\User;
+use App\Support\InternalNotifications\InternalMessaging;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -34,9 +36,6 @@ class CorporateAgendaInvitationWhatsAppService
         }
 
         $phone = self::resolveColaboradorPhoneForWhatsApp($colaborador);
-        if ($phone === null) {
-            return;
-        }
 
         $invitationUrl = URL::temporarySignedRoute(
             'agenda.invitation.show',
@@ -45,6 +44,21 @@ class CorporateAgendaInvitationWhatsAppService
         );
 
         $body = self::buildInvitationBody($activity, $invitationUrl);
+
+        /** Por Telegram si el invitado lo tiene vinculado; si no, por WhatsApp como siempre. */
+        if (InternalMessaging::routeToPerson(
+            SystemNotificationKey::PersonalAssignments,
+            'Invitación a una actividad de la Agenda',
+            $body,
+            filled($colaborador->user_id) ? (int) $colaborador->user_id : null,
+            $phone,
+        )) {
+            return;
+        }
+
+        if ($phone === null) {
+            return;
+        }
 
         SendNotificacionWhatsApp::dispatch(
             $requestedByUserId,
@@ -79,9 +93,6 @@ class CorporateAgendaInvitationWhatsAppService
         }
 
         $creatorPhone = self::resolveUserPhoneForWhatsApp((int) $activity->creator_user_id);
-        if ($creatorPhone === null) {
-            return;
-        }
 
         $actorName = (string) ($participant->colaborador?->fullName ?: 'Colaborador');
         $responseText = $status === CorporateAgendaInvitationStatus::Accepted ? 'ACEPTO' : 'RECHAZO';
@@ -101,6 +112,21 @@ class CorporateAgendaInvitationWhatsAppService
 
         if ($status === CorporateAgendaInvitationStatus::Rejected && is_string($responseNote) && trim($responseNote) !== '') {
             $message .= "\n\nMotivo de rechazo: ".trim($responseNote);
+        }
+
+        /** Por Telegram si quien creó la actividad lo tiene vinculado; si no, por WhatsApp como siempre. */
+        if (InternalMessaging::routeToPerson(
+            SystemNotificationKey::PersonalAssignments,
+            'Respuesta a una invitación de la Agenda',
+            $message,
+            (int) $activity->creator_user_id,
+            $creatorPhone,
+        )) {
+            return;
+        }
+
+        if ($creatorPhone === null) {
+            return;
         }
 
         SendNotificacionWhatsApp::dispatch(

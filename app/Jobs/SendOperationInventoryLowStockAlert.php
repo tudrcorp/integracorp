@@ -9,6 +9,7 @@ use App\Mail\OperationInventoryLowStockMail;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Services\OperationInventoryLowStockReporter;
 use App\Support\Concerns\ReportsScheduledExecution;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\ScheduledTaskRunReport;
 use App\Support\SystemNotificationRecipients;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -79,7 +80,13 @@ class SendOperationInventoryLowStockAlert implements ShouldQueue
     {
         $dispatched = 0;
 
-        foreach ($phones as $rawPhone) {
+        $route = InternalMessaging::route(SystemNotificationKey::OperationInventoryLowStock, 'Stock bajo de inventario · resumen diario', $body, $phones);
+
+        if ($route['telegram'] + $route['groups'] > 0) {
+            ScheduledTaskRunReport::addMetric('Telegram despachados', $route['telegram'] + $route['groups']);
+        }
+
+        foreach ($route['whatsapp'] as $rawPhone) {
             $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
 
             if ($phone === null) {

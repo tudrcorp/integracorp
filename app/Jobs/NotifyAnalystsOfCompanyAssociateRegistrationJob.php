@@ -9,6 +9,7 @@ use App\Mail\CompanyAssociateRegisteredAnalystMail;
 use App\Models\CompanyAssociate;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\Companies\CompanyAssociateRegistrationNotificationMessage;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\SecurityAudit;
 use App\Support\SystemNotificationRecipients;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -114,7 +115,10 @@ class NotifyAnalystsOfCompanyAssociateRegistrationJob implements ShouldQueue
             }
         }
 
-        foreach ($phones as $rawPhone) {
+        /** Telegram a las personas vinculadas y los grupos elegidos en el Centro; el resto, por WhatsApp como siempre. */
+        $route = InternalMessaging::route(SystemNotificationKey::CompanyAssociateRegistration, 'Nuevo asociado registrado', $whatsappBody, $phones, $emails);
+
+        foreach ($route['whatsapp'] as $rawPhone) {
             $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
 
             if ($phone === null) {
@@ -155,6 +159,8 @@ class NotifyAnalystsOfCompanyAssociateRegistrationJob implements ShouldQueue
             'company_responsible_id' => $associate->company_responsible_id,
             'emails_sent' => $emailsSent,
             'whatsapps_queued' => $whatsappsQueued,
+            'telegram_people' => $route['telegram'],
+            'telegram_groups' => $route['groups'],
             'emails_configured' => count($emails),
             'phones_configured' => count($phones),
         ]);

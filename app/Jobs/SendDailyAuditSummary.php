@@ -9,6 +9,7 @@ use App\Mail\AuditCompletionSummaryMail;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\Audit\AuditCompletionReport;
 use App\Support\Concerns\ReportsScheduledExecution;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\ScheduledTaskRunReport;
 use App\Support\SystemNotificationRecipients;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -76,7 +77,13 @@ class SendDailyAuditSummary implements ShouldQueue
         $body = AuditCompletionReport::whatsappBody($counts);
         $dispatched = 0;
 
-        foreach ($phones as $rawPhone) {
+        $route = InternalMessaging::route(SystemNotificationKey::DailyAuditSummary, 'Reporte diario de auditorías', $body, $phones);
+
+        if ($route['telegram'] + $route['groups'] > 0) {
+            ScheduledTaskRunReport::addMetric('Telegram despachados', $route['telegram'] + $route['groups']);
+        }
+
+        foreach ($route['whatsapp'] as $rawPhone) {
             $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
 
             if ($phone === null) {

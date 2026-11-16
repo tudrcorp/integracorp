@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Enums\SystemNotificationKey;
 use App\Mail\TelemedicineCaseReversedMail;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\SecurityAudit;
 use App\Support\SystemNotificationRecipients;
 use App\Support\Telemedicine\TelemedicineCaseReversalNotificationMessage;
@@ -92,7 +93,22 @@ class NotifyTelemedicineCaseReversalJob implements ShouldQueue
             }
         }
 
-        foreach ($phones as $rawPhone) {
+        /**
+         * Telegram (sin datos clínicos) a los vinculados y los grupos elegidos; el resto, el
+         * WhatsApp completo de siempre.
+         */
+        $route = InternalMessaging::route(
+            SystemNotificationKey::TelemedicineCaseReversal,
+            'Reverso de caso '.($this->payload['case_code'] ?? ''),
+            $whatsappBody,
+            $phones,
+            $emails,
+            critical: true,
+            telegramMessage: TelemedicineCaseReversalNotificationMessage::telegramBody($this->payload),
+        );
+        $whatsappsQueued += $route['telegram'] + $route['groups'];
+
+        foreach ($route['whatsapp'] as $rawPhone) {
             $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
 
             if ($phone === null) {

@@ -9,6 +9,7 @@ use App\Mail\AnulatedQuotesNotificationMail;
 use App\Models\IndividualQuote;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\Concerns\ReportsScheduledExecution;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\ScheduledTaskRunReport;
 use App\Support\SystemNotificationRecipients;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -123,7 +124,13 @@ class AnulateAgentQuotes implements ShouldQueue
         Número de cotizaciones anuladas: *{$anulatedCount}*
         TEXT;
 
-        foreach ($phones as $rawPhone) {
+        $route = InternalMessaging::route(SystemNotificationKey::AgentQuoteAnulation, 'Cotizaciones anuladas', $whatsappBody, $phones);
+
+        if ($route['telegram'] + $route['groups'] > 0) {
+            ScheduledTaskRunReport::addMetric('Telegram despachados', $route['telegram'] + $route['groups']);
+        }
+
+        foreach ($route['whatsapp'] as $rawPhone) {
             $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
 
             if ($phone === null) {

@@ -52,9 +52,11 @@ it('el notificador envía correo y WhatsApp a los teléfonos indicados', functio
     expect($src)
         ->toContain('SendContadoQuotePaymentEmail::dispatch')
         ->toContain('SendNotificacionWhatsApp::dispatch')
-        ->toContain("'04242875732'")
-        ->toContain("'04143027250'")
+        ->toContain('SystemNotificationKey::ContadoQuotePayment')
         ->toContain('normalizePhoneForWhatsApp');
+
+    /** Desde la entrega B4 de Telegram los dos teléfonos arrancan como valor inicial en el Centro de notificaciones. */
+    expect(App\Enums\SystemNotificationKey::ContadoQuotePayment->defaultPhones())->toBe(['04242875732', '04143027250']);
 });
 
 it('el job de correo adjunta PDF y usa destinatarios correctos', function (): void {

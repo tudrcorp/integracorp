@@ -126,7 +126,7 @@ return [
      * atascada: casi siempre, ningún worker la está escuchando.
      */
     'queues' => [
-        'names' => ['renovations', 'system', 'telemedicina', 'documents', 'certificates', 'renew', 'default'],
+        'names' => ['notifications', 'renovations', 'system', 'telemedicina', 'documents', 'certificates', 'renew', 'default'],
         'stuck_after_minutes' => (int) env('LIVE_PRESENCE_QUEUE_STUCK_MINUTES', 30),
 
         /** Segundos sin latido tras los que un worker se da por muerto (late cada 10 s). */

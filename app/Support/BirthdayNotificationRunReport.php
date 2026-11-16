@@ -14,6 +14,8 @@ use App\Models\BirthdayNotification;
 use App\Support\Birthday\BirthdayCelebrationAccessIssuer;
 use App\Support\Birthday\BirthdayCelebrationCard;
 use App\Support\Birthday\BirthdayCelebrationRecipientGate;
+use App\Support\InternalNotifications\InternalAttachment;
+use App\Support\InternalNotifications\InternalMessaging;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Mail\PendingMail;
@@ -310,10 +312,44 @@ final class BirthdayNotificationRunReport
         string $file,
         string $type,
     ): void {
-        foreach (self::celebrationCopyPhones(self::witnessCopyPhones()) as $index => $phone) {
+        $phones = self::celebrationCopyPhones(self::witnessCopyPhones());
+
+        /**
+         * Telegram (mensaje + tarjeta) a los testigos vinculados y a los grupos elegidos en el
+         * Centro de notificaciones; el resto, por WhatsApp como siempre.
+         */
+        $route = InternalMessaging::route(
+            SystemNotificationKey::BirthdayNotificationWitnessCopy,
+            'Copia testigo · cumpleaños de '.$name,
+            $content,
+            $phones,
+            attachment: self::telegramAttachmentFor(self::$currentSendsCelebrationCard ? BirthdayCelebrationCard::PUBLIC_RELATIVE_PATH : $file),
+        );
+
+        foreach (array_values($route['whatsapp']) as $index => $phone) {
             self::queueWhatsApp($name, $phone, $content, $file, $type)
                 ->delay(now()->addSeconds(10 + ($index * 2)));
         }
+    }
+
+    /**
+     * Archivo de la tarjeta (imagen o video) para subirlo a Telegram, si existe en el disco.
+     */
+    private static function telegramAttachmentFor(string $file): ?InternalAttachment
+    {
+        $relative = ltrim(trim($file), '/');
+
+        if ($relative === '' || str_starts_with($relative, 'http')) {
+            return null;
+        }
+
+        foreach ([public_path('storage/'.$relative), public_path($relative)] as $candidate) {
+            if (is_file($candidate)) {
+                return new InternalAttachment($candidate, basename($candidate), PublicStorageAssetUrl::url($relative));
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -540,7 +576,10 @@ final class BirthdayNotificationRunReport
             $fullMessage = self::buildSummaryMessage();
             $imageCaption = self::buildWhatsAppImageCaption();
 
-            foreach ($phones as $phone) {
+            /** Telegram a los vinculados y los grupos elegidos; el resto, por WhatsApp como siempre. */
+            $route = InternalMessaging::route(SystemNotificationKey::BirthdayNotificationSummary, 'Resumen de cumpleaños', $fullMessage, $phones, $emails);
+
+            foreach ($route['whatsapp'] as $phone) {
                 NotificationController::notificationBirthday(
                     'Equipo Integracorp',
                     $phone,

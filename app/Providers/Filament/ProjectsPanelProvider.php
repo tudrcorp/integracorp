@@ -4,8 +4,10 @@ namespace App\Providers\Filament;
 
 use App\Filament\AvatarProviders\BoringAvatarsProvider;
 use App\Filament\Shared\Auth\PanelAwareLogin;
+use App\Filament\Shared\Telegram\Pages\ConnectTelegram;
 use App\Filament\Widgets\WelcomeUserLiquidGlassWidget;
 use App\Support\Filament\ProjectManagement\RecentProjectsNavigation;
+use App\Support\Telegram\TelegramUserMenu;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -67,6 +69,7 @@ class ProjectsPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Projects/Pages'), for: 'App\Filament\Projects\Pages')
             ->pages([
                 Dashboard::class,
+                ConnectTelegram::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Projects/Widgets'), for: 'App\Filament\Projects\Widgets')
             ->widgets([
@@ -97,6 +100,7 @@ class ProjectsPanelProvider extends PanelProvider
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->defaultAvatarProvider(BoringAvatarsProvider::class)
             ->userMenuItems([
+                TelegramUserMenu::action(),
                 'profile' => fn (Action $action) => $action->label('PERFIL DE USUARIO'),
                 // ...
                 'logout' => fn (Action $action) => $action

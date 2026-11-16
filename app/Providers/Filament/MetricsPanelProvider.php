@@ -12,7 +12,9 @@ use App\Filament\Metrics\Pages\Organizacion;
 use App\Filament\Metrics\Pages\Sistema;
 use App\Filament\Metrics\Pages\Usuarios;
 use App\Filament\Shared\Auth\PanelAwareLogin;
+use App\Filament\Shared\Telegram\Pages\ConnectTelegram;
 use App\Support\Filament\MetricsPanelNavigationGroups;
+use App\Support\Telegram\TelegramUserMenu;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
@@ -71,6 +73,7 @@ class MetricsPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Metrics/Pages'), for: 'App\Filament\Metrics\Pages')
             ->pages([
                 Dashboard::class,
+                ConnectTelegram::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Metrics/Widgets'), for: 'App\Filament\Metrics\Widgets')
             /** Sin campana de notificaciones: el panel es de consulta y las notificaciones se atienden en los paneles operativos. */
@@ -101,6 +104,7 @@ class MetricsPanelProvider extends PanelProvider
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->defaultAvatarProvider(BoringAvatarsProvider::class)
             ->userMenuItems([
+                TelegramUserMenu::action(),
                 'profile' => fn (Action $action) => $action->label('PERFIL DE USUARIO'),
                 'logout' => fn (Action $action) => $action
                     ->label('CERRAR SESIÓN')

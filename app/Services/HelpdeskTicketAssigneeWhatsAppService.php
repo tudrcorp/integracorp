@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\SystemNotificationKey;
 use App\Jobs\SendNotificacionWhatsApp;
 use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
 use App\Models\User;
 use App\Support\HelpdeskPlainText;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\SecurityAudit;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -418,7 +420,7 @@ TEXT;
         $report['attempted'] = 1;
 
         try {
-            SendNotificacionWhatsApp::dispatch($requestedByUserId, $body, $phone, null, [
+            self::dispatchInternalWhatsApp(is_numeric($creatorUserId) ? (int) $creatorUserId : null, $requestedByUserId, $body, $phone, [
                 'panel' => $panel,
                 'helpdesk_id' => $ticket->getKey(),
                 'creator_name' => $creatorName,
@@ -692,7 +694,7 @@ TEXT;
             $report['attempted']++;
 
             try {
-                SendNotificacionWhatsApp::dispatch($requestedByUserId, $body, $phone, null, [
+                self::dispatchInternalWhatsApp(filled($colaborador->user_id) ? (int) $colaborador->user_id : null, $requestedByUserId, $body, $phone, [
                     'panel' => $panel,
                     'helpdesk_id' => $ticket->getKey(),
                     'rrhh_colaborador_id' => $colaborador->getKey(),
@@ -749,5 +751,28 @@ TEXT;
         }
 
         return $report;
+    }
+
+    /**
+     * Envío de un aviso del Helpdesk a una persona: por Telegram si la tiene vinculada y
+     * «Avisos del Helpdesk» está en «Persona»; si no, el WhatsApp de siempre (en cola).
+     *
+     * @param  array<string, mixed>  $context
+     */
+    public static function dispatchInternalWhatsApp(?int $recipientUserId, ?int $requestedByUserId, string $body, string $phone, array $context): void
+    {
+        $ticketId = $context['helpdesk_id'] ?? null;
+
+        if (InternalMessaging::routeToPerson(
+            SystemNotificationKey::HelpdeskNotices,
+            'Helpdesk'.($ticketId !== null ? ' · ticket #'.$ticketId : ''),
+            $body,
+            $recipientUserId,
+            $phone,
+        )) {
+            return;
+        }
+
+        SendNotificacionWhatsApp::dispatch($requestedByUserId, $body, $phone, null, $context);
     }
 }

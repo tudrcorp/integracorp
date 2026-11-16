@@ -10,6 +10,7 @@ use App\Jobs\SendNotificacionWhatsAppDocument;
 use App\Mail\CompanyAssociateDocumentsMail;
 use App\Models\CompanyAssociate;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\SecurityAudit;
 use App\Support\SystemNotificationRecipients;
 use Illuminate\Support\Facades\Bus;
@@ -19,6 +20,9 @@ use Throwable;
 
 final class CompanyAssociateDocumentsDeliverer
 {
+    /** Etiqueta de los contactos internos (analistas) entre los destinatarios del asociado. */
+    private const ANALYST_LABEL = 'Analista INTEGRACORP';
+
     /**
      * @param  array{filename: string, preview_url: string, absolute_path: string}  $carnet
      */
@@ -96,6 +100,34 @@ final class CompanyAssociateDocumentsDeliverer
         $qrPublicUrl = CompanyAssociateDocumentsDeliveryMessage::inclusionQrWhatsAppDocumentUrl();
         $qrFilename = CompanyAssociateInclusionQrCatalog::QR_FILENAME;
 
+        /**
+         * Analistas: el aviso por Telegram a los vinculados; el carnet y el QR siguen por
+         * WhatsApp a todos (llevan datos del asociado). El asociado y su responsable son
+         * externos: no se tocan.
+         */
+        $analystPhones = array_values(array_map('strval', array_keys(array_filter(
+            $phoneRecipients,
+            static fn (mixed $name): bool => $name === self::ANALYST_LABEL,
+        ))));
+        $introByTelegram = [];
+
+        if ($analystPhones !== []) {
+            $analystEmails = array_values(array_map('strval', array_keys(array_filter(
+                $emailRecipients,
+                static fn (mixed $name): bool => $name === self::ANALYST_LABEL,
+            ))));
+
+            $route = InternalMessaging::route(
+                SystemNotificationKey::CompanyAssociateRegistration,
+                'Documentos del asociado',
+                CompanyAssociateDocumentsDeliveryMessage::whatsappIntro($associate),
+                $analystPhones,
+                $analystEmails,
+            );
+
+            $introByTelegram = array_flip(array_diff($analystPhones, $route['whatsapp']));
+        }
+
         foreach ($phoneRecipients as $rawPhone => $recipientName) {
             $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp(
                 is_scalar($rawPhone) ? (string) $rawPhone : null
@@ -119,13 +151,13 @@ final class CompanyAssociateDocumentsDeliverer
                 ];
 
                 $jobs = [
-                    new SendNotificacionWhatsApp(
+                    ...(isset($introByTelegram[(string) $rawPhone]) ? [] : [new SendNotificacionWhatsApp(
                         null,
                         CompanyAssociateDocumentsDeliveryMessage::whatsappIntro($associate),
                         $phone,
                         null,
                         $context,
-                    ),
+                    )]),
                     new SendNotificacionWhatsAppDocument(
                         null,
                         CompanyAssociateDocumentsDeliveryMessage::whatsappCarnetCaption($associate),
@@ -226,7 +258,7 @@ final class CompanyAssociateDocumentsDeliverer
                 $normalized = strtolower(trim($email));
 
                 if ($normalized !== '') {
-                    $recipients[$normalized] ??= 'Analista INTEGRACORP';
+                    $recipients[$normalized] ??= self::ANALYST_LABEL;
                 }
             }
         }
@@ -260,7 +292,7 @@ final class CompanyAssociateDocumentsDeliverer
                 $normalized = trim($phone);
 
                 if ($normalized !== '') {
-                    $recipients[$normalized] ??= 'Analista INTEGRACORP';
+                    $recipients[$normalized] ??= self::ANALYST_LABEL;
                 }
             }
         }

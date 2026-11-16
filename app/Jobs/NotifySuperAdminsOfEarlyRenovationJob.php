@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\SystemNotificationKey;
 use App\Mail\EarlyRenovationAcceptedMail;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\Renovations\EarlyRenovationNotificationPayload;
 use App\Support\Renovations\EarlyRenovationRecipients;
 use App\Support\SecurityAudit;
@@ -95,7 +97,29 @@ class NotifySuperAdminsOfEarlyRenovationJob implements ShouldQueue
             }
         }
 
-        foreach ($recipients['phones'] as $rawPhone) {
+        /**
+         * Telegram a los vinculados (SUPERADMIN y contactos del Centro); el resto, por WhatsApp.
+         * Si el job se reintenta, la parte de Telegram no se repite.
+         */
+        $routeKey = $this->deliveryCacheKey('telegram', 'route');
+        $phonesForWhatsApp = Cache::get($routeKey);
+        $telegramPeople = 0;
+
+        if (! is_array($phonesForWhatsApp)) {
+            $route = InternalMessaging::route(
+                SystemNotificationKey::EarlyRenovationAcceptance,
+                $subject,
+                $whatsappBody,
+                $recipients['phones'],
+                $recipients['emails'],
+            );
+
+            $phonesForWhatsApp = $route['whatsapp'];
+            $telegramPeople = $route['telegram'] + $route['groups'];
+            Cache::put($routeKey, $phonesForWhatsApp, now()->addDay());
+        }
+
+        foreach ($phonesForWhatsApp as $rawPhone) {
             $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
 
             if ($phone === null || $this->alreadyDelivered('whatsapp', $phone)) {
@@ -122,6 +146,7 @@ class NotifySuperAdminsOfEarlyRenovationJob implements ShouldQueue
         $this->audit('AUDIT_RENOVATION_EARLY_NOTIFICATION_DISPATCHED', [
             'emails_sent' => $emailsSent,
             'whatsapps_sent' => $whatsappsSent,
+            'telegram_sent' => $telegramPeople,
             'emails_configured' => count($recipients['emails']),
             'phones_configured' => count($recipients['phones']),
             'superadmins' => $recipients['superadmins'],

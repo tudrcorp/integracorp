@@ -10,7 +10,11 @@ use App\Http\Controllers\NotificationController;
 use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\Sale;
+use App\Support\DocumentEmails\DocumentEmailWitnesses;
+use App\Support\InternalNotifications\InternalAttachment;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\SystemNotificationRecipients;
+use Illuminate\Support\Facades\Auth;
 use RuntimeException;
 
 /**
@@ -151,7 +155,16 @@ final class SaleReciboPagoWhatsAppRecipients
             'failures' => [],
         ];
 
+        $witnessesByTelegram = self::sendWitnessCopiesByTelegram($recipients['targets'], $invoiceNumber);
+        $report['dispatched'] += $witnessesByTelegram['groups'];
+
         foreach ($recipients['targets'] as $index => $target) {
+            if ($target['role'] === 'internal' && isset($witnessesByTelegram['phones'][$target['phone']])) {
+                $report['dispatched']++;
+
+                continue;
+            }
+
             if ($index > 0) {
                 usleep(750_000);
             }
@@ -177,6 +190,50 @@ final class SaleReciboPagoWhatsAppRecipients
         }
 
         return $report;
+    }
+
+    /**
+     * Los testigos internos con Telegram vinculado (y los grupos elegidos en el Centro)
+     * reciben la copia y el PDF del recibo por Telegram; el resto sigue por WhatsApp.
+     * El agente y la agencia son externos: no se tocan.
+     *
+     * @param  list<array{role: string, name: string, phone: string}>  $targets
+     * @return array{phones: array<string, int>, groups: int}
+     */
+    private static function sendWitnessCopiesByTelegram(array $targets, string $invoiceNumber): array
+    {
+        $witnessPhones = array_values(array_map(
+            static fn (array $target): string => $target['phone'],
+            array_filter($targets, static fn (array $target): bool => $target['role'] === 'internal'),
+        ));
+        $filename = 'RDP-'.$invoiceNumber.'.pdf';
+        $path = public_path('storage/reciboDePago/'.$filename);
+
+        if (! is_file($path)) {
+            return ['phones' => [], 'groups' => 0];
+        }
+
+        $sentTo = array_values(array_map(
+            static fn (array $target): string => $target['name'].' ('.$target['phone'].')',
+            array_filter($targets, static fn (array $target): bool => $target['role'] !== 'internal'),
+        ));
+
+        $caption = '*Copia testigo · Recibo de pago Nro. '.$invoiceNumber."*\n\n"
+            .'Enviado por WhatsApp a: '.($sentTo !== [] ? implode(', ', $sentTo) : 'solo testigos')
+            .(filled(Auth::user()?->name) ? "\nEnviado por: ".Auth::user()->name : '');
+
+        $route = InternalMessaging::route(
+            SystemNotificationKey::SaleReceiptWitnessCopy,
+            'Copia testigo · recibo de pago por WhatsApp',
+            $caption,
+            $witnessPhones,
+            attachment: new InternalAttachment($path, $filename, DocumentEmailWitnesses::publicDocumentUrl('reciboDePago', $filename, $path)),
+        );
+
+        return [
+            'phones' => array_flip(array_diff($witnessPhones, $route['whatsapp'])),
+            'groups' => $route['groups'],
+        ];
     }
 
     /**

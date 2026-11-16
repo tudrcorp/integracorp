@@ -8,6 +8,7 @@ use App\Enums\SystemNotificationKey;
 use App\Models\ObservationCase;
 use App\Models\TelemedicineCase;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\SecurityAudit;
 use App\Support\SystemNotificationRecipients;
 use App\Support\Telemedicine\TelemedicineCaseAgentNotice;
@@ -92,6 +93,29 @@ class NotifyAgentOfNewTelemedicineCaseJob implements ShouldQueue
         }
 
         $queued = 0;
+
+        /**
+         * Las copias internas van por Telegram (sin cédula, edad ni teléfono del paciente) a
+         * los vinculados y a los grupos elegidos; el resto, por WhatsApp como siempre. El aviso
+         * al agente o la agencia es externo: sigue por WhatsApp.
+         */
+        $ownerPhone = is_array($payload['owner'] ?? null) ? (string) $payload['owner']['phone'] : null;
+        $copyPhones = array_values(array_filter(array_map('strval', array_keys($messages)), static fn (string $phone): bool => $phone !== $ownerPhone));
+
+        if ($copyPhones !== []) {
+            $route = InternalMessaging::route(
+                $key,
+                'Copia · nuevo caso al agente',
+                TelemedicineCaseAgentNotice::copyBody($payload),
+                $copyPhones,
+                telegramMessage: TelemedicineCaseAgentNotice::copyTelegramBody($payload),
+            );
+
+            foreach (array_diff($copyPhones, $route['whatsapp']) as $phoneByTelegram) {
+                unset($messages[$phoneByTelegram]);
+                $queued++;
+            }
+        }
 
         try {
             foreach ($messages as $phone => $body) {

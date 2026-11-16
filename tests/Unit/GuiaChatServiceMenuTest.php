@@ -4,9 +4,28 @@ declare(strict_types=1);
 
 use App\Support\GuiaChat\IntegracorpLoginPanels;
 use App\Support\GuiaChat\ServiceMenuOption;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Volt\Volt;
 
 uses(Tests\TestCase::class);
+
+/**
+ * El chat público crea sesiones, mensajes y feedbacks, y despacha avisos por WhatsApp
+ * y correo. Sin esto quedaban filas reales en la base y trabajos en la cola `default`
+ * que un worker local habría enviado de verdad (pasó el 16/11/2026). Transacción que
+ * siempre se revierte, cola y correo simulados.
+ */
+beforeEach(function (): void {
+    DB::beginTransaction();
+    Queue::fake();
+    Mail::fake();
+});
+
+afterEach(function (): void {
+    DB::rollBack();
+});
 
 it('parsea nombre y apellido desde un solo mensaje', function (): void {
     expect(ServiceMenuOption::parseReporterFullName('Carlos Ruiz'))->toBe([

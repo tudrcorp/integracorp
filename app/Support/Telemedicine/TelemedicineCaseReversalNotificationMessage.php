@@ -9,6 +9,31 @@ use App\Support\RunReportMessageFormatter;
 final class TelemedicineCaseReversalNotificationMessage
 {
     /**
+     * Versión para Telegram: lo necesario para reasignar, sin datos clínicos (ni motivo de
+     * consulta ni la nota del médico) ni datos de contacto del paciente. El detalle completo
+     * sigue en el correo y en Operaciones.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public static function telegramBody(array $payload): string
+    {
+        return implode("\n", [
+            '*REVERSO DE CASO · TELEMEDICINA*',
+            '',
+            'Un médico revirtió un caso y hay que reasignarlo.',
+            '',
+            '• Caso: '.self::value($payload['case_code'] ?? null),
+            '• Paciente: '.self::value($payload['patient_name'] ?? null),
+            '• Gestión: '.self::value($payload['managed_by'] ?? null),
+            '• Prioridad: '.self::value($payload['priority'] ?? null),
+            '• Médico que revirtió: '.self::value($payload['doctor_name'] ?? null),
+            '• Fecha: '.self::value($payload['reversed_at'] ?? null),
+            '',
+            '⚠️ *ACCIÓN REQUERIDA:* Reasigne el paciente desde Operaciones. La nota del médico está en el correo y en el caso.',
+        ]);
+    }
+
+    /**
      * @param  array{
      *     case_id: int,
      *     case_code: string,

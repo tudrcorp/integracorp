@@ -7,11 +7,14 @@ namespace App\Support\DocumentEmails;
 use App\Enums\SystemNotificationKey;
 use App\Jobs\SendNotificacionWhatsAppDocument;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\InternalNotifications\InternalAttachment;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\SystemNotificationRecipients;
 
 /**
  * Testigos de un envío de documentos, configurados en el Centro de notificaciones (Negocios):
- * correos en copia visible (CC) u oculta (CCO) y teléfonos que reciben por WhatsApp el PDF.
+ * correos en copia visible (CC) u oculta (CCO) y teléfonos que reciben el PDF por Telegram
+ * (si están vinculados) o por WhatsApp.
  *
  * Con la entrada inactiva no hay testigos, pero el envío al afiliado y al agente sale igual.
  */
@@ -42,16 +45,40 @@ final class DocumentEmailWitnesses
     }
 
     /**
-     * Encola un WhatsApp con el PDF a cada teléfono testigo. Va dentro de la transacción del envío:
+     * Copia testigo con el PDF a cada teléfono testigo. Va dentro de la transacción del envío:
      * con la cola `database` entra junto con los correos o no entra.
+     *
+     * Con $key y $absolutePath, los testigos con Telegram vinculado (y los grupos elegidos en
+     * el Centro de notificaciones) reciben el mensaje y el PDF por Telegram; el resto, por
+     * WhatsApp como siempre.
      *
      * @param  list<string>  $phones
      * @param  array<string, mixed>  $auditContext
-     * @return int teléfonos encolados
+     * @return int copias encoladas (Telegram + WhatsApp)
      */
-    public static function queueWhatsAppCopies(array $phones, string $caption, string $documentUrl, string $filename, array $auditContext = []): int
-    {
+    public static function queueWhatsAppCopies(
+        array $phones,
+        string $caption,
+        string $documentUrl,
+        string $filename,
+        array $auditContext = [],
+        ?SystemNotificationKey $key = null,
+        ?string $absolutePath = null,
+    ): int {
         $queued = 0;
+
+        if ($key !== null && filled($absolutePath)) {
+            $route = InternalMessaging::route(
+                $key,
+                $key->label(),
+                $caption,
+                $phones,
+                attachment: new InternalAttachment((string) $absolutePath, $filename, $documentUrl),
+            );
+
+            $phones = $route['whatsapp'];
+            $queued += $route['telegram'] + $route['groups'];
+        }
 
         foreach ($phones as $phone) {
             SendNotificacionWhatsAppDocument::dispatch(null, $caption, $phone, $documentUrl, $filename, $auditContext)

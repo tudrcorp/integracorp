@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\SystemNotificationKey;
 use App\Mail\CorporatePaymentFrequencyChangeMail;
 use App\Models\AffiliationCorporatePaymentFrequencyChange;
 use App\Models\User;
 use App\Support\AffiliationCorporates\CorporatePaymentFrequencyChangeNotificationMessage as Message;
 use App\Support\AffiliationCorporates\CorporatePaymentFrequencyChangeRecipients;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\SecurityAudit;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -83,7 +85,7 @@ class NotifyAdministrationOfCorporatePaymentFrequencyChangeJob implements Should
         $recipients = CorporatePaymentFrequencyChangeRecipients::resolve($extraUserIds);
 
         $emailsSent = $this->sendEmails($pending, $recipients['emails']);
-        $whatsappsQueued = $this->sendWhatsApps($pending, $recipients['phones']);
+        $whatsappsQueued = $this->sendWhatsApps($pending, $recipients['phones'], $recipients['emails']);
         $databaseNotified = $this->sendDatabaseNotifications($pending, $recipients['users']);
 
         $entry = [
@@ -157,16 +159,15 @@ class NotifyAdministrationOfCorporatePaymentFrequencyChangeJob implements Should
      * @param  Collection<int, AffiliationCorporatePaymentFrequencyChange>  $changes
      * @param  list<string>  $phones
      */
-    private function sendWhatsApps(Collection $changes, array $phones): int
+    private function sendWhatsApps(Collection $changes, array $phones, array $emails = []): int
     {
-        if ($phones === []) {
-            return 0;
-        }
-
         $body = Message::whatsappBody($changes, $this->event);
-        $queued = 0;
 
-        foreach ($phones as $phone) {
+        /** Telegram a los vinculados (contactos y usuarios de Administración) y los grupos; el resto, por WhatsApp. */
+        $route = InternalMessaging::route(SystemNotificationKey::CorporatePaymentFrequencyChange, 'Cambio de frecuencia de pago corporativa', $body, $phones, $emails);
+        $queued = $route['telegram'] + $route['groups'];
+
+        foreach ($route['whatsapp'] as $phone) {
             try {
                 SendNotificacionWhatsApp::dispatch(null, $body, $phone, null, [
                     'panel' => 'business',

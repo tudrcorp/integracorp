@@ -8,6 +8,7 @@ use App\Enums\SystemNotificationKey;
 use App\Mail\OperationInventoryLowStockMail;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Services\OperationInventoryLowStockReporter;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\SystemNotificationRecipients;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -68,7 +69,9 @@ class NotifyOperationInventoryProductLowStockJob implements ShouldQueue
      */
     private function dispatchWhatsApp(string $body, array $phones): void
     {
-        foreach ($phones as $rawPhone) {
+        $route = InternalMessaging::route(SystemNotificationKey::OperationInventoryLowStock, 'Stock bajo de inventario', $body, $phones);
+
+        foreach ($route['whatsapp'] as $rawPhone) {
             $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
 
             if ($phone === null) {

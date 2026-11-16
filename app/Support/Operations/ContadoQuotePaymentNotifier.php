@@ -4,25 +4,18 @@ declare(strict_types=1);
 
 namespace App\Support\Operations;
 
+use App\Enums\SystemNotificationKey;
 use App\Jobs\SendContadoQuotePaymentEmail;
 use App\Jobs\SendNotificacionWhatsApp;
 use App\Models\OperationQuoteGenerator;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\InternalNotifications\InternalMessaging;
+use App\Support\SystemNotificationRecipients;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 final class ContadoQuotePaymentNotifier
 {
-    /**
-     * Teléfonos destino para la notificación de pago de contado por WhatsApp.
-     *
-     * @var array<int, string>
-     */
-    private const WHATSAPP_PHONES = [
-        '04242875732',
-        '04143027250',
-    ];
-
     public static function dispatchForQuote(int $quoteId): void
     {
         $quote = OperationQuoteGenerator::query()
@@ -47,7 +40,15 @@ final class ContadoQuotePaymentNotifier
 
         $caption = self::buildWhatsAppCaption($quote);
 
-        foreach (self::WHATSAPP_PHONES as $phone) {
+        /**
+         * Los teléfonos salen de «Pagos de contado urgentes» del Centro de notificaciones (antes, dos
+         * números fijos aquí). Telegram para los vinculados y los grupos; el resto, por WhatsApp.
+         */
+        $key = SystemNotificationKey::ContadoQuotePayment;
+        $phones = SystemNotificationRecipients::isActive($key) ? SystemNotificationRecipients::phones($key) : [];
+        $route = InternalMessaging::route($key, 'Pago de contado urgente', $caption, $phones);
+
+        foreach ($route['whatsapp'] as $phone) {
             $normalized = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone);
 
             if ($normalized === null) {

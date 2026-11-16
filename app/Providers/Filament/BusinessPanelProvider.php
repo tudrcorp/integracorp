@@ -20,9 +20,11 @@ use App\Filament\Metrics\Widgets\Corporate\PlansSoldChart;
 use App\Filament\Metrics\Widgets\Corporate\QuotesTrendChart;
 use App\Filament\Metrics\Widgets\Corporate\SalesByAgentRanking;
 use App\Filament\Shared\Auth\PanelAwareLogin;
+use App\Filament\Shared\Telegram\Pages\ConnectTelegram;
 use App\Filament\Widgets\WelcomeUserLiquidGlassWidget;
 use App\Http\Middleware\DuplicatedSession;
 use App\Support\Filament\BusinessPanelNavigationGroups;
+use App\Support\Telegram\TelegramUserMenu;
 use Filament\Actions\Action;
 use Filament\Enums\GlobalSearchPosition;
 use Filament\Enums\ThemeMode;
@@ -83,6 +85,7 @@ class BusinessPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Business/Pages'), for: 'App\Filament\Business\Pages')
             ->pages([
                 Dashboard::class,
+                ConnectTelegram::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Business/Widgets'), for: 'App\Filament\Business\Widgets')
             ->widgets([
@@ -104,6 +107,7 @@ class BusinessPanelProvider extends PanelProvider
                 CorporateDetailWidget::class,
             ])
             ->userMenuItems([
+                TelegramUserMenu::action(),
                 'profile' => fn (Action $action) => $action->label('PERFIL DE USUARIO'),
                 // ...
                 'logout' => fn (Action $action) => $action
