@@ -63,7 +63,6 @@ it('muestra unidad y linea de negocio en el tab de negocio del infolist corporat
         ->toContain("TextEntry::make('businessUnit.definition')")
         ->toContain("TextEntry::make('businessLine.definition')")
         ->toContain("Tab::make('Negocio')")
-        ->toContain('ViewRecord $livewire')
         ->not->toContain("RepeatableEntry::make('corporateAffiliates')");
 });
 

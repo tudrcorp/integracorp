@@ -10,20 +10,17 @@ use App\Models\AffiliationCorporate;
 use App\Models\AffiliationCorporateDocument;
 use App\Models\AffiliationCorporateObservation;
 use Carbon\Carbon;
-use Filament\Actions\Action;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Notifications\Notification;
-use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\HtmlString;
 
 class AffiliationCorporateInfolist
 {
@@ -126,6 +123,29 @@ class AffiliationCorporateInfolist
         }
 
         return number_format($value, $unitIndex === 0 ? 0 : 2, ',', '.').' '.$units[$unitIndex];
+    }
+
+    /**
+     * Descargar y eliminar un documento del expediente: botones que montan las acciones
+     * de la página con el id del documento.
+     */
+    public static function expedienteRowActions(AffiliationCorporateDocument $document): HtmlString
+    {
+        $id = (int) $document->getKey();
+        $button = 'inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50 dark:hover:bg-white/10';
+
+        return new HtmlString(
+            '<div class="flex items-center gap-1">'
+            .'<button type="button" class="'.$button.' text-emerald-600 focus-visible:ring-emerald-500 dark:text-emerald-400" title="Descargar documento" aria-label="Descargar documento"'
+            .' wire:click="mountAction(\'downloadExpedienteDocument\', { document: '.$id.' })" wire:loading.attr="disabled">'
+            .svg('heroicon-o-arrow-down-tray', 'h-5 w-5')->toHtml()
+            .'</button>'
+            .'<button type="button" class="'.$button.' text-red-600 focus-visible:ring-red-500 dark:text-red-400" title="Eliminar documento" aria-label="Eliminar documento"'
+            .' wire:click="mountAction(\'deleteExpedienteDocument\', { document: '.$id.' })" wire:loading.attr="disabled">'
+            .svg('heroicon-o-trash', 'h-5 w-5')->toHtml()
+            .'</button>'
+            .'</div>'
+        );
     }
 
     public static function configure(Schema $schema): Schema
@@ -679,63 +699,19 @@ class AffiliationCorporateInfolist
                                                             ->label('Fecha')
                                                             ->dateTime('d/m/Y H:i')
                                                             ->placeholder('—'),
+                                                        /*
+                                                         * Botones de la fila: abren acciones de la página
+                                                         * (ViewAffiliationCorporate::downloadExpedienteDocumentAction y
+                                                         * deleteExpedienteDocumentAction) con el id del documento. Una acción
+                                                         * anidada aquí no se puede volver a ubicar en la petición siguiente
+                                                         * porque la ficha construye solo la pestaña activa: el botón no hacía nada.
+                                                         */
                                                         TextEntry::make('expediente_delete')
                                                             ->label('Acciones')
                                                             ->alignStart()
-                                                            ->getStateUsing(fn (): string => "\u{00A0}")
-                                                            ->formatStateUsing(fn (): string => '')
-                                                            ->prefixActions([
-                                                                Action::make('downloadExpedienteDocument')
-                                                                    ->label('Descargar')
-                                                                    ->tooltip('Descargar documento')
-                                                                    ->icon(Heroicon::OutlinedArrowDownTray)
-                                                                    ->color('verde')
-                                                                    ->action(function (AffiliationCorporateDocument $document, ViewRecord $livewire) {
-                                                                        abort_unless(
-                                                                            (int) $document->affiliation_corporate_id === (int) $livewire->getRecord()->getKey(),
-                                                                            403
-                                                                        );
-
-                                                                        abort_unless(
-                                                                            filled($document->file_path) && Storage::disk('public')->exists($document->file_path),
-                                                                            404
-                                                                        );
-
-                                                                        return response()->download(
-                                                                            Storage::disk('public')->path($document->file_path),
-                                                                            self::formatStoredFileName($document->original_name ?: $document->file_path) ?? 'documento'
-                                                                        );
-                                                                    }),
-                                                                Action::make('deleteExpedienteDocument')
-                                                                    ->label('Eliminar')
-                                                                    ->tooltip('Eliminar documento')
-                                                                    ->icon(Heroicon::OutlinedTrash)
-                                                                    ->color('danger')
-                                                                    ->requiresConfirmation()
-                                                                    ->modalHeading('Eliminar documento')
-                                                                    ->modalDescription('¿Seguro que deseas eliminar este archivo del expediente? Esta acción no se puede deshacer.')
-                                                                    ->modalSubmitActionLabel('Eliminar')
-                                                                    ->action(function (AffiliationCorporateDocument $document, ViewRecord $livewire): void {
-                                                                        abort_unless(
-                                                                            (int) $document->affiliation_corporate_id === (int) $livewire->getRecord()->getKey(),
-                                                                            403
-                                                                        );
-
-                                                                        if (filled($document->file_path)) {
-                                                                            Storage::disk('public')->delete($document->file_path);
-                                                                        }
-
-                                                                        $document->delete();
-
-                                                                        $livewire->record->unsetRelation('affiliationCorporateDocuments');
-                                                                        $livewire->record->load('affiliationCorporateDocuments');
-
-                                                                        Notification::make()
-                                                                            ->success()
-                                                                            ->title('Documento eliminado')
-                                                                            ->send();
-                                                                    }),
-                                                            ]),
+                                                            ->getStateUsing(fn (AffiliationCorporateDocument $record): string => (string) $record->getKey())
+                                                            ->html()
+                                                            ->formatStateUsing(fn (string $state, AffiliationCorporateDocument $record): HtmlString => self::expedienteRowActions($record)),
                                                     ])
                                                     ->columnSpanFull(),
                                             ]),
