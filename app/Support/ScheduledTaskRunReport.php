@@ -7,6 +7,7 @@ namespace App\Support;
 use App\Enums\SystemNotificationKey;
 use App\Http\Controllers\NotificationController;
 use App\Mail\ScheduledTaskRunReportMail;
+use App\Support\InternalNotifications\InternalMessaging;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
@@ -155,6 +156,10 @@ final class ScheduledTaskRunReport
         try {
             $fullMessage = self::buildSummaryMessage();
             $imageCaption = self::buildWhatsAppImageCaption();
+            if (self::$notificationKey === null && ! SystemNotificationRecipients::isActive(SystemNotificationKey::ScheduledTaskSummary)) {
+                return;
+            }
+
             $phones = self::recipientPhones();
             $emails = self::recipientEmails();
 
@@ -167,8 +172,20 @@ final class ScheduledTaskRunReport
                 return;
             }
 
-            foreach ($phones as $phone) {
+            /**
+             * Telegram para las personas vinculadas y los grupos elegidos en el Centro de
+             * notificaciones; el resto, por WhatsApp como siempre. El archivo adjunto
+             * (respaldo, Excel) sigue saliendo por WhatsApp a todos los teléfonos: Telegram
+             * solo lleva el resumen.
+             */
+            $route = InternalMessaging::route(self::effectiveKey(), self::$taskTitle, $fullMessage, $phones, $emails);
+
+            foreach ($route['whatsapp'] as $phone) {
                 self::notifySummaryToPhone($phone, $fullMessage, $imageCaption);
+            }
+
+            foreach (array_diff($phones, $route['whatsapp']) as $phone) {
+                self::sendDocumentToPhone($phone);
             }
 
             foreach ($emails as $email) {
@@ -189,11 +206,7 @@ final class ScheduledTaskRunReport
      */
     private static function recipientPhones(): array
     {
-        if (self::$notificationKey !== null) {
-            return SystemNotificationRecipients::phones(self::$notificationKey);
-        }
-
-        return ScheduledNotificationPhones::all();
+        return SystemNotificationRecipients::phones(self::effectiveKey());
     }
 
     /**
@@ -201,11 +214,7 @@ final class ScheduledTaskRunReport
      */
     private static function recipientEmails(): array
     {
-        if (self::$notificationKey === null) {
-            return [];
-        }
-
-        return SystemNotificationRecipients::emails(self::$notificationKey);
+        return SystemNotificationRecipients::emails(self::effectiveKey());
     }
 
     private static function notifySummaryToEmail(string $email, string $fullMessage): void
@@ -236,11 +245,24 @@ final class ScheduledTaskRunReport
         }
     }
 
+    /**
+     * Las tareas sin aviso propio usan «Resúmenes de tareas programadas» del Centro de
+     * notificaciones (antes, dos teléfonos fijos de la configuración del servidor).
+     */
+    private static function effectiveKey(): SystemNotificationKey
+    {
+        return self::$notificationKey ?? SystemNotificationKey::ScheduledTaskSummary;
+    }
+
     private static function notifySummaryToPhone(string $phone, string $fullMessage, string $imageCaption): void
     {
         self::sendSummaryWithBrandImage($phone, $imageCaption);
         NotificationController::sendWhatsAppChat($phone, 'Equipo Integracorp', $fullMessage);
+        self::sendDocumentToPhone($phone);
+    }
 
+    private static function sendDocumentToPhone(string $phone): void
+    {
         if (self::$documentAttachment === null || self::$criticalFailure) {
             return;
         }

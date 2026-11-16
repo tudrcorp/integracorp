@@ -8,6 +8,7 @@ use App\Enums\SystemNotificationKey;
 use App\Mail\LiveSecurityAlertMail;
 use App\Models\User;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\SecurityAudit;
 use App\Support\SystemNotificationRecipients;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -81,7 +82,23 @@ class NotifyLiveSecurityAlertJob implements ShouldQueue
 
         $body = self::whatsappBody($this->event);
 
-        foreach ($phones as $phone) {
+        /**
+         * Telegram para las personas vinculadas y los grupos elegidos; el resto sigue por WhatsApp.
+         * Las alertas sobre el propio Telegram (o su cola) nunca salen por Telegram, y las de colas
+         * se entregan en el acto, sin pasar por la cola, igual que el WhatsApp de siempre.
+         */
+        $route = InternalMessaging::route(
+            $key,
+            (string) ($this->event['title'] ?? ($isSystem ? 'Alerta de colas y errores' : 'Alerta de seguridad')),
+            $body,
+            $phones,
+            $emails,
+            immediate: $this->sendWhatsAppNow,
+            critical: true,
+            bypassTelegram: (bool) ($this->event['bypass_telegram'] ?? false),
+        );
+
+        foreach ($route['whatsapp'] as $phone) {
             $context = [
                 'panel' => 'business',
                 'source' => $isSystem ? 'live-presence.system-alert' : 'live-presence.security-alert',
@@ -102,7 +119,9 @@ class NotifyLiveSecurityAlertJob implements ShouldQueue
         SecurityAudit::log($isSystem ? 'AUDIT_LIVE_SYSTEM_ALERT_SENT' : 'AUDIT_LIVE_SECURITY_ALERT_SENT', $isSystem ? 'live-presence.system-alert' : 'live-presence.security-alert', [
             'event' => $this->event,
             'emails_sent' => $sent,
-            'whatsapps_queued' => count($phones),
+            'whatsapps_queued' => count($route['whatsapp']),
+            'telegram_people' => $route['telegram'],
+            'telegram_groups' => $route['groups'],
         ]);
     }
 

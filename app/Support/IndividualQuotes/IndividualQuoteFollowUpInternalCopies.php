@@ -8,6 +8,7 @@ use App\Enums\SystemNotificationKey;
 use App\Jobs\SendNotificacionWhatsApp;
 use App\Mail\IndividualQuoteFollowUpInternalCopyMail;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\ScheduledTaskRunReport;
 use App\Support\SystemNotificationRecipients;
 use Illuminate\Support\Facades\Log;
@@ -65,7 +66,10 @@ final class IndividualQuoteFollowUpInternalCopies
             }
         }
 
-        foreach ($phones as $rawPhone) {
+        /** Telegram a las personas vinculadas y los grupos elegidos en el Centro; el resto, por WhatsApp como siempre. */
+        $route = InternalMessaging::route(SystemNotificationKey::IndividualQuoteFollowUp, 'Copia interna · '.$followUpLabel, $copyBody, $phones, $emails);
+
+        foreach ($route['whatsapp'] as $rawPhone) {
             $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
 
             if ($phone === null) {

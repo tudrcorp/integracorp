@@ -17,9 +17,11 @@ it('el notificador no despacha si is_courtesy es false', function (): void {
         ->toContain('! (bool) $receivable->is_courtesy')
         ->toContain('SendCourtesyFinanceEmail::dispatch')
         ->toContain('SendNotificacionWhatsApp::dispatch')
-        ->toContain("'04242875732'")
-        ->toContain("'04143027250'")
+        ->toContain('SystemNotificationKey::CourtesyFinance')
         ->toContain('SERVICIO POR CORTESÍA');
+
+    /** Desde la entrega B4 de Telegram los dos teléfonos arrancan como valor inicial en el Centro de notificaciones. */
+    expect(App\Enums\SystemNotificationKey::CourtesyFinance->defaultPhones())->toBe(['04242875732', '04143027250']);
 });
 
 it('el job de correo usa destinatarios de administración', function (): void {

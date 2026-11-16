@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Support\GuiaChat;
 
+use App\Enums\SystemNotificationKey;
 use App\Jobs\SendGuiaChatFeedbackMailJob;
 use App\Jobs\SendNotificacionWhatsApp;
 use App\Models\GuiaChatFeedback;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\InternalNotifications\InternalMessaging;
+use App\Support\SystemNotificationRecipients;
 use Illuminate\Support\Facades\Log;
 
 final class GuiaChatFeedbackNotifier
@@ -15,15 +18,6 @@ final class GuiaChatFeedbackNotifier
     private const EMAIL_TO = 'soporte@tudrencasa.com';
 
     private const EMAIL_CC = 'solrodriguez@tudrencasa.com';
-
-    /**
-     * @var array<int, string>
-     */
-    private const WHATSAPP_PHONES = [
-        '04127018390',
-        '04121931865',
-        '04143027250',
-    ];
 
     public static function dispatchForFeedback(int $feedbackId): void
     {
@@ -39,7 +33,15 @@ final class GuiaChatFeedbackNotifier
 
         $caption = self::buildWhatsAppCaption($feedback);
 
-        foreach (self::WHATSAPP_PHONES as $phone) {
+        /**
+         * Los teléfonos salen de «Feedback de la Guía Chat» del Centro de notificaciones
+         * (antes, tres números fijos aquí). Telegram para los vinculados; el resto, por WhatsApp.
+         */
+        $key = SystemNotificationKey::GuiaChatFeedback;
+        $phones = SystemNotificationRecipients::isActive($key) ? SystemNotificationRecipients::phones($key) : [];
+        $route = InternalMessaging::route($key, 'Feedback de la Guía Chat', $caption, $phones);
+
+        foreach ($route['whatsapp'] as $phone) {
             $normalized = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone);
 
             if ($normalized === null) {

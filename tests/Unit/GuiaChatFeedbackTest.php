@@ -202,10 +202,12 @@ it('el notificador envía correo y whatsapp a los destinatarios indicados', func
         ->toContain('SendNotificacionWhatsApp::dispatch')
         ->toContain("'soporte@tudrencasa.com'")
         ->toContain("'solrodriguez@tudrencasa.com'")
-        ->toContain("'04127018390'")
-        ->toContain("'04121931865'")
-        ->toContain("'04143027250'")
+        ->toContain('SystemNotificationKey::GuiaChatFeedback')
         ->toContain('normalizePhoneForWhatsApp');
+
+    /** Desde la entrega B3b de Telegram los tres números arrancan como valor inicial en el Centro de notificaciones. */
+    expect(App\Enums\SystemNotificationKey::GuiaChatFeedback->defaultPhones())
+        ->toBe(['04127018390', '04121931865', '04143027250']);
 });
 
 it('el job de correo usa destinatarios correctos y plantilla guia-chat', function (): void {

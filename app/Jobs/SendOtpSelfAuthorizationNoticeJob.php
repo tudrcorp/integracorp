@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\SystemNotificationKey;
 use App\Enums\SystemOtpCodeKind;
 use App\Mail\OtpSelfAuthorizationNoticeMail;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\InternalNotifications\InternalMessaging;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Mail;
@@ -67,11 +69,32 @@ class SendOtpSelfAuthorizationNoticeJob implements ShouldQueue
             .'Fecha: '.$notice['at']."\n\n"
             .'No necesita hacer nada. Si no corresponde, revíselo en Negocios → Configuración → Claves OTP.';
 
-        foreach (array_unique($this->phones) as $rawPhone) {
+        $route = InternalMessaging::route(
+            self::notificationKeyFor($kind),
+            'Clave OTP autoautorizada',
+            $text,
+            array_values(array_unique($this->phones)),
+            array_values(array_unique($this->emails)),
+            critical: true,
+        );
+
+        foreach ($route['whatsapp'] as $rawPhone) {
             $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
             if ($phone !== null) {
                 SendNotificacionWhatsApp::dispatch(null, $text, $phone, null, ['source' => 'otp.self-authorized']);
             }
         }
+    }
+
+    /**
+     * El aviso va a quienes habrían recibido la clave: usa el destino de Telegram de ese tipo de clave.
+     */
+    public static function notificationKeyFor(?SystemOtpCodeKind $kind): SystemNotificationKey
+    {
+        return match ($kind) {
+            SystemOtpCodeKind::ClinicalLimitOverride => SystemNotificationKey::TelemedicineServiceLimitOverride,
+            SystemOtpCodeKind::PopulationApply, SystemOtpCodeKind::PopulationRollback => SystemNotificationKey::CorporatePopulationUpdate,
+            default => SystemNotificationKey::ClinicalUsageAccessOtp,
+        };
     }
 }

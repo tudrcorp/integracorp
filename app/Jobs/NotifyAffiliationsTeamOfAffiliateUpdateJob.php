@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Enums\SystemNotificationKey;
 use App\Mail\AffiliateUpdatedByOperationsMail;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\Operations\AffiliateUpdateNotificationMessage;
 use App\Support\SecurityAudit;
 use App\Support\SystemNotificationRecipients;
@@ -100,7 +101,22 @@ class NotifyAffiliationsTeamOfAffiliateUpdateJob implements ShouldQueue
             }
         }
 
-        foreach ($phones as $rawPhone) {
+        /**
+         * Telegram a los vinculados y los grupos elegidos; el resto, por WhatsApp. Si el job
+         * se reintenta, la parte de Telegram no se repite (la lista queda guardada).
+         */
+        $routeKey = $this->deliveryCacheKey('telegram', 'route');
+        $phonesForWhatsApp = Cache::get($routeKey);
+        $telegramSent = 0;
+
+        if (! is_array($phonesForWhatsApp)) {
+            $route = InternalMessaging::route($key, $subject, $whatsappBody, $phones, $emails);
+            $phonesForWhatsApp = $route['whatsapp'];
+            $telegramSent = $route['telegram'] + $route['groups'];
+            Cache::put($routeKey, $phonesForWhatsApp, now()->addDay());
+        }
+
+        foreach ($phonesForWhatsApp as $rawPhone) {
             $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
 
             if ($phone === null || $this->alreadyDelivered('whatsapp', $phone)) {
@@ -128,6 +144,7 @@ class NotifyAffiliationsTeamOfAffiliateUpdateJob implements ShouldQueue
         $this->audit('AUDIT_OPERATIONS_AFFILIATE_UPDATE_NOTIFICATION_DISPATCHED', [
             'emails_sent' => $emailsSent,
             'whatsapps_sent' => $whatsappsSent,
+            'telegram_sent' => $telegramSent,
             'emails_configured' => count($emails),
             'phones_configured' => count($phones),
         ]);

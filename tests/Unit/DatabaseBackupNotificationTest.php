@@ -20,7 +20,11 @@ it('el respaldo de base de datos usa destinatarios del centro de notificaciones'
         ->toContain('SystemNotificationRecipients::emails')
         ->toContain('ScheduledTaskRunReportMail')
         ->toContain('recipientPhones')
-        ->toContain('ScheduledNotificationPhones::all()');
+        ->toContain('SystemNotificationKey::ScheduledTaskSummary');
+
+    /** Las tareas sin aviso propio arrancan con los mismos dos teléfonos de antes, ahora editables en el Centro. */
+    expect(App\Enums\SystemNotificationKey::ScheduledTaskSummary->defaultPhones())
+        ->toBe(App\Support\ScheduledNotificationPhones::DEFAULT_PHONES);
 
     expect($console)
         ->toContain('BackupDatabase')

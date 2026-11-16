@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Jobs\SendNotificacionWhatsApp;
 use App\Models\HelpDesk;
 use App\Models\RrhhColaborador;
 use App\Support\SecurityAudit;
@@ -170,7 +169,7 @@ final class HelpdeskTeamMembersWhatsAppService
             $report['attempted']++;
 
             try {
-                SendNotificacionWhatsApp::dispatch($requestedByUserId, $body, $phone, null, [
+                HelpdeskTicketAssigneeWhatsAppService::dispatchInternalWhatsApp(null, $requestedByUserId, $body, $phone, [
                     'panel' => $panel,
                     'helpdesk_id' => $ticket->getKey(),
                     'team' => $ticket->team,

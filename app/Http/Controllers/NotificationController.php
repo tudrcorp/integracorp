@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\SystemNotificationKey;
 use App\Jobs\SendNotificacionWhatsApp;
 use App\Mail\AgencyRegisterEmail;
 use App\Mail\AgentRegisterEmail;
@@ -13,11 +14,12 @@ use App\Models\Guest;
 use App\Models\MassNotification;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\Birthday\BirthdayCelebrationCard;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\MassNotificationEmailFailureLogger;
 use App\Support\MassNotificationRecipientDelivery;
 use App\Support\PublicStorageAssetUrl;
 use App\Support\RunReportMessageFormatter;
-use App\Support\ScheduledNotificationPhones;
+use App\Support\SystemNotificationRecipients;
 use App\Support\UrlPathEncoder;
 use App\Support\WhatsAppBrandImage;
 use Illuminate\Support\Facades\Auth;
@@ -1022,57 +1024,11 @@ class NotificationController extends Controller
 
             HTML;
 
-            $params = [
-                'token' => config('parameters.TOKEN'),
-                'to' => config('parameters.PHONE_COTIZACIONES_AFILIACIONES'),
-                'body' => $body,
-            ];
-            $curl = curl_init();
-            curl_setopt_array($curl, [
-                CURLOPT_URL => config('parameters.CURLOPT_URL'),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => '',
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_SSL_VERIFYHOST => 0,
-                CURLOPT_SSL_VERIFYPEER => 0,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => [
-                    'content-type: application/x-www-form-urlencoded',
-                ],
-            ]);
-
-            $response = curl_exec($curl);
-            $err = curl_error($curl);
-
-            curl_close($curl);
-
-            if ($err) {
-                Log::error($err);
-
-                return false;
-            } else {
-                $array = json_decode($response, true);
-                if ($array['error'][0]) {
-                    Log::info($array['error'][0]['to']);
-                    $data = [
-                        'action' => 'N-WApp => Envio de link interactivo de Cotizacion Individual',
-                        'objeto' => 'NotificationController::sendUploadDataCorporate',
-                        'message' => $array['error'][0]['to'],
-                        'created_at' => date('Y-m-d H:i:s'),
-                    ];
-                    UtilsController::notificacionToAdmin($data);
-
-                    return false;
-                }
-
-                return true;
-            }
-
+            return self::sendInternalNotice(SystemNotificationKey::CommercialNetworkActivity, 'Data corporativa cargada', $body, 'business.corporate-quotes.upload-data');
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
+
+            return false;
         }
     }
 
@@ -1194,14 +1150,23 @@ class NotificationController extends Controller
             Equipo Integracorp-TDC
             TEXT;
 
-            $phones = self::quoteAnalystRecipientPhones();
-            $successCount = 0;
+            /**
+             * Los analistas salen de «Nuevas cotizaciones» del Centro de notificaciones (antes,
+             * números fijos). El aviso va por Telegram a los vinculados; el PDF de la propuesta
+             * sigue llegando por WhatsApp a todos.
+             */
+            $phones = SystemNotificationRecipients::isActive(SystemNotificationKey::NewQuoteAnalysts)
+                ? SystemNotificationRecipients::phones(SystemNotificationKey::NewQuoteAnalysts)
+                : [];
+            $route = InternalMessaging::route(SystemNotificationKey::NewQuoteAnalysts, 'Nueva cotización individual', $body, $phones);
+            $textByWhatsApp = array_flip($route['whatsapp']);
+            $successCount = $route['groups'];
             $pdfSuccessCount = 0;
             $failedPhones = [];
             $failedPdfPhones = [];
 
             foreach ($phones as $phone) {
-                if (! self::sendWhatsAppBrandImageCaption($phone, $body)) {
+                if (isset($textByWhatsApp[$phone]) && ! self::sendWhatsAppBrandImageCaption($phone, $body)) {
                     $failedPhones[] = $phone;
 
                     continue;
@@ -1259,65 +1224,11 @@ class NotificationController extends Controller
  
             HTML;
 
-            $params = [
-                'token' => config('parameters.TOKEN'),
-                'to' => config('parameters.PHONE_COTIZACIONES_AFILIACIONES'),
-                'body' => $body,
-            ];
-            $curl = curl_init();
-            curl_setopt_array($curl, [
-                CURLOPT_URL => config('parameters.CURLOPT_URL'),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => '',
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_SSL_VERIFYHOST => 0,
-                CURLOPT_SSL_VERIFYPEER => 0,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => [
-                    'content-type: application/x-www-form-urlencoded',
-                ],
-            ]);
-
-            $response = curl_exec($curl);
-            $err = curl_error($curl);
-
-            curl_close($curl);
-
-            if ($response) {
-
-                Log::info($response);
-                $data = [
-                    'action' => 'uploadVoucherOfPayment',
-                    'objeto' => 'NotificationController::uploadVoucherOfPayment',
-                    'message' => $response,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'success',
-                ];
-                UtilsController::notificacionToAdmin($data);
-
-                return true;
-            }
-
-            if ($err) {
-
-                Log::error($err);
-                $data = [
-                    'action' => 'uploadVoucherOfPayment',
-                    'objeto' => 'NotificationController::uploadVoucherOfPayment',
-                    'message' => $err,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'error',
-                ];
-                UtilsController::notificacionToAdmin($data);
-
-                return false;
-            }
-
+            return self::sendInternalNotice(SystemNotificationKey::CommercialNetworkActivity, 'Comprobante de pago cargado', $body, 'agents.affiliations.upload-voucher');
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
+
+            return false;
         }
     }
 
@@ -1337,63 +1248,11 @@ class NotificationController extends Controller
  
             HTML;
 
-            $params = [
-                'token' => config('parameters.TOKEN'),
-                'to' => config('parameters.PHONE_COTIZACIONES_AFILIACIONES'),
-                'body' => $body,
-            ];
-            $curl = curl_init();
-            curl_setopt_array($curl, [
-                CURLOPT_URL => config('parameters.CURLOPT_URL'),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => '',
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_SSL_VERIFYHOST => 0,
-                CURLOPT_SSL_VERIFYPEER => 0,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => [
-                    'content-type: application/x-www-form-urlencoded',
-                ],
-            ]);
-
-            $response = curl_exec($curl);
-            $err = curl_error($curl);
-
-            curl_close($curl);
-
-            if ($response) {
-
-                Log::info($response);
-                $data = [
-                    'action' => 'createdIndividualPreAfilliation',
-                    'objeto' => 'NotificationController::createdIndividualPreAfilliation',
-                    'message' => $response,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'success',
-                ];
-
-                return true;
-            }
-
-            if ($err) {
-
-                Log::error($err);
-                $data = [
-                    'action' => 'createdIndividualPreAfilliation',
-                    'objeto' => 'NotificationController::createdIndividualPreAfilliation',
-                    'message' => $err,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'error',
-                ];
-
-                return false;
-            }
-
+            return self::sendInternalNotice(SystemNotificationKey::CommercialNetworkActivity, 'Pre-afiliación individual creada', $body, 'affiliations.pre-affiliation-created');
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
+
+            return false;
         }
     }
 
@@ -1417,14 +1276,23 @@ class NotificationController extends Controller
             Equipo Integracorp-TDC
             TEXT;
 
-            $phones = self::quoteAnalystRecipientPhones();
-            $successCount = 0;
+            /**
+             * Los analistas salen de «Nuevas cotizaciones» del Centro de notificaciones (antes,
+             * números fijos). El aviso va por Telegram a los vinculados; el PDF de la propuesta
+             * sigue llegando por WhatsApp a todos.
+             */
+            $phones = SystemNotificationRecipients::isActive(SystemNotificationKey::NewQuoteAnalysts)
+                ? SystemNotificationRecipients::phones(SystemNotificationKey::NewQuoteAnalysts)
+                : [];
+            $route = InternalMessaging::route(SystemNotificationKey::NewQuoteAnalysts, 'Nueva cotización corporativa', $body, $phones);
+            $textByWhatsApp = array_flip($route['whatsapp']);
+            $successCount = $route['groups'];
             $pdfSuccessCount = 0;
             $failedPhones = [];
             $failedPdfPhones = [];
 
             foreach ($phones as $phone) {
-                if (! self::sendWhatsAppBrandImageCaption($phone, $body)) {
+                if (isset($textByWhatsApp[$phone]) && ! self::sendWhatsAppBrandImageCaption($phone, $body)) {
                     $failedPhones[] = $phone;
 
                     continue;
@@ -1500,66 +1368,11 @@ class NotificationController extends Controller
  
             HTML;
 
-            $params = [
-                'token' => config('parameters.TOKEN'),
-                // 'to' => config('parameters.PHONE_COTIZACIONES_AFILIACIONES'),
-                'to' => '+584241869168',
-
-                'body' => $body,
-            ];
-            $curl = curl_init();
-            curl_setopt_array($curl, [
-                CURLOPT_URL => config('parameters.CURLOPT_URL'),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => '',
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_SSL_VERIFYHOST => 0,
-                CURLOPT_SSL_VERIFYPEER => 0,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => [
-                    'content-type: application/x-www-form-urlencoded',
-                ],
-            ]);
-
-            $response = curl_exec($curl);
-            $err = curl_error($curl);
-
-            curl_close($curl);
-
-            if ($response) {
-
-                Log::info($response);
-                $data = [
-                    'action' => 'createdIndividualQuote',
-                    'objeto' => 'NotificationController::createdIndividualQuote',
-                    'message' => $response,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'success',
-                ];
-                UtilsController::notificacionToAdmin($data);
-
-                return true;
-            }
-
-            if ($err) {
-
-                Log::error($err);
-                $data = [
-                    'action' => 'assignedCase',
-                    'objeto' => 'NotificationController::assignedCase',
-                    'message' => $err,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'error',
-                ];
-                UtilsController::notificacionToAdmin($data);
-
-                return false;
-            }
+            return self::sendInternalNotice(SystemNotificationKey::DressTaylorRequest, 'Solicitud Dress Taylor', $body, 'corporate-quote-requests.dress-taylor');
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
+
+            return false;
         }
     }
 
@@ -1584,64 +1397,11 @@ class NotificationController extends Controller
  
             HTML;
 
-            $params = [
-                'token' => config('parameters.TOKEN'),
-                'to' => config('parameters.PHONE_COTIZACIONES_AFILIACIONES'),
-                'body' => $body,
-            ];
-            $curl = curl_init();
-            curl_setopt_array($curl, [
-                CURLOPT_URL => config('parameters.CURLOPT_URL'),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => '',
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_SSL_VERIFYHOST => 0,
-                CURLOPT_SSL_VERIFYPEER => 0,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => [
-                    'content-type: application/x-www-form-urlencoded',
-                ],
-            ]);
-
-            $response = curl_exec($curl);
-            $err = curl_error($curl);
-
-            curl_close($curl);
-
-            if ($response) {
-
-                Log::info($response);
-                $data = [
-                    'action' => 'saddObervationToIndividualQuote',
-                    'objeto' => 'NotificationController::saddObervationToIndividualQuote',
-                    'message' => $response,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'success',
-                ];
-                UtilsController::notificacionToAdmin($data);
-
-                return true;
-            }
-
-            if ($err) {
-
-                Log::error($err);
-                $data = [
-                    'action' => 'saddObervationToIndividualQuote',
-                    'objeto' => 'NotificationController::saddObervationToIndividualQuote',
-                    'message' => $err,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'error',
-                ];
-                UtilsController::notificacionToAdmin($data);
-
-                return false;
-            }
+            return self::sendInternalNotice(SystemNotificationKey::CommercialNetworkActivity, 'Observación en cotización individual', $body, 'individual-quotes.observation');
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
+
+            return false;
         }
     }
 
@@ -1666,64 +1426,11 @@ class NotificationController extends Controller
  
             HTML;
 
-            $params = [
-                'token' => config('parameters.TOKEN'),
-                'to' => config('parameters.PHONE_COTIZACIONES_AFILIACIONES'),
-                'body' => $body,
-            ];
-            $curl = curl_init();
-            curl_setopt_array($curl, [
-                CURLOPT_URL => config('parameters.CURLOPT_URL'),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => '',
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_SSL_VERIFYHOST => 0,
-                CURLOPT_SSL_VERIFYPEER => 0,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => http_build_query($params),
-                CURLOPT_HTTPHEADER => [
-                    'content-type: application/x-www-form-urlencoded',
-                ],
-            ]);
-
-            $response = curl_exec($curl);
-            $err = curl_error($curl);
-
-            curl_close($curl);
-
-            if ($response) {
-
-                Log::info($response);
-                $data = [
-                    'action' => 'saddObervationToCorporateQuote',
-                    'objeto' => 'NotificationController::saddObervationToCorporateQuote',
-                    'message' => $response,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'success',
-                ];
-                UtilsController::notificacionToAdmin($data);
-
-                return true;
-            }
-
-            if ($err) {
-
-                Log::error($err);
-                $data = [
-                    'action' => 'saddObervationToCorporateQuote',
-                    'objeto' => 'NotificationController::saddObervationToCorporateQuote',
-                    'message' => $err,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'icon' => 'error',
-                ];
-                UtilsController::notificacionToAdmin($data);
-
-                return false;
-            }
+            return self::sendInternalNotice(SystemNotificationKey::CommercialNetworkActivity, 'Observación en cotización corporativa', $body, 'corporate-quotes.observation');
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
+
+            return false;
         }
     }
 
@@ -2743,18 +2450,31 @@ TEXT;
     }
 
     /**
-     * @return list<string>
+     * Aviso interno que antes iba a un número fijo: ahora los teléfonos salen de su
+     * entrada en el Centro de notificaciones. Telegram para las personas vinculadas y
+     * los grupos elegidos; el resto, por WhatsApp en cola (la pantalla no espera a UltraMsg).
      */
-    private static function quoteAnalystRecipientPhones(): array
+    private static function sendInternalNotice(SystemNotificationKey $key, string $title, string $body, string $source): bool
     {
-        $phones = ScheduledNotificationPhones::all();
-        $configPhone = trim((string) config('parameters.PHONE_COTIZACIONES_AFILIACIONES'));
+        $body = trim($body);
+        $phones = SystemNotificationRecipients::isActive($key) ? SystemNotificationRecipients::phones($key) : [];
+        $route = InternalMessaging::route($key, $title, $body, $phones);
+        $sent = $route['telegram'] + $route['groups'];
 
-        if ($configPhone !== '') {
-            $phones[] = $configPhone;
+        foreach ($route['whatsapp'] as $rawPhone) {
+            $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
+
+            if ($phone === null) {
+                Log::warning('Aviso interno: teléfono inválido en el Centro de notificaciones.', ['key' => $key->value, 'phone' => $rawPhone]);
+
+                continue;
+            }
+
+            SendNotificacionWhatsApp::dispatch(null, $body, $phone, null, ['panel' => 'business', 'source' => $source]);
+            $sent++;
         }
 
-        return array_values(array_unique($phones));
+        return $sent > 0;
     }
 
     private static function sendQuotePdfToAnalyst(string $phone, string $code, string $agent, string $quoteLabel): bool

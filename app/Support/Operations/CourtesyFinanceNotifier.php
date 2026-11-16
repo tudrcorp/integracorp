@@ -4,25 +4,20 @@ declare(strict_types=1);
 
 namespace App\Support\Operations;
 
+use App\Enums\SystemNotificationKey;
 use App\Jobs\SendCourtesyFinanceEmail;
 use App\Jobs\SendNotificacionWhatsApp;
 use App\Models\OperationAccountsReceivable;
 use App\Models\OperationQuoteGenerator;
 use App\Models\OperationServiceOrder;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\InternalNotifications\InternalMessaging;
+use App\Support\SystemNotificationRecipients;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 final class CourtesyFinanceNotifier
 {
-    /**
-     * @var array<int, string>
-     */
-    private const WHATSAPP_PHONES = [
-        '04242875732',
-        '04143027250',
-    ];
-
     public static function dispatchForQuote(int $quoteId): void
     {
         $quote = OperationQuoteGenerator::query()
@@ -104,7 +99,15 @@ final class CourtesyFinanceNotifier
 
         SendCourtesyFinanceEmail::dispatch($emailPayload['type'], $emailPayload['id']);
 
-        foreach (self::WHATSAPP_PHONES as $phone) {
+        /**
+         * Los teléfonos salen de «Servicios por cortesía» del Centro de notificaciones (antes, dos
+         * números fijos aquí). Telegram para los vinculados y los grupos; el resto, por WhatsApp.
+         */
+        $key = SystemNotificationKey::CourtesyFinance;
+        $phones = SystemNotificationRecipients::isActive($key) ? SystemNotificationRecipients::phones($key) : [];
+        $route = InternalMessaging::route($key, 'Servicio por cortesía', $caption, $phones);
+
+        foreach ($route['whatsapp'] as $phone) {
             $normalized = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($phone);
 
             if ($normalized === null) {

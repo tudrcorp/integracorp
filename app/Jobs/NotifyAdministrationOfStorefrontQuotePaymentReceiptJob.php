@@ -9,6 +9,7 @@ use App\Mail\StorefrontQuotePaymentReceiptMail;
 use App\Models\IndividualQuotePaymentReceipt;
 use App\Models\User;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\SecurityAudit;
 use App\Support\Storefront\StorefrontQuotePaymentReceiptNotificationMessage;
 use App\Support\SystemNotificationRecipients;
@@ -96,7 +97,7 @@ class NotifyAdministrationOfStorefrontQuotePaymentReceiptJob implements ShouldBe
         }
 
         $emailsSent = $this->sendEmails($receipt, $emails, $uploader);
-        $whatsappsQueued = $this->sendWhatsApps($receipt, $phones, $uploader);
+        $whatsappsQueued = $this->sendWhatsApps($receipt, $phones, $uploader, $emails);
 
         SecurityAudit::log('AUDIT_STOREFRONT_QUOTE_RECEIPT_NOTIFICATION_DISPATCHED', self::AUDIT_ROUTE, [
             'receipt_id' => $receipt->getKey(),
@@ -153,18 +154,20 @@ class NotifyAdministrationOfStorefrontQuotePaymentReceiptJob implements ShouldBe
     /**
      * @param  list<string>  $phones
      */
-    private function sendWhatsApps(IndividualQuotePaymentReceipt $receipt, array $phones, User $uploader): int
+    private function sendWhatsApps(IndividualQuotePaymentReceipt $receipt, array $phones, User $uploader, array $emails = []): int
     {
-        if ($phones === []) {
-            return 0;
-        }
-
         $quote = $receipt->quote;
         $body = StorefrontQuotePaymentReceiptNotificationMessage::whatsappBody($quote, $receipt, $uploader);
         $caption = StorefrontQuotePaymentReceiptNotificationMessage::whatsappCaption($quote);
         $publicUrl = $receipt->publicUrl();
         $filename = (string) ($receipt->original_name ?: 'comprobante');
-        $queued = 0;
+        /**
+         * El aviso va por Telegram a los vinculados (y a los grupos elegidos); el comprobante
+         * del cliente sigue llegando por WhatsApp a todos los teléfonos.
+         */
+        $route = InternalMessaging::route(SystemNotificationKey::StorefrontQuotePaymentReceipt, 'Comprobante de cotización PWA', $body, $phones, $emails);
+        $textByWhatsApp = array_flip($route['whatsapp']);
+        $queued = $route['telegram'] + $route['groups'];
 
         foreach ($phones as $rawPhone) {
             $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
@@ -181,9 +184,9 @@ class NotifyAdministrationOfStorefrontQuotePaymentReceiptJob implements ShouldBe
             ];
 
             try {
-                $jobs = [
-                    new SendNotificacionWhatsApp(null, $body, $phone, null, $context),
-                ];
+                $jobs = isset($textByWhatsApp[$rawPhone])
+                    ? [new SendNotificacionWhatsApp(null, $body, $phone, null, $context)]
+                    : [];
 
                 if (is_string($publicUrl) && $publicUrl !== '' && ! str_contains($publicUrl, '.test')) {
                     $jobs[] = StorefrontQuotePaymentReceiptNotificationMessage::isImage($receipt)
@@ -191,8 +194,15 @@ class NotifyAdministrationOfStorefrontQuotePaymentReceiptJob implements ShouldBe
                         : new SendNotificacionWhatsAppDocument(null, $caption, $phone, $publicUrl, $filename, [...$context, 'asset' => 'receipt']);
                 }
 
+                if ($jobs === []) {
+                    continue;
+                }
+
                 Bus::chain($jobs)->dispatch();
-                $queued++;
+
+                if (isset($textByWhatsApp[$rawPhone])) {
+                    $queued++;
+                }
             } catch (Throwable $exception) {
                 Log::error('NotifyAdministrationOfStorefrontQuotePaymentReceiptJob: error encolando WhatsApp', [
                     'receipt_id' => $receipt->getKey(),

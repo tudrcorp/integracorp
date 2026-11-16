@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\ProspectAgents;
 
+use App\Enums\SystemNotificationKey;
 use App\Filament\Business\Resources\ProspectAgents\ProspectAgentResource;
 use App\Jobs\SendNotificacionWhatsApp;
 use App\Mail\ProspectAgentTaskAssignedMail;
@@ -12,6 +13,7 @@ use App\Models\RrhhColaborador;
 use App\Models\User;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\Companies\CompanyAssociateDocumentsBellAlert;
+use App\Support\InternalNotifications\InternalMessaging;
 use Filament\Actions\Action;
 use Filament\Notifications\Events\DatabaseNotificationsSent;
 use Filament\Notifications\Notification;
@@ -127,19 +129,29 @@ TEXT;
         string $prospectUrl,
     ): void {
         $phone = self::recipientPhone($colaborador);
-
-        if ($phone === null) {
-            Log::info('ProspectAgentTaskAssigneeNotifier: el colaborador no tiene teléfono para WhatsApp', [
-                'task_id' => $taskId,
-                'colaborador_id' => $colaborador->getKey(),
-            ]);
-
-            return;
-        }
-
         $body = self::whatsAppBody($taskId, $prospectName, $assignedBy, $description, $assignedAt, $prospectUrl);
 
         self::once($taskId, 'whatsapp', function () use ($colaborador, $body, $phone, $taskId): void {
+            /** Por Telegram si el colaborador lo tiene vinculado; si no, por WhatsApp como siempre. */
+            if (InternalMessaging::routeToPerson(
+                SystemNotificationKey::PersonalAssignments,
+                'Tarea de prospecto asignada',
+                $body,
+                filled($colaborador->user_id) ? (int) $colaborador->user_id : null,
+                $phone,
+            )) {
+                return;
+            }
+
+            if ($phone === null) {
+                Log::info('ProspectAgentTaskAssigneeNotifier: el colaborador no tiene teléfono para WhatsApp', [
+                    'task_id' => $taskId,
+                    'colaborador_id' => $colaborador->getKey(),
+                ]);
+
+                return;
+            }
+
             SendNotificacionWhatsApp::dispatch(
                 $colaborador->user_id,
                 $body,

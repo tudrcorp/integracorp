@@ -770,6 +770,21 @@ Route::get('p/{slug}', \App\Http\Controllers\QrHostedPageController::class)
     ])
     ->name('qr.page');
 
+/**
+ * Webhook del bot de Telegram (notificaciones internas). Público, sin sesión ni
+ * CSRF: lo protege la clave secreta TELEGRAM_WEBHOOK_SECRET que Telegram manda
+ * en la cabecera X-Telegram-Bot-Api-Secret-Token.
+ */
+Route::post('telegram/webhook', \App\Http\Controllers\Telegram\TelegramWebhookController::class)
+    ->middleware('throttle:120,1')
+    ->withoutMiddleware([
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+        \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+    ])
+    ->name('telegram.webhook');
+
 Route::get('business/notifications/bell-alert', App\Http\Controllers\Business\DatabaseNotificationBellAlertController::class)
     ->middleware(['web', 'auth'])
     ->name('business.notifications.bell-alert');

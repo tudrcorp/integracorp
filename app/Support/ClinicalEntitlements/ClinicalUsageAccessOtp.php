@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\ClinicalEntitlements;
 
 use App\Enums\ClinicalUsageAccessContext;
+use App\Enums\SystemNotificationKey;
 use App\Enums\SystemOtpCodeKind;
 use App\Jobs\SendNotificacionWhatsApp;
 use App\Mail\ClinicalUsageAccessOtpMail;
@@ -12,6 +13,7 @@ use App\Models\ClinicalUsageAccessChallenge;
 use App\Models\User;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\Filament\UserNavigationAccess;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\Otp\SelfAuthorizedOtp;
 use App\Support\Otp\SystemOtpCodeRegistry;
 use App\Support\SecurityAudit;
@@ -293,7 +295,19 @@ final class ClinicalUsageAccessOtp
             }
         }
 
-        foreach ($phones as $phone) {
+        /** Telegram (en el acto) a los SUPERADMIN vinculados; el resto, por WhatsApp como siempre. */
+        $route = InternalMessaging::route(
+            SystemNotificationKey::ClinicalUsageAccessOtp,
+            'Clave OTP · acceso a uso clínico',
+            ClinicalUsageAccessNotificationMessage::whatsappBody($payload),
+            $phones,
+            $emails,
+            immediate: true,
+            critical: true,
+        );
+        $phonesSent += $route['delivered'];
+
+        foreach ($route['whatsapp'] as $phone) {
             try {
                 SendNotificacionWhatsApp::dispatchSync(null, ClinicalUsageAccessNotificationMessage::whatsappBody($payload), $phone, null, [
                     'panel' => 'business',

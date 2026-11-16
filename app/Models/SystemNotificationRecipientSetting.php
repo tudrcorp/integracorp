@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\SystemNotificationKey;
+use App\Enums\TelegramDeliveryMode;
 use Illuminate\Database\Eloquent\Model;
 
 class SystemNotificationRecipientSetting extends Model
@@ -14,6 +15,9 @@ class SystemNotificationRecipientSetting extends Model
         'notification_emails',
         'notification_email_modes',
         'notification_phones',
+        'telegram_mode',
+        'telegram_group_ids',
+        'telegram_recipient_ids',
         'is_active',
         'updated_by',
     ];
@@ -28,6 +32,8 @@ class SystemNotificationRecipientSetting extends Model
             'notification_emails' => 'array',
             'notification_email_modes' => 'array',
             'notification_phones' => 'array',
+            'telegram_group_ids' => 'array',
+            'telegram_recipient_ids' => 'array',
             'is_active' => 'boolean',
         ];
     }
@@ -93,6 +99,39 @@ class SystemNotificationRecipientSetting extends Model
     public function phones(): array
     {
         return $this->normalizeList($this->notification_phones);
+    }
+
+    /**
+     * Destino por Telegram. Un valor desconocido o vacío se toma como apagado:
+     * el aviso sigue saliendo por los canales de siempre.
+     */
+    public function telegramMode(): TelegramDeliveryMode
+    {
+        return TelegramDeliveryMode::tryFrom((string) ($this->telegram_mode ?? '')) ?? TelegramDeliveryMode::Off;
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function telegramGroupIds(): array
+    {
+        return array_values(array_unique(array_filter(
+            array_map('intval', is_array($this->telegram_group_ids) ? $this->telegram_group_ids : []),
+            static fn (int $id): bool => $id > 0,
+        )));
+    }
+
+    /**
+     * Personas de Telegram elegidas a mano (además de los contactos ya vinculados).
+     *
+     * @return list<int>
+     */
+    public function telegramRecipientIds(): array
+    {
+        return array_values(array_unique(array_filter(
+            array_map('intval', is_array($this->telegram_recipient_ids) ? $this->telegram_recipient_ids : []),
+            static fn (int $id): bool => $id > 0,
+        )));
     }
 
     /**

@@ -215,6 +215,8 @@ final class SaleReceiptEmailDelivery
                     DocumentEmailWitnesses::publicDocumentUrl('reciboDePago', basename($pdfPath), $pdfPath),
                     basename($pdfPath),
                     ['panel' => 'administration', 'source' => 'administration.sales.receipt-witness', 'sale_id' => $sale->getKey()],
+                    SystemNotificationKey::SaleReceiptWitnessCopy,
+                    $pdfPath,
                 );
             });
         } catch (Throwable $exception) {

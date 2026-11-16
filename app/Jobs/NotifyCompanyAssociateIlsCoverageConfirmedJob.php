@@ -9,6 +9,7 @@ use App\Mail\CompanyAssociateIlsCoverageConfirmedMail;
 use App\Models\CompanyAssociate;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
 use App\Support\Companies\CompanyAssociateIlsCoverageNotificationMessage;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\SecurityAudit;
 use App\Support\SystemNotificationRecipients;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -93,7 +94,7 @@ class NotifyCompanyAssociateIlsCoverageConfirmedJob implements ShouldQueue
         }
 
         $emailsSent = $this->sendEmails($associate, $emails, $voucherPath);
-        $whatsappsQueued = $this->sendWhatsApps($associate, $phones, $voucherUrl, $voucherFilename);
+        $whatsappsQueued = $this->sendWhatsApps($associate, $phones, $voucherUrl, $voucherFilename, $emails);
 
         SecurityAudit::log('AUDIT_BUSINESS_COMPANY_ASSOCIATE_ILS_COVERAGE_NOTIFICATION_DISPATCHED', self::AUDIT_ROUTE, [
             'associate_id' => $associate->getKey(),
@@ -162,21 +163,27 @@ class NotifyCompanyAssociateIlsCoverageConfirmedJob implements ShouldQueue
 
     /**
      * @param  list<string>  $phones
+     * @param  list<string>  $emails  solo para reconocer a las personas vinculadas a Telegram
      */
     private function sendWhatsApps(
         CompanyAssociate $associate,
         array $phones,
         ?string $voucherUrl,
         ?string $voucherFilename,
+        array $emails = [],
     ): int {
-        if ($phones === []) {
-            return 0;
-        }
 
         $body = CompanyAssociateIlsCoverageNotificationMessage::whatsappBody($associate);
         $voucherCaption = CompanyAssociateIlsCoverageNotificationMessage::whatsappVoucherCaption($associate);
         $voucherIsImage = CompanyAssociateIlsCoverageNotificationMessage::voucherIsImage($associate);
         $queued = 0;
+
+        /**
+         * El aviso va por Telegram a los vinculados (y a los grupos elegidos); el voucher,
+         * que lleva datos del asociado, sigue llegando por WhatsApp a todos los teléfonos.
+         */
+        $route = InternalMessaging::route(SystemNotificationKey::CompanyAssociateIlsCoverage, 'Cobertura ILS confirmada', $body, $phones, $emails);
+        $textByWhatsApp = array_flip($route['whatsapp']);
 
         foreach ($phones as $rawPhone) {
             $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
@@ -197,9 +204,9 @@ class NotifyCompanyAssociateIlsCoverageConfirmedJob implements ShouldQueue
             ];
 
             try {
-                $jobs = [
-                    new SendNotificacionWhatsApp(null, $body, $phone, null, $context),
-                ];
+                $jobs = isset($textByWhatsApp[$rawPhone])
+                    ? [new SendNotificacionWhatsApp(null, $body, $phone, null, $context)]
+                    : [];
 
                 if ($voucherUrl !== null && $voucherFilename !== null) {
                     $jobs[] = $voucherIsImage
@@ -219,6 +226,10 @@ class NotifyCompanyAssociateIlsCoverageConfirmedJob implements ShouldQueue
                             $voucherFilename,
                             [...$context, 'asset' => 'voucher-ils'],
                         );
+                }
+
+                if ($jobs === []) {
+                    continue;
                 }
 
                 Bus::chain($jobs)->dispatch();

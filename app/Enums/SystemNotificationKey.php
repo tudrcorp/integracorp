@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Enums;
 
+use App\Support\ScheduledNotificationPhones;
+
 enum SystemNotificationKey: string
 {
     case CompanyAssociateRegistration = 'company_associate_registration';
@@ -29,6 +31,18 @@ enum SystemNotificationKey: string
     case CorporatePopulationUpdate = 'corporate_population_update';
     case SaleReceiptWitnessCopy = 'sale_receipt_witness_copy';
     case CollectionNoticeWitnessCopy = 'collection_notice_witness_copy';
+    case TelegramTest = 'telegram_test';
+    case ScheduledTaskSummary = 'scheduled_task_summary';
+    case ClinicalUsageAccessOtp = 'clinical_usage_access_otp';
+    case PersonalAssignments = 'personal_assignments';
+    case DoctorCaseAssignment = 'doctor_case_assignment';
+    case HelpdeskNotices = 'helpdesk_notices';
+    case ContadoQuotePayment = 'contado_quote_payment';
+    case CourtesyFinance = 'courtesy_finance';
+    case NewQuoteAnalysts = 'new_quote_analysts';
+    case CommercialNetworkActivity = 'commercial_network_activity';
+    case DressTaylorRequest = 'dress_taylor_request';
+    case GuiaChatFeedback = 'guia_chat_feedback';
 
     public function label(): string
     {
@@ -56,6 +70,18 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseAgentNotice => 'Nuevo caso al agente de la afiliación',
             self::SaleReceiptWitnessCopy => 'Testigos de recibos de pago',
             self::CollectionNoticeWitnessCopy => 'Testigos de avisos de cobro',
+            self::TelegramTest => 'Prueba de notificación a Telegram',
+            self::ScheduledTaskSummary => 'Resúmenes de tareas programadas',
+            self::ClinicalUsageAccessOtp => 'Clave OTP de acceso a uso clínico',
+            self::PersonalAssignments => 'Asignaciones e invitaciones personales',
+            self::DoctorCaseAssignment => 'Caso asignado al médico',
+            self::HelpdeskNotices => 'Avisos del Helpdesk',
+            self::ContadoQuotePayment => 'Pagos de contado urgentes',
+            self::CourtesyFinance => 'Servicios por cortesía',
+            self::NewQuoteAnalysts => 'Nuevas cotizaciones',
+            self::CommercialNetworkActivity => 'Movimientos de la red comercial',
+            self::DressTaylorRequest => 'Solicitudes Dress Taylor',
+            self::GuiaChatFeedback => 'Feedback de la Guía Chat',
         };
     }
 
@@ -85,6 +111,18 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseAgentNotice => 'Copias por WhatsApp del aviso que recibe el agente (o la agencia) dueño de la afiliación cuando se registra un caso nuevo de telemedicina para uno de sus afiliados.',
             self::SaleReceiptWitnessCopy => 'Copias testigo de cada recibo de pago enviado desde Administración → Ventas: por correo (en copia visible CC u oculta CCO, según cada contacto) y por WhatsApp con el PDF. También reciben la copia del envío del recibo por WhatsApp.',
             self::CollectionNoticeWitnessCopy => 'Copias testigo de cada aviso de cobro enviado desde Gestión de Cobranza o Cobranza Por Mes: por correo (en copia visible CC u oculta CCO, según cada contacto) y por WhatsApp con el PDF.',
+            self::TelegramTest => 'Mensaje de prueba para comprobar que Telegram entrega a las personas y grupos elegidos, y que el respaldo por WhatsApp y correo funciona.',
+            self::ScheduledTaskSummary => 'Destinatarios del resumen que envía cada tarea programada sin aviso propio: renovaciones, días de ILS y de cobranza anual, caducidad de órdenes de servicio, detectores de inconsistencias y duplicados, aniversarios y seguimientos de cotizaciones.',
+            self::ClinicalUsageAccessOtp => 'La clave OTP para entrar a configurar el uso clínico (cupos) de un plan va siempre a todos los SUPERADMIN activos. Aquí solo se elige si les llega por Telegram en vez de WhatsApp.',
+            self::PersonalAssignments => 'Avisos que van a una persona concreta: la tarea de un prospecto asignada a un colaborador, la invitación a una actividad de la Agenda corporativa y la respuesta a esa invitación. Aquí solo se elige si usan Telegram.',
+            self::DoctorCaseAssignment => 'Aviso al médico cuando Operaciones le asigna un caso de telemedicina. Aquí solo se elige si le llega por Telegram (sin el motivo de consulta, que sigue en el correo y en el portal).',
+            self::HelpdeskNotices => 'Avisos de los tickets del Helpdesk a las personas que les toca: ticket creado o asignado, notas, cambios de estado o prioridad, reasignaciones, flujo Scrum y reportes de error. Aquí solo se elige si usan Telegram.',
+            self::ContadoQuotePayment => 'Quienes reciben el aviso urgente cuando Operaciones aprueba una cotización de proveedor que se paga de contado: montos en US$ y Bs, tasa BCV, paciente, caso y proveedor. El correo a Administración no cambia.',
+            self::CourtesyFinance => 'Quienes reciben el aviso cuando Operaciones marca un servicio como cortesía (en la cotización, en la cuenta por cobrar o en la orden de servicio). El correo a Administración no cambia.',
+            self::NewQuoteAnalysts => 'Analistas que reciben el aviso, con la propuesta en PDF, cada vez que un agente o una agencia crea una cotización individual o corporativa.',
+            self::CommercialNetworkActivity => 'Analistas que reciben los movimientos de la red comercial: data corporativa cargada, comprobante de pago cargado, pre-afiliación individual creada y observaciones en cotizaciones.',
+            self::DressTaylorRequest => 'Quienes reciben cada solicitud de cotización Dress Taylor que crea un agente, con sus características.',
+            self::GuiaChatFeedback => 'Quienes reciben por WhatsApp o Telegram cada comentario o reporte que deja un visitante en la Guía Chat pública. El correo a soporte no cambia.',
         };
     }
 
@@ -114,6 +152,18 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseAgentNotice => 'Aviso de caso nuevo al agente',
             self::SaleReceiptWitnessCopy => 'Copia testigo de cada recibo de pago',
             self::CollectionNoticeWitnessCopy => 'Copia testigo de cada aviso de cobro',
+            self::TelegramTest => 'Prueba de notificación a Telegram',
+            self::ScheduledTaskSummary => 'Resúmenes de tareas programadas',
+            self::ClinicalUsageAccessOtp => 'Clave OTP de acceso a uso clínico',
+            self::PersonalAssignments => 'Asignaciones e invitaciones personales',
+            self::DoctorCaseAssignment => 'Caso asignado al médico',
+            self::HelpdeskNotices => 'Avisos del Helpdesk',
+            self::ContadoQuotePayment => 'Pagos de contado urgentes',
+            self::CourtesyFinance => 'Servicios por cortesía',
+            self::NewQuoteAnalysts => 'Aviso de nuevas cotizaciones',
+            self::CommercialNetworkActivity => 'Movimientos de la red comercial',
+            self::DressTaylorRequest => 'Solicitudes Dress Taylor',
+            self::GuiaChatFeedback => 'Feedback de la Guía Chat',
         };
     }
 
@@ -143,6 +193,18 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseAgentNotice => 'Cuando se registra un caso nuevo para un paciente —desde Operaciones al asignar médico, por registro directo o RETAIL—, el sistema le envía un WhatsApp al agente dueño de su afiliación (o a la agencia, si la afiliación no tiene agente) con los datos del paciente y el número de caso. Se envía una sola vez por caso: los seguimientos no lo repiten.',
             self::SaleReceiptWitnessCopy => 'Cuando un analista envía un recibo de pago al afiliado y/o al agente / agencia, cada correo sale con estos contactos en copia visible (CC) o en copia oculta (CCO), según lo marcado en cada correo. Los teléfonos reciben por WhatsApp el PDF y el detalle de a quién se envió y con qué copy. Si el recibo se envía por WhatsApp, estos teléfonos reciben la copia del mensaje.',
             self::CollectionNoticeWitnessCopy => 'Cuando un analista envía un aviso de cobro al afiliado y/o al agente / agencia, cada correo sale con estos contactos en copia visible (CC) o en copia oculta (CCO), según lo marcado en cada correo. Los teléfonos reciben por WhatsApp el PDF del aviso y el detalle de a quién se envió y con qué copy.',
+            self::TelegramTest => 'Elija a quién va la prueba (persona, grupo o ambos), guarde y pulse «Enviar prueba». Las personas con Telegram vinculado la reciben allí; las que no, por WhatsApp o correo. Cada envío queda en la bitácora de la página Telegram.',
+            self::ScheduledTaskSummary => 'Al terminar cada tarea programada que no tiene aviso propio, el sistema envía un resumen con lo procesado, las fallas y la duración. Antes iba a dos teléfonos fijos de la configuración del servidor; ahora se eligen aquí.',
+            self::ClinicalUsageAccessOtp => 'Cuando un analista que no es SUPERADMIN entra a la mesa de uso clínico, el sistema envía una clave de 6 dígitos a todos los SUPERADMIN activos (a su correo y su teléfono de usuario). Con Telegram en «Persona», los SUPERADMIN vinculados la reciben allí al instante.',
+            self::PersonalAssignments => 'Cada aviso va a la persona que corresponde (el colaborador asignado, el invitado o quien creó la actividad), no a una lista. Con «Persona», quien tenga Telegram vinculado lo recibe allí; los demás, por WhatsApp como siempre. El correo y la campanita no cambian.',
+            self::DoctorCaseAssignment => 'Cuando Operaciones asigna un caso, el médico recibe el código, el paciente y la dirección para atenderlo. Con «Persona», si el médico tiene Telegram vinculado le llega allí, sin el motivo de consulta; si no, por WhatsApp como siempre. El correo con el detalle no cambia.',
+            self::HelpdeskNotices => 'Cada aviso de un ticket va a quien corresponde: los asignados, el creador o el equipo de ejecución. Con «Persona», quien tenga Telegram vinculado lo recibe allí; los demás, por WhatsApp como siempre. Los correos del Helpdesk no cambian.',
+            self::ContadoQuotePayment => 'Cuando una cotización de proveedor se aprueba con pago de contado, Administración debe pagar ya. Estos contactos reciben el detalle con montos y tasa. Antes iba a dos números fijos del sistema; ahora se eligen aquí.',
+            self::CourtesyFinance => 'Cuando un servicio se da por cortesía, Administración debe registrarlo sin cobrarlo. Estos contactos reciben el detalle. Antes iba a dos números fijos del sistema; ahora se eligen aquí.',
+            self::NewQuoteAnalysts => 'Cuando un agente o una agencia registra una cotización individual o corporativa, estos contactos reciben el aviso para acompañar al agente hasta la pre-afiliación. La propuesta en PDF llega siempre por WhatsApp. Antes iba a números fijos del sistema; ahora se eligen aquí.',
+            self::CommercialNetworkActivity => 'Agrupa los avisos de la red comercial que antes iban a un número fijo de cotizaciones y afiliaciones: data corporativa cargada, comprobante de pago cargado por el agente, pre-afiliación individual creada y observaciones en cotizaciones individuales y corporativas.',
+            self::DressTaylorRequest => 'Cuando un agente crea una solicitud Dress Taylor desde su panel, estos contactos reciben el código y las características pedidas para comunicarse con el agente. Antes iba a un número fijo.',
+            self::GuiaChatFeedback => 'Cada vez que un visitante deja un comentario o reporta un problema en la Guía Chat, estos contactos reciben el detalle. Antes iba a tres números fijos del sistema; el correo a soporte sigue igual.',
         };
     }
 
@@ -290,6 +352,78 @@ enum SystemNotificationKey: string
                 '3. Copia CC o CCO a los testigos',
                 '4. WhatsApp testigo con el PDF',
             ],
+            self::TelegramTest => [
+                '1. Elegir persona, grupo o ambos',
+                '2. Guardar',
+                '3. Enviar prueba',
+                '4. Revisar la bitácora',
+            ],
+            self::ScheduledTaskSummary => [
+                '1. Termina una tarea programada',
+                '2. Se arma el resumen',
+                '3. Telegram o WhatsApp',
+                '4. Correo si se configura',
+            ],
+            self::ClinicalUsageAccessOtp => [
+                '1. Analista entra a uso clínico',
+                '2. Clave a todos los SUPERADMIN',
+                '3. Telegram o WhatsApp + correo',
+                '4. El SUPERADMIN la dicta',
+            ],
+            self::PersonalAssignments => [
+                '1. Se asigna una tarea o se invita',
+                '2. Se busca a la persona',
+                '3. Telegram si está vinculada',
+                '4. Si no, WhatsApp como siempre',
+            ],
+            self::DoctorCaseAssignment => [
+                '1. Operaciones asigna el caso',
+                '2. Correo con el detalle',
+                '3. Telegram si el médico está vinculado',
+                '4. Si no, WhatsApp como siempre',
+            ],
+            self::HelpdeskNotices => [
+                '1. Movimiento en un ticket',
+                '2. Se busca a cada persona',
+                '3. Telegram si está vinculada',
+                '4. Si no, WhatsApp como siempre',
+            ],
+            self::ContadoQuotePayment => [
+                '1. Operaciones aprueba de contado',
+                '2. Correo a Administración',
+                '3. Aviso por Telegram o WhatsApp',
+                '4. Administración paga',
+            ],
+            self::CourtesyFinance => [
+                '1. Operaciones marca cortesía',
+                '2. Correo a Administración',
+                '3. Aviso por Telegram o WhatsApp',
+                '4. Se registra sin cobro',
+            ],
+            self::NewQuoteAnalysts => [
+                '1. El agente crea la cotización',
+                '2. Aviso al equipo de análisis',
+                '3. PDF de la propuesta por WhatsApp',
+                '4. Acompañar hasta la pre-afiliación',
+            ],
+            self::CommercialNetworkActivity => [
+                '1. Movimiento en la red comercial',
+                '2. Aviso al equipo',
+                '3. Telegram o WhatsApp',
+                '4. Revisar en el panel',
+            ],
+            self::DressTaylorRequest => [
+                '1. El agente pide Dress Taylor',
+                '2. Aviso con las características',
+                '3. Telegram o WhatsApp',
+                '4. Contactar al agente',
+            ],
+            self::GuiaChatFeedback => [
+                '1. Visitante deja feedback',
+                '2. Correo a soporte',
+                '3. Aviso por Telegram o WhatsApp',
+                '4. Revisar en Guía Chat',
+            ],
         };
     }
 
@@ -319,6 +453,18 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseAgentNotice => 'Privacidad del paciente:',
             self::SaleReceiptWitnessCopy => 'CC o CCO:',
             self::CollectionNoticeWitnessCopy => 'CC o CCO:',
+            self::TelegramTest => 'Cómo leer el resultado:',
+            self::ScheduledTaskSummary => 'Para qué sirve:',
+            self::ClinicalUsageAccessOtp => 'Quién la recibe:',
+            self::PersonalAssignments => 'Quién lo recibe:',
+            self::DoctorCaseAssignment => 'Datos clínicos:',
+            self::HelpdeskNotices => 'Quién lo recibe:',
+            self::ContadoQuotePayment => 'Antes:',
+            self::CourtesyFinance => 'Antes:',
+            self::NewQuoteAnalysts => 'Antes:',
+            self::CommercialNetworkActivity => 'Antes:',
+            self::DressTaylorRequest => 'Antes:',
+            self::GuiaChatFeedback => 'Antes:',
         };
     }
 
@@ -348,6 +494,18 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseAgentNotice => 'el mensaje lleva solo datos de identificación del paciente, de su afiliación y del caso. No incluye motivo de consulta, diagnóstico ni ningún dato clínico.',
             self::SaleReceiptWitnessCopy => 'con CC el afiliado o el agente ve el correo del testigo; con CCO el testigo recibe el mismo correo sin que nadie más lo vea. El modo prueba nunca copia a los testigos.',
             self::CollectionNoticeWitnessCopy => 'con CC el afiliado o el agente ve el correo del testigo; con CCO el testigo recibe el mismo correo sin que nadie más lo vea. El modo prueba nunca copia a los testigos.',
+            self::TelegramTest => 'si una persona no tiene Telegram vinculado o el bot falla, la prueba le llega por WhatsApp (o por correo si no tiene teléfono). Así también se comprueba el respaldo. Revise cada envío en CONFIGURACIÓN → Telegram.',
+            self::ScheduledTaskSummary => 'confirma cada mañana que las tareas automáticas corrieron. Si un día no llega el resumen de una tarea, revise Negocios → Colas y errores.',
+            self::ClinicalUsageAccessOtp => 'todos los usuarios activos con SUPERADMIN, sin lista aparte. Dicte la clave solo al analista que la pidió. Una clave nunca va a un grupo de Telegram.',
+            self::PersonalAssignments => 'siempre la persona del aviso; no hace falta cargar contactos. Estos avisos nunca van a un grupo.',
+            self::DoctorCaseAssignment => 'el motivo de consulta nunca viaja por Telegram. El médico lo ve en el correo y en el portal de Telemedicina.',
+            self::HelpdeskNotices => 'siempre las personas del ticket; no hace falta cargar contactos. Estos avisos nunca van a un grupo.',
+            self::ContadoQuotePayment => 'iba a dos números fijos escritos en el sistema. Este aviso arrancó con esos mismos números: agregue o quite contactos sin pedir cambios a Sistemas.',
+            self::CourtesyFinance => 'iba a dos números fijos escritos en el sistema. Este aviso arrancó con esos mismos números: agregue o quite contactos sin pedir cambios a Sistemas.',
+            self::NewQuoteAnalysts => 'los números estaban escritos en el sistema. Este aviso arrancó con esos mismos números: agregue o quite contactos sin pedir cambios a Sistemas.',
+            self::CommercialNetworkActivity => 'iban al número fijo de cotizaciones y afiliaciones. Este aviso arrancó con ese número: agregue o quite contactos sin pedir cambios a Sistemas.',
+            self::DressTaylorRequest => 'iba a un número fijo escrito en el sistema. Este aviso arrancó con ese número.',
+            self::GuiaChatFeedback => 'iba a tres números fijos escritos en el sistema. Este aviso arrancó con esos mismos números.',
         };
     }
 
@@ -377,6 +535,18 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseAgentNotice => 'heroicon-o-user-plus',
             self::SaleReceiptWitnessCopy => 'heroicon-o-document-duplicate',
             self::CollectionNoticeWitnessCopy => 'heroicon-o-document-duplicate',
+            self::TelegramTest => 'heroicon-o-paper-airplane',
+            self::ScheduledTaskSummary => 'heroicon-o-clock',
+            self::ClinicalUsageAccessOtp => 'heroicon-o-key',
+            self::PersonalAssignments => 'heroicon-o-user',
+            self::DoctorCaseAssignment => 'heroicon-o-user-plus',
+            self::HelpdeskNotices => 'heroicon-o-lifebuoy',
+            self::ContadoQuotePayment => 'heroicon-o-banknotes',
+            self::CourtesyFinance => 'heroicon-o-gift',
+            self::NewQuoteAnalysts => 'heroicon-o-document-text',
+            self::CommercialNetworkActivity => 'heroicon-o-arrows-right-left',
+            self::DressTaylorRequest => 'heroicon-o-scissors',
+            self::GuiaChatFeedback => 'heroicon-o-chat-bubble-left-right',
         };
     }
 
@@ -422,6 +592,18 @@ enum SystemNotificationKey: string
             self::CollectionNoticeWitnessCopy => [
                 'administracion@tudrencasa.com',
             ],
+            self::TelegramTest => [],
+            self::ScheduledTaskSummary => [],
+            self::ClinicalUsageAccessOtp => [],
+            self::PersonalAssignments => [],
+            self::DoctorCaseAssignment => [],
+            self::HelpdeskNotices => [],
+            self::ContadoQuotePayment => [],
+            self::CourtesyFinance => [],
+            self::NewQuoteAnalysts => [],
+            self::CommercialNetworkActivity => [],
+            self::DressTaylorRequest => [],
+            self::GuiaChatFeedback => [],
         };
     }
 
@@ -474,6 +656,18 @@ enum SystemNotificationKey: string
                 '04143027250',
             ],
             self::CollectionNoticeWitnessCopy => [],
+            self::TelegramTest => [],
+            self::ScheduledTaskSummary => ScheduledNotificationPhones::all(),
+            self::ClinicalUsageAccessOtp => [],
+            self::PersonalAssignments => [],
+            self::DoctorCaseAssignment => [],
+            self::HelpdeskNotices => [],
+            self::ContadoQuotePayment => ['04242875732', '04143027250'],
+            self::CourtesyFinance => ['04242875732', '04143027250'],
+            self::NewQuoteAnalysts => self::phonesWithQuotesLine(ScheduledNotificationPhones::all()),
+            self::CommercialNetworkActivity => self::phonesWithQuotesLine([]),
+            self::DressTaylorRequest => ['+584241869168'],
+            self::GuiaChatFeedback => ['04127018390', '04121931865', '04143027250'],
         };
     }
 
@@ -503,6 +697,18 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseAgentNotice => 'Sin copias. El aviso igual le llega al agente o a la agencia dueña de la afiliación.',
             self::SaleReceiptWitnessCopy => 'Sin testigos. Los recibos se envían igual al afiliado y al agente / agencia, sin copias internas.',
             self::CollectionNoticeWitnessCopy => 'Sin testigos. Los avisos de cobro se envían igual al afiliado y al agente / agencia, sin copias internas.',
+            self::TelegramTest => 'Sin contactos. Puede enviar la prueba solo a grupos de Telegram, o agregar correos y teléfonos de personas.',
+            self::ScheduledTaskSummary => 'Sin destinatarios. Las tareas programadas corren igual, pero nadie recibe su resumen.',
+            self::ClinicalUsageAccessOtp => 'La clave va siempre a los SUPERADMIN activos: no hace falta agregar contactos.',
+            self::PersonalAssignments => 'Cada aviso va a la persona que corresponde: no hace falta agregar contactos.',
+            self::DoctorCaseAssignment => 'El aviso va siempre al médico asignado: no hace falta agregar contactos.',
+            self::HelpdeskNotices => 'Cada aviso va a las personas del ticket: no hace falta agregar contactos.',
+            self::ContadoQuotePayment => 'Sin destinatarios. El aviso no le llega a nadie por WhatsApp ni Telegram (el correo a Administración sale igual).',
+            self::CourtesyFinance => 'Sin destinatarios. El aviso no le llega a nadie por WhatsApp ni Telegram (el correo a Administración sale igual).',
+            self::NewQuoteAnalysts => 'Sin destinatarios. Los avisos no le llegan a nadie hasta que agregue al menos un teléfono.',
+            self::CommercialNetworkActivity => 'Sin destinatarios. Los avisos no le llegan a nadie hasta que agregue al menos un teléfono.',
+            self::DressTaylorRequest => 'Sin destinatarios. Los avisos no le llegan a nadie hasta que agregue al menos un teléfono.',
+            self::GuiaChatFeedback => 'Sin destinatarios. Los avisos no le llegan a nadie hasta que agregue al menos un teléfono.',
         };
     }
 
@@ -580,6 +786,34 @@ enum SystemNotificationKey: string
             self::CollectionNoticeWitnessCopy => $empty
                 ? 'Sin testigos. Los avisos de cobro saldrán sin copias internas.'
                 : 'Cada aviso de cobro enviado llegará a estos testigos: por correo en CC o CCO y por WhatsApp con el PDF.',
+            self::TelegramTest => $empty
+                ? 'Sin contactos. La prueba solo llegará a los grupos de Telegram elegidos.'
+                : 'La prueba llegará a estos contactos: por Telegram a los vinculados y por WhatsApp o correo a los demás.',
+            self::ScheduledTaskSummary => $empty
+                ? 'Sin destinatarios. Las tareas corren igual, pero nadie recibe su resumen.'
+                : 'Estos contactos recibirán el resumen de cada tarea programada sin aviso propio.',
+            self::ClinicalUsageAccessOtp => 'La clave seguirá llegando a todos los SUPERADMIN activos; por Telegram a los vinculados si eligió «Persona».',
+            self::PersonalAssignments => 'Cada aviso seguirá llegando a la persona que corresponde; por Telegram si está vinculada y eligió «Persona».',
+            self::DoctorCaseAssignment => 'El aviso seguirá llegando al médico asignado; por Telegram si está vinculado y eligió «Persona».',
+            self::HelpdeskNotices => 'Los avisos seguirán llegando a las personas del ticket; por Telegram si están vinculadas y eligió «Persona».',
+            self::ContadoQuotePayment => $empty
+                ? 'Sin destinatarios. Solo saldrá el correo a Administración.'
+                : 'Estos contactos recibirán cada pago de contado urgente.',
+            self::CourtesyFinance => $empty
+                ? 'Sin destinatarios. Solo saldrá el correo a Administración.'
+                : 'Estos contactos recibirán cada servicio marcado como cortesía.',
+            self::NewQuoteAnalysts => $empty
+                ? 'Sin destinatarios. Nadie recibirá el aviso de nuevas cotizaciones.'
+                : 'Estos contactos recibirán el aviso de cada cotización nueva, con su PDF por WhatsApp.',
+            self::CommercialNetworkActivity => $empty
+                ? 'Sin destinatarios. Los movimientos de la red no le llegarán a nadie.'
+                : 'Estos contactos recibirán los movimientos de la red comercial.',
+            self::DressTaylorRequest => $empty
+                ? 'Sin destinatarios. Las solicitudes Dress Taylor no le llegarán a nadie.'
+                : 'Estos contactos recibirán cada solicitud Dress Taylor.',
+            self::GuiaChatFeedback => $empty
+                ? 'Sin destinatarios. Solo se enviará el correo a soporte.'
+                : 'Estos contactos recibirán cada feedback de la Guía Chat.',
         };
     }
 
@@ -603,6 +837,23 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseAgentNotice,
             self::SaleReceiptWitnessCopy,
             self::CollectionNoticeWitnessCopy,
+            self::TelegramTest,
+            self::ScheduledTaskSummary,
+            self::ClinicalUsageAccessOtp,
+            self::PersonalAssignments,
+            self::DoctorCaseAssignment,
+            self::HelpdeskNotices,
+            self::ContadoQuotePayment,
+            self::CourtesyFinance,
+            self::NewQuoteAnalysts,
+            self::CommercialNetworkActivity,
+            self::DressTaylorRequest,
+            self::GuiaChatFeedback,
+            self::PersonalAssignments,
+            self::DoctorCaseAssignment,
+            self::HelpdeskNotices,
+            self::ContadoQuotePayment,
+            self::CourtesyFinance,
         ], true);
     }
 
@@ -632,6 +883,18 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseAgentNotice => 'Si está inactiva, los casos se registran igual, pero no se envía el WhatsApp al agente ni las copias. Los casos registrados mientras estuvo inactiva no se avisan después.',
             self::SaleReceiptWitnessCopy => 'Si está inactiva, los recibos se envían igual al afiliado y al agente / agencia, pero sin copias testigo (ni correo ni WhatsApp).',
             self::CollectionNoticeWitnessCopy => 'Si está inactiva, los avisos de cobro se envían igual al afiliado y al agente / agencia, pero sin copias testigo (ni correo ni WhatsApp).',
+            self::TelegramTest => 'Si está inactiva, el botón «Enviar prueba» no envía nada.',
+            self::ScheduledTaskSummary => 'Si está inactiva, las tareas programadas corren igual, pero no se envía su resumen a nadie.',
+            self::ClinicalUsageAccessOtp => 'Si está inactiva, la clave sigue llegando a los SUPERADMIN por WhatsApp y correo: solo deja de usar Telegram. El acceso a uso clínico no se bloquea.',
+            self::PersonalAssignments => 'Si está inactiva, los avisos siguen llegando por WhatsApp y correo: solo dejan de usar Telegram.',
+            self::DoctorCaseAssignment => 'Si está inactiva, el aviso sigue llegando al médico por WhatsApp y correo: solo deja de usar Telegram.',
+            self::HelpdeskNotices => 'Si está inactiva, los avisos del Helpdesk siguen llegando por WhatsApp y correo: solo dejan de usar Telegram.',
+            self::ContadoQuotePayment => 'Si está inactiva, Operaciones trabaja igual y el correo a Administración sale, pero no se avisa por WhatsApp ni Telegram.',
+            self::CourtesyFinance => 'Si está inactiva, Operaciones trabaja igual y el correo a Administración sale, pero no se avisa por WhatsApp ni Telegram.',
+            self::NewQuoteAnalysts => 'Si está inactiva, las cotizaciones se crean igual, pero nadie recibe el aviso ni el PDF.',
+            self::CommercialNetworkActivity => 'Si está inactiva, la red comercial sigue trabajando igual, pero estos avisos no le llegan a nadie.',
+            self::DressTaylorRequest => 'Si está inactiva, la solicitud se registra igual, pero nadie recibe el aviso.',
+            self::GuiaChatFeedback => 'Si está inactiva, el comentario se guarda y el correo a soporte sale igual, pero no se avisa por WhatsApp ni Telegram.',
         };
     }
 
@@ -664,6 +927,18 @@ enum SystemNotificationKey: string
             self::TelemedicineCaseAgentNotice,
             self::SaleReceiptWitnessCopy,
             self::CollectionNoticeWitnessCopy,
+            self::TelegramTest,
+            self::ScheduledTaskSummary,
+            self::ClinicalUsageAccessOtp,
+            self::PersonalAssignments,
+            self::DoctorCaseAssignment,
+            self::HelpdeskNotices,
+            self::ContadoQuotePayment,
+            self::CourtesyFinance,
+            self::NewQuoteAnalysts,
+            self::CommercialNetworkActivity,
+            self::DressTaylorRequest,
+            self::GuiaChatFeedback,
         ];
     }
 
@@ -673,7 +948,28 @@ enum SystemNotificationKey: string
      */
     public function usesEmailRecipients(): bool
     {
-        return $this !== self::TelemedicineCaseAgentNotice;
+        return ! in_array($this, [
+            self::TelemedicineCaseAgentNotice,
+            self::ClinicalUsageAccessOtp,
+            self::PersonalAssignments,
+            self::DoctorCaseAssignment,
+            self::HelpdeskNotices,
+            self::NewQuoteAnalysts,
+            self::CommercialNetworkActivity,
+            self::DressTaylorRequest,
+            self::GuiaChatFeedback,
+            self::ContadoQuotePayment,
+            self::CourtesyFinance,
+        ], true);
+    }
+
+    /**
+     * Avisos cuyos destinatarios no se configuran aquí (salen de los usuarios, por
+     * ejemplo todos los SUPERADMIN): la pantalla oculta la sección de teléfonos.
+     */
+    public function usesPhoneRecipients(): bool
+    {
+        return ! in_array($this, [self::ClinicalUsageAccessOtp, self::PersonalAssignments, self::DoctorCaseAssignment, self::HelpdeskNotices], true);
     }
 
     /**
@@ -683,5 +979,182 @@ enum SystemNotificationKey: string
     public function supportsEmailCopyModes(): bool
     {
         return in_array($this, [self::SaleReceiptWitnessCopy, self::CollectionNoticeWitnessCopy], true);
+    }
+
+    /**
+     * Avisos que ya se reparten con InternalNotificationDispatcher y por eso
+     * muestran la sección de Telegram en el Centro de notificaciones. Los demás
+     * se irán sumando a medida que se migren; mientras tanto salen como siempre.
+     */
+    public function supportsTelegram(): bool
+    {
+        return in_array($this, [
+            self::TelegramTest,
+            self::LiveSystemAlert,
+            self::LiveSecurityAlert,
+            self::DatabaseBackup,
+            self::StructureBackup,
+            self::AgentQuoteAnulation,
+            self::DailyAuditSummary,
+            self::OperationInventoryLowStock,
+            self::ScheduledTaskSummary,
+            self::TelemedicineServiceLimitOverride,
+            self::CorporatePopulationUpdate,
+            self::ClinicalUsageAccessOtp,
+            self::CompanyAssociateRegistration,
+            self::CompanyAssociateIlsCoverage,
+            self::TdevRegistration,
+            self::IndividualQuoteFollowUp,
+            self::EarlyRenovationAcceptance,
+            self::NewQuoteAnalysts,
+            self::CommercialNetworkActivity,
+            self::DressTaylorRequest,
+            self::GuiaChatFeedback,
+            self::PersonalAssignments,
+            self::StorefrontQuotePaymentReceipt,
+            self::CorporatePaymentFrequencyChange,
+            self::OperationsAffiliateUpdate,
+            self::ContadoQuotePayment,
+            self::CourtesyFinance,
+            self::SaleReceiptWitnessCopy,
+            self::CollectionNoticeWitnessCopy,
+            self::TelemedicineCaseReversal,
+            self::TelemedicineCaseAgentNotice,
+            self::DoctorCaseAssignment,
+            self::HelpdeskNotices,
+            self::BirthdayNotificationWitnessCopy,
+            self::BirthdayNotificationSummary,
+        ], true);
+    }
+
+    /**
+     * Las claves OTP nunca van a un grupo: cualquiera del grupo la vería.
+     */
+    public function allowsTelegramGroups(): bool
+    {
+        return ! in_array($this, [
+            self::TelemedicineServiceLimitOverride,
+            self::CorporatePopulationUpdate,
+            self::ClinicalUsageAccessOtp,
+            self::PersonalAssignments,
+            self::DoctorCaseAssignment,
+            self::HelpdeskNotices,
+        ], true);
+    }
+
+    /** Áreas en el orden en que se muestran en el Centro de notificaciones. */
+    public const AREAS = [
+        'sistema' => 'Sistema',
+        'seguridad' => 'Seguridad y claves OTP',
+        'negocios' => 'Negocios',
+        'administracion' => 'Administración',
+        'operaciones' => 'Operaciones',
+        'telemedicina' => 'Telemedicina',
+        'helpdesk' => 'Helpdesk',
+        'rrhh' => 'Marketing y RRHH',
+    ];
+
+    /**
+     * Área de negocio del aviso, para agruparlo en el Centro de notificaciones.
+     */
+    public function area(): string
+    {
+        return match ($this) {
+            self::DatabaseBackup, self::StructureBackup, self::DailyAuditSummary, self::LiveSystemAlert,
+            self::ScheduledTaskSummary, self::TelegramTest => 'sistema',
+            self::LiveSecurityAlert, self::TelemedicineServiceLimitOverride, self::CorporatePopulationUpdate,
+            self::ClinicalUsageAccessOtp => 'seguridad',
+            self::CompanyAssociateRegistration, self::CompanyAssociateIlsCoverage, self::TdevRegistration,
+            self::IndividualQuoteFollowUp, self::AgentQuoteAnulation, self::EarlyRenovationAcceptance,
+            self::NewQuoteAnalysts, self::CommercialNetworkActivity, self::DressTaylorRequest,
+            self::GuiaChatFeedback, self::PersonalAssignments => 'negocios',
+            self::StorefrontQuotePaymentReceipt, self::CorporatePaymentFrequencyChange, self::SaleReceiptWitnessCopy,
+            self::CollectionNoticeWitnessCopy, self::ContadoQuotePayment, self::CourtesyFinance => 'administracion',
+            self::OperationInventoryLowStock, self::OperationsAffiliateUpdate => 'operaciones',
+            self::TelemedicineCaseReversal, self::TelemedicineCaseAgentNotice, self::DoctorCaseAssignment => 'telemedicina',
+            self::BirthdayNotificationWitnessCopy, self::BirthdayNotificationSummary => 'rrhh',
+            self::HelpdeskNotices => 'helpdesk',
+        };
+    }
+
+    /**
+     * Entrega del plan en la que este aviso pasa a Telegram, mientras todavía sale
+     * solo por WhatsApp. null si ya puede usar Telegram.
+     */
+    public function telegramMigrationStage(): ?string
+    {
+        if ($this->supportsTelegram()) {
+            return null;
+        }
+
+        return match ($this->area()) {
+            'negocios' => 'B3',
+            'administracion' => 'B4',
+            'operaciones' => 'B4',
+            'telemedicina' => 'B5',
+            'rrhh' => 'B7',
+            default => 'B3',
+        };
+    }
+
+    /**
+     * Números iniciales de los avisos de cotizaciones: los que estaban fijos en el
+     * sistema más la línea de cotizaciones y afiliaciones (config/parameters.php).
+     *
+     * @param  list<string>  $phones
+     * @return list<string>
+     */
+    private static function phonesWithQuotesLine(array $phones): array
+    {
+        $quotesLine = trim((string) config('parameters.PHONE_COTIZACIONES_AFILIACIONES'));
+
+        if ($quotesLine !== '') {
+            $phones[] = $quotesLine;
+        }
+
+        return array_values(array_unique($phones));
+    }
+
+    /**
+     * Avisos que van a una persona concreta que decide cada caso (el asignado o el creador
+     * del ticket, el invitado, el médico del caso): no tienen lista de contactos ni grupos.
+     */
+    public function isPersonTargeted(): bool
+    {
+        return in_array($this, [self::PersonalAssignments, self::DoctorCaseAssignment, self::HelpdeskNotices], true);
+    }
+
+    /**
+     * Avisos que llevan una clave OTP: nunca pueden ir a un grupo.
+     */
+    public function carriesOtp(): bool
+    {
+        return in_array($this, [self::TelemedicineServiceLimitOverride, self::CorporatePopulationUpdate, self::ClinicalUsageAccessOtp], true);
+    }
+
+    /**
+     * Explicación del selector de Telegram en el Centro de notificaciones según el tipo de aviso.
+     */
+    public function telegramModeHelp(): string
+    {
+        return match (true) {
+            $this === self::HelpdeskNotices => 'Cada aviso va solo a la persona que le toca: al crear o asignar el ticket, a los asignados; cuando un asignado responde o actualiza, al creador; cuando el creador cierra o cambia la prioridad, a los asignados. Con «Persona», si esa persona tiene Telegram vinculado le llega allí; si no, por WhatsApp. Nadie más lo recibe.',
+            $this->isPersonTargeted() => 'Cada aviso va solo a la persona que le corresponde. Con «Persona», si esa persona tiene Telegram vinculado le llega allí; si no, por WhatsApp. Nadie más lo recibe.',
+            $this === self::ClinicalUsageAccessOtp => 'La clave va siempre a todos los SUPERADMIN activos. Con «Persona», los que tengan Telegram vinculado la reciben allí; los demás, por WhatsApp. Una clave OTP nunca va a un grupo.',
+            $this->carriesOtp() => 'Este aviso lleva una clave OTP: solo puede ir a personas, nunca a un grupo. Con «Persona», los contactos de arriba que tengan Telegram vinculado la reciben allí; los demás, por WhatsApp.',
+            default => 'Persona: a cada contacto de arriba que tenga Telegram vinculado. Grupo: solo a los grupos elegidos; los teléfonos dejan de recibir WhatsApp y solo lo reciben si el grupo falla. Ambos: las dos cosas.',
+        };
+    }
+
+    /**
+     * Texto de la opción «Persona» del selector de Telegram.
+     */
+    public function telegramPersonLabel(): string
+    {
+        return match (true) {
+            $this->isPersonTargeted() => 'Persona · a quien le corresponde el aviso',
+            $this === self::ClinicalUsageAccessOtp => 'Persona · a cada SUPERADMIN vinculado',
+            default => 'Persona · a cada contacto vinculado',
+        };
     }
 }

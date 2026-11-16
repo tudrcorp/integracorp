@@ -12,6 +12,7 @@ use App\Models\ClinicalServiceOverrideChallenge;
 use App\Models\TelemedicinePatient;
 use App\Models\User;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\Otp\SelfAuthorizedOtp;
 use App\Support\Otp\SystemOtpCodeRegistry;
 use App\Support\SecurityAudit;
@@ -312,7 +313,19 @@ final class ClinicalServiceOverrideOtp
             }
         }
 
-        foreach ($phones as $rawPhone) {
+        /** Telegram (en el acto) a los contactos vinculados; el resto, por WhatsApp como siempre. */
+        $route = InternalMessaging::route(
+            SystemNotificationKey::TelemedicineServiceLimitOverride,
+            'Clave OTP · servicio fuera de límite',
+            ClinicalServiceOverrideNotificationMessage::whatsappBody($payload),
+            $phones,
+            $emails,
+            immediate: true,
+            critical: true,
+        );
+        $phonesSent += $route['delivered'];
+
+        foreach ($route['whatsapp'] as $rawPhone) {
             $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
             if ($phone === null) {
                 continue;

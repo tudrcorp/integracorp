@@ -199,6 +199,8 @@ final class CollectionNoticeEmailDelivery
                     DocumentEmailWitnesses::publicDocumentUrl(CollectionNotice::PDF_DIRECTORY, basename($noticePdfPath), $noticePdfPath),
                     basename($noticePdfPath),
                     ['panel' => 'administration', 'source' => 'administration.collections.notice-witness', 'collection_id' => $collection->getKey()],
+                    SystemNotificationKey::CollectionNoticeWitnessCopy,
+                    $noticePdfPath,
                 );
             });
         } catch (Throwable $exception) {

@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Support\LivePresence;
 
+use App\Enums\NotificationDeliveryStatus;
 use App\Enums\SystemNotificationKey;
 use App\Jobs\NotifyLiveSecurityAlertJob;
 use App\Models\FailedJob;
+use App\Models\NotificationDelivery;
+use App\Support\Telegram\TelegramHealth;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -32,7 +35,7 @@ final class SystemHealthWatcher
             return ['detected' => 0, 'sent' => 0, 'silenced' => 0];
         }
 
-        $events = [...self::queueProblems(), ...self::failedSpike(), ...self::errorProblems()];
+        $events = [...self::queueProblems(), ...self::failedSpike(), ...self::errorProblems(), ...self::telegramProblems()];
         $sent = 0;
         $silenced = 0;
         $maxPerRun = max(1, (int) config('live-presence.max_alerts_per_run', 5));
@@ -174,6 +177,104 @@ final class SystemHealthWatcher
     }
 
     /**
+     * Telegram (notificaciones internas): el bot no responde, el webhook acumula
+     * errores, o hay avisos que no se pudieron entregar. Estas alertas salen por
+     * WhatsApp y correo, nunca por Telegram.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function telegramProblems(?array $health = null): array
+    {
+        if (! (bool) config('telegram.enabled', true) || blank(config('telegram.bot_token'))) {
+            return [];
+        }
+
+        $events = [];
+
+        try {
+            $health ??= TelegramHealth::check();
+        } catch (Throwable) {
+            return [];
+        }
+
+        if (! ($health['ok'] ?? false)) {
+            $events[] = [
+                'type' => 'telegram_down',
+                'subject' => 'bot',
+                'severity' => SecurityMonitor::SEVERITY_CRITICAL,
+                'title' => 'Telegram no responde',
+                'detail' => 'El bot no contestó: '.($health['error'] ?? 'sin detalle').'. Mientras tanto los avisos internos salen por WhatsApp y correo.',
+                'action' => ($health['error_kind'] ?? null) === 'unauthorized'
+                    ? 'El token del bot es inválido o fue revocado: genere uno nuevo en @BotFather y actualice TELEGRAM_BOT_TOKEN.'
+                    : 'Revise la conexión del servidor con api.telegram.org y el estado en Negocios → CONFIGURACIÓN → Telegram → «Estado del bot».',
+            ];
+        } elseif (filled($health['webhook_last_error'] ?? null) && (int) ($health['webhook_last_error_at'] ?? 0) >= time() - 600) {
+            $events[] = [
+                'type' => 'telegram_webhook',
+                'subject' => 'webhook',
+                'severity' => SecurityMonitor::SEVERITY_WARNING,
+                'title' => 'Telegram no puede entregar al webhook',
+                'detail' => 'Último error informado por Telegram: '.$health['webhook_last_error'].'. Las vinculaciones y los grupos nuevos no se registran hasta que se resuelva.',
+                'action' => 'Verifique que '.route('telegram.webhook').' responda y vuelva a registrar con php artisan telegram:set-webhook.',
+            ];
+        } elseif ((int) ($health['pending_update_count'] ?? 0) >= TelegramHealth::PENDING_UPDATES_THRESHOLD) {
+            $events[] = [
+                'type' => 'telegram_webhook',
+                'subject' => 'pending',
+                'severity' => SecurityMonitor::SEVERITY_WARNING,
+                'title' => 'Telegram acumula mensajes sin procesar',
+                'detail' => (int) $health['pending_update_count'].' mensajes esperan en Telegram: el webhook no está registrado o no responde.',
+                'action' => 'Registre el webhook con php artisan telegram:set-webhook.',
+            ];
+        }
+
+        try {
+            $stuck = NotificationDelivery::query()
+                ->where('status', NotificationDeliveryStatus::Pending->value)
+                ->where('created_at', '<=', now()->subMinutes(15))
+                ->where('created_at', '>=', now()->subDay())
+                ->count();
+
+            $failed = NotificationDelivery::query()
+                ->where('status', NotificationDeliveryStatus::Failed->value)
+                ->where('created_at', '>=', now()->subHour())
+                ->count();
+        } catch (Throwable) {
+            return $events;
+        }
+
+        if ($stuck > 0 || $failed > 0) {
+            $events[] = [
+                'type' => 'notifications_undelivered',
+                'subject' => 'internal',
+                'severity' => $failed > 0 ? SecurityMonitor::SEVERITY_CRITICAL : SecurityMonitor::SEVERITY_WARNING,
+                'title' => 'Avisos internos sin entregar',
+                'detail' => trim(($stuck > 0 ? $stuck.' esperan hace más de 15 minutos. ' : '').($failed > 0 ? $failed.' no salieron por ningún canal en la última hora.' : '')),
+                'action' => 'Revise Negocios → CONFIGURACIÓN → Bitácora de notificaciones. Si esperan, confirme que el worker escuche la cola «'.config('telegram.queue').'».',
+            ];
+        }
+
+        return $events;
+    }
+
+    /**
+     * Una alerta sobre Telegram, sobre los avisos sin entregar o sobre la cola de
+     * notificaciones no puede depender de Telegram para llegar: sale por WhatsApp.
+     *
+     * @param  array<string, mixed>  $event
+     */
+    public static function concernsTelegram(array $event): bool
+    {
+        $type = (string) ($event['type'] ?? '');
+
+        if (in_array($type, ['telegram_down', 'telegram_webhook', 'notifications_undelivered', 'queue_no_workers', 'many_problems'], true)) {
+            return true;
+        }
+
+        return str_starts_with($type, 'queue_') && (string) ($event['subject'] ?? '') === (string) config('telegram.queue', 'notifications');
+    }
+
+    /**
      * @param  array<string, mixed>  $event
      */
     private static function isCoolingDown(array $event): bool
@@ -201,7 +302,7 @@ final class SystemHealthWatcher
     {
         try {
             NotifyLiveSecurityAlertJob::dispatchSync(
-                [...$event, 'channel' => 'system', 'at' => (int) ($event['at'] ?? time())],
+                [...$event, 'channel' => 'system', 'at' => (int) ($event['at'] ?? time()), 'bypass_telegram' => self::concernsTelegram($event)],
                 SystemNotificationKey::LiveSystemAlert->value,
                 true,
             );

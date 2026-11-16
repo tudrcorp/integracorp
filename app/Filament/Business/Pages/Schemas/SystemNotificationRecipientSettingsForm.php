@@ -4,38 +4,62 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Pages\Schemas;
 
+use App\Enums\TelegramDeliveryMode;
+use App\Enums\TelegramRecipientStatus;
 use App\Models\SystemNotificationRecipientSetting;
+use App\Models\TelegramRecipient;
+use App\Support\InternalNotifications\InternalContactResolver;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\HtmlString;
 
 final class SystemNotificationRecipientSettingsForm
 {
-    private const SHELL_CLASS = 'can-settings-shell rounded-[1.75rem] border border-slate-200/85 bg-gradient-to-br from-white via-slate-50/90 to-white p-3 shadow-[0_24px_60px_-26px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/55 dark:border-white/10 dark:from-slate-900/95 dark:via-slate-950/95 dark:to-slate-900/95 dark:ring-white/10 dark:shadow-[0_24px_60px_-24px_rgba(0,0,0,0.55)]';
+    private const PANEL_CLASS = 'can-panel';
 
-    private const PANEL_CLASS = 'can-settings-panel rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12)] dark:from-gray-900/90 dark:to-slate-950/95 dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]';
-
-    private const INNER_CLASS = 'can-settings-inner rounded-[1.25rem] border border-slate-200/80 bg-white/80 p-4 shadow-inner dark:border-white/10 dark:bg-white/5 sm:p-5';
+    private const INNER_CLASS = 'can-panel-body';
 
     public static function configure(Schema $schema): Schema
     {
         return $schema
             ->components([
-                Grid::make(1)
-                    ->extraAttributes(['class' => self::SHELL_CLASS])
-                    ->schema([
-                        self::activationSection(),
-                        Grid::make()
-                            ->columns(['default' => 1, 'xl' => 2])
+                Tabs::make('notification_settings_tabs')
+                    ->extraAttributes(['class' => 'can-settings-shell can-tabs-shell'])
+                    ->columnSpanFull()
+                    ->tabs([
+                        Tab::make('Destinatarios')
+                            ->icon(Heroicon::OutlinedUserGroup)
+                            ->badge(fn (mixed $livewire): ?string => self::recipientsBadge($livewire))
+                            ->visible(fn (mixed $livewire): bool => self::activeKeyUsesEmails($livewire) || self::activeKeyUsesPhones($livewire))
                             ->schema([
-                                self::emailSection(),
-                                self::phoneSection(),
+                                Grid::make()
+                                    ->columns(['default' => 1, 'xl' => 2])
+                                    ->schema([
+                                        self::emailSection(),
+                                        self::phoneSection(),
+                                    ]),
                             ]),
+                        Tab::make('Telegram')
+                            ->icon(Heroicon::OutlinedPaperAirplane)
+                            ->badge(fn (Get $get): ?string => self::telegramBadge($get))
+                            ->badgeColor(fn (Get $get): string => (TelegramDeliveryMode::tryFrom((string) $get('telegram_mode')) ?? TelegramDeliveryMode::Off) === TelegramDeliveryMode::Off ? 'gray' : 'info')
+                            ->visible(fn (mixed $livewire): bool => self::activeKeySupportsTelegram($livewire))
+                            ->schema([self::telegramSection()]),
+                        Tab::make('Estado')
+                            ->icon(Heroicon::OutlinedPower)
+                            ->badge(fn (Get $get): string => (bool) $get('is_active') ? 'Activa' : 'Pausada')
+                            ->badgeColor(fn (Get $get): string => (bool) $get('is_active') ? 'success' : 'danger')
+                            ->schema([self::activationSection()]),
                     ]),
             ]);
     }
@@ -148,6 +172,7 @@ final class SystemNotificationRecipientSettingsForm
             ->description('Números móviles para esta notificación o su copia de control interno.')
             ->icon(Heroicon::OutlinedDevicePhoneMobile)
             ->extraAttributes(['class' => self::PANEL_CLASS.' can-settings-panel--phone'])
+            ->visible(fn (mixed $livewire): bool => self::activeKeyUsesPhones($livewire))
             ->schema([
                 Grid::make(1)
                     ->extraAttributes(['class' => self::INNER_CLASS])
@@ -179,5 +204,225 @@ final class SystemNotificationRecipientSettingsForm
                             ->columnSpanFull(),
                     ]),
             ]);
+    }
+
+    /**
+     * Destino por Telegram: solo aparece en los avisos que ya se reparten con el
+     * nuevo sistema (SystemNotificationKey::supportsTelegram()).
+     */
+    private static function telegramSection(): Section
+    {
+        return Section::make('Telegram')
+            ->description('A quién llega este aviso por Telegram. Telegram reemplaza al WhatsApp: los teléfonos de arriba que pertenecen a personas con Telegram vinculado lo reciben allí, y el resto sigue por WhatsApp. Los correos no cambian: siguen llegando igual. Los archivos adjuntos (respaldos, Excel) siguen saliendo por WhatsApp.')
+            ->icon(Heroicon::OutlinedPaperAirplane)
+            ->extraAttributes(['class' => self::PANEL_CLASS.' can-settings-panel--telegram'])
+            ->visible(fn (mixed $livewire): bool => self::activeKeySupportsTelegram($livewire))
+            ->columnSpanFull()
+            ->schema([
+                Grid::make(['default' => 1, 'lg' => 2])
+                    ->extraAttributes(['class' => self::INNER_CLASS])
+                    ->schema([
+                        Select::make('telegram_mode')
+                            ->label('Enviar por Telegram a')
+                            ->options(fn (mixed $livewire): array => self::modeOptions($livewire))
+                            ->default(TelegramDeliveryMode::Off->value)
+                            ->selectablePlaceholder(false)
+                            ->native(false)
+                            ->required()
+                            ->live()
+                            ->helperText(fn (mixed $livewire): string => is_object($livewire) && method_exists($livewire, 'getActiveNotificationKeyEnum')
+                                ? $livewire->getActiveNotificationKeyEnum()->telegramModeHelp()
+                                : ''),
+                        Select::make('telegram_group_ids')
+                            ->label('Grupos de Telegram')
+                            ->multiple()
+                            ->options(fn (): array => self::groupOptions())
+                            ->searchable()
+                            ->native(false)
+                            ->visible(fn (Get $get, mixed $livewire): bool => self::activeKeyAllowsGroups($livewire)
+                                && (TelegramDeliveryMode::tryFrom((string) $get('telegram_mode')) ?? TelegramDeliveryMode::Off)->includesGroups())
+                            ->required(fn (Get $get): bool => (TelegramDeliveryMode::tryFrom((string) $get('telegram_mode')) ?? TelegramDeliveryMode::Off)->includesGroups())
+                            ->validationMessages(['required' => 'Elija al menos un grupo aprobado, o cambie el destino a «Persona».'])
+                            ->helperText('Solo aparecen los grupos aprobados en CONFIGURACIÓN → Telegram. Para sumar uno, agregue el bot al grupo en Telegram y apruébelo allí.'),
+                        Select::make('telegram_recipient_ids')
+                            ->label('Personas de Telegram')
+                            ->multiple()
+                            ->options(fn (): array => self::peopleOptions())
+                            ->searchable()
+                            ->native(false)
+                            ->live()
+                            ->placeholder('Elija personas vinculadas…')
+                            ->visible(fn (Get $get, mixed $livewire): bool => ! self::activeKeyIsPersonTargeted($livewire)
+                                && (TelegramDeliveryMode::tryFrom((string) $get('telegram_mode')) ?? TelegramDeliveryMode::Off)->includesPeople())
+                            ->helperText('Además de los contactos de arriba que ya estén vinculados, el aviso les llega por Telegram a estas personas. Solo aparecen las que ya conectaron su Telegram.'),
+                        Placeholder::make('telegram_audience_preview')
+                            ->label('Lo recibirán por Telegram')
+                            ->columnSpanFull()
+                            ->visible(fn (Get $get, mixed $livewire): bool => ! self::activeKeyIsPersonTargeted($livewire)
+                                && (TelegramDeliveryMode::tryFrom((string) $get('telegram_mode')) ?? TelegramDeliveryMode::Off) !== TelegramDeliveryMode::Off)
+                            ->content(fn (Get $get): HtmlString => self::audiencePreview($get)),
+                        Placeholder::make('telegram_status_hint')
+                            ->hiddenLabel()
+                            ->columnSpanFull()
+                            ->content(fn (): HtmlString => self::telegramStatusHint()),
+                    ]),
+            ]);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function modeOptions(mixed $livewire): array
+    {
+        $options = [];
+
+        foreach (TelegramDeliveryMode::cases() as $mode) {
+            if ($mode->includesGroups() && ! self::activeKeyAllowsGroups($livewire)) {
+                continue;
+            }
+
+            $options[$mode->value] = $mode === TelegramDeliveryMode::Person && is_object($livewire) && method_exists($livewire, 'getActiveNotificationKeyEnum')
+                ? $livewire->getActiveNotificationKeyEnum()->telegramPersonLabel()
+                : $mode->label();
+        }
+
+        return $options;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function groupOptions(): array
+    {
+        return TelegramRecipient::query()
+            ->groups()
+            ->where('status', TelegramRecipientStatus::Active->value)
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
+    }
+
+    /**
+     * Personas vinculadas que hoy pueden recibir, para elegirlas a mano.
+     *
+     * @return array<int, string>
+     */
+    private static function peopleOptions(): array
+    {
+        return InternalContactResolver::linkedPeople()
+            ->sortBy(fn (TelegramRecipient $recipient): string => mb_strtolower($recipient->name))
+            ->mapWithKeys(fn (TelegramRecipient $recipient): array => [
+                (int) $recipient->getKey() => $recipient->name.' · '.$recipient->type->label().(filled($recipient->telegram_username) ? ' (@'.$recipient->telegram_username.')' : ''),
+            ])
+            ->all();
+    }
+
+    /**
+     * Quién recibirá el aviso por Telegram con lo que está en pantalla (aunque no se haya guardado):
+     * contactos de arriba ya vinculados, personas elegidas y grupos.
+     */
+    private static function audiencePreview(Get $get): HtmlString
+    {
+        $mode = TelegramDeliveryMode::tryFrom((string) $get('telegram_mode')) ?? TelegramDeliveryMode::Off;
+        $people = InternalContactResolver::linkedPeople();
+        $names = [];
+
+        if ($mode->includesPeople()) {
+            $emails = collect((array) $get('notification_emails'))->pluck('email')->filter()->map(fn (mixed $email): string => mb_strtolower(trim((string) $email)))->all();
+            $phoneKeys = collect((array) $get('notification_phones'))->pluck('phone')->filter()->map(fn (mixed $phone): string => InternalContactResolver::phoneKey((string) $phone))->filter()->all();
+            $chosen = array_map('intval', (array) $get('telegram_recipient_ids'));
+
+            foreach ($people as $recipient) {
+                $recipientEmails = array_map(fn (mixed $email): string => mb_strtolower(trim((string) $email)), array_filter([$recipient->email, $recipient->user?->email]));
+                $recipientPhones = array_map(fn (mixed $phone): string => InternalContactResolver::phoneKey((string) $phone), array_filter([$recipient->phone, $recipient->user?->phone]));
+
+                if (in_array((int) $recipient->getKey(), $chosen, true)
+                    || array_intersect($recipientEmails, $emails) !== []
+                    || array_intersect($recipientPhones, $phoneKeys) !== []) {
+                    $names[] = e($recipient->name);
+                }
+            }
+        }
+
+        if ($mode->includesGroups()) {
+            $groupIds = array_map('intval', (array) $get('telegram_group_ids'));
+            $groups = TelegramRecipient::query()->groups()->whereKey($groupIds)->where('status', TelegramRecipientStatus::Active->value)->orderBy('name')->pluck('name')->all();
+
+            foreach ($groups as $group) {
+                $names[] = 'Grupo «'.e((string) $group).'»';
+            }
+        }
+
+        if ($names === []) {
+            return new HtmlString('<span class="text-sm text-amber-600 dark:text-amber-400">Nadie todavía: ningún contacto de arriba tiene Telegram vinculado y no hay personas ni grupos elegidos. El aviso sale por WhatsApp como siempre.</span>');
+        }
+
+        return new HtmlString('<span class="text-sm text-slate-700 dark:text-slate-200">'.implode(' · ', array_unique($names)).'</span>'
+            .'<span class="mt-1 block text-xs text-slate-500 dark:text-slate-400">Vista previa con lo que está en pantalla. Guarde para aplicarlo.</span>');
+    }
+
+    private static function activeKeyIsPersonTargeted(mixed $livewire): bool
+    {
+        return is_object($livewire) && method_exists($livewire, 'getActiveNotificationKeyEnum')
+            && $livewire->getActiveNotificationKeyEnum()->isPersonTargeted();
+    }
+
+    private static function telegramStatusHint(): HtmlString
+    {
+        $configured = (bool) config('telegram.enabled', true) && filled(config('telegram.bot_token'));
+
+        if (! $configured) {
+            return new HtmlString('<span class="text-sm text-amber-600 dark:text-amber-400">Telegram está apagado o sin token en este servidor: mientras tanto el aviso sale por WhatsApp y correo aunque elija Telegram.</span>');
+        }
+
+        return new HtmlString('<span class="text-sm text-slate-500 dark:text-slate-400">Si Telegram falla, el aviso no se pierde: sale por WhatsApp (o por correo si no hay teléfono). Cada envío queda en la bitácora de CONFIGURACIÓN → Telegram.</span>');
+    }
+
+    private static function recipientsBadge(mixed $livewire): ?string
+    {
+        if (! is_object($livewire) || ! property_exists($livewire, 'data')) {
+            return null;
+        }
+
+        $count = count((array) ($livewire->data['notification_emails'] ?? [])) + count((array) ($livewire->data['notification_phones'] ?? []));
+
+        return $count > 0 ? (string) $count : null;
+    }
+
+    private static function telegramBadge(Get $get): ?string
+    {
+        return match (TelegramDeliveryMode::tryFrom((string) $get('telegram_mode')) ?? TelegramDeliveryMode::Off) {
+            TelegramDeliveryMode::Person => 'Persona',
+            TelegramDeliveryMode::Group => 'Grupo',
+            TelegramDeliveryMode::Both => 'Ambos',
+            TelegramDeliveryMode::Off => 'Apagado',
+        };
+    }
+
+    private static function activeKeyUsesPhones(mixed $livewire): bool
+    {
+        if (! is_object($livewire) || ! method_exists($livewire, 'getActiveNotificationKeyEnum')) {
+            return true;
+        }
+
+        return $livewire->getActiveNotificationKeyEnum()->usesPhoneRecipients();
+    }
+
+    private static function activeKeySupportsTelegram(mixed $livewire): bool
+    {
+        if (! is_object($livewire) || ! method_exists($livewire, 'getActiveNotificationKeyEnum')) {
+            return false;
+        }
+
+        return $livewire->getActiveNotificationKeyEnum()->supportsTelegram();
+    }
+
+    private static function activeKeyAllowsGroups(mixed $livewire): bool
+    {
+        if (! is_object($livewire) || ! method_exists($livewire, 'getActiveNotificationKeyEnum')) {
+            return true;
+        }
+
+        return $livewire->getActiveNotificationKeyEnum()->allowsTelegramGroups();
     }
 }

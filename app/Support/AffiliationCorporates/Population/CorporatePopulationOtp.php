@@ -12,6 +12,7 @@ use App\Models\CorporatePopulationOtpChallenge;
 use App\Models\CorporatePopulationUpdate;
 use App\Models\User;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\Otp\SelfAuthorizedOtp;
 use App\Support\Otp\SystemOtpCodeRegistry;
 use App\Support\SecurityAudit;
@@ -250,7 +251,19 @@ final class CorporatePopulationOtp
             }
         }
 
-        foreach ($phones as $rawPhone) {
+        /** Telegram (en el acto) a los contactos vinculados; el resto, por WhatsApp como siempre. */
+        $route = InternalMessaging::route(
+            SystemNotificationKey::CorporatePopulationUpdate,
+            $subject,
+            $whatsapp,
+            $phones,
+            $emails,
+            immediate: true,
+            critical: true,
+        );
+        $phonesSent += $route['delivered'];
+
+        foreach ($route['whatsapp'] as $rawPhone) {
             $phone = HelpdeskTicketAssigneeWhatsAppService::normalizePhoneForWhatsApp($rawPhone);
             if ($phone === null) {
                 continue;

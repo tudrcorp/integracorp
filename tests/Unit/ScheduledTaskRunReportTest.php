@@ -98,7 +98,7 @@ it('los jobs programados usan el reporte de ejecución por whatsapp', function (
     }
 
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/ScheduledTaskRunReport.php'))
-        ->toContain('ScheduledNotificationPhones::all()')
+        ->toContain('SystemNotificationKey::ScheduledTaskSummary')
         ->toContain('SystemNotificationRecipients::phones')
         ->toContain('finishAndNotify')
         ->toContain('addExecutionDetail')

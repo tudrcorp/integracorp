@@ -263,6 +263,17 @@ Schedule::command('live-presence:watch')
     ->when(static fn (): bool => (bool) config('live-presence.enabled', true));
 
 /**
+ * Notificaciones internas por Telegram: cada 10 minutos vuelve a encolar las
+ * entregas que siguen pendientes (job perdido, worker reiniciado). El job es
+ * idempotente: encolarlo de más no duplica el mensaje.
+ */
+Schedule::command('telegram:redispatch-pending')
+    ->everyTenMinutes()
+    ->name('telegram-redispatch-pending')
+    ->withoutOverlapping(10)
+    ->when(static fn (): bool => (bool) config('telegram.enabled', true) && filled(config('telegram.bot_token')));
+
+/**
  * Limpieza diaria de trabajos fallidos más viejos que live-presence.queues.prune_failed_days
  * (30 días por defecto; 0 la apaga). Mantiene la tabla liviana para el monitor.
  */

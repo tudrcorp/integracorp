@@ -186,6 +186,37 @@ final class TelemedicineCaseAgentNotice
     }
 
     /**
+     * Copia de control para Telegram: identifica el caso, el paciente y la afiliación, sin
+     * cédula, edad ni teléfono del paciente. El detalle completo está en el caso.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public static function copyTelegramBody(array $payload): string
+    {
+        $owner = is_array($payload['owner'] ?? null) ? $payload['owner'] : null;
+
+        $lines = [
+            '*Copia · Nuevo caso al agente de la afiliación*',
+            '',
+            $owner !== null
+                ? 'Se avisó '.self::ownerLabel($owner).'.'
+                : '⚠️ No se avisó a nadie: la afiliación no tiene agente ni agencia activos con WhatsApp válido.',
+            '',
+            TelemedicineDocumentCaseCode::LABEL.': '.($payload['case_code'] ?? '—'),
+            'Paciente: '.($payload['patient_name'] ?? '—'),
+            'Afiliación: '.($payload['affiliation_type'] ?? '—').' · '.($payload['affiliation_code'] ?? '—'),
+        ];
+
+        if (filled($payload['company'] ?? null)) {
+            $lines[] = 'Empresa: '.$payload['company'];
+        }
+
+        $lines[] = 'Plan: '.($payload['plan'] ?? '—');
+
+        return implode("\n", $lines);
+    }
+
+    /**
      * @param  array<string, mixed>  $payload
      * @return list<string>
      */

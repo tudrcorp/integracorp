@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Filament\Business\Pages;
 
 use App\Enums\SystemNotificationKey;
+use App\Enums\TelegramDeliveryMode;
 use App\Filament\Business\Pages\Schemas\SystemNotificationRecipientSettingsForm;
 use App\Models\SystemNotificationRecipientSetting;
 use App\Support\Filament\FilamentIosButton;
+use App\Support\InternalNotifications\InternalNotification;
+use App\Support\InternalNotifications\InternalNotificationDispatcher;
 use App\Support\SecurityAudit;
 use App\Support\SystemNotificationRecipients;
 use BackedEnum;
@@ -23,6 +26,7 @@ use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 use Livewire\Attributes\Computed;
+use Throwable;
 use UnitEnum;
 
 class ManageCompanyAssociateNotifications extends Page
@@ -87,6 +91,66 @@ class ManageCompanyAssociateNotifications extends Page
         return $this->configuredEmailCount > 0 || $this->configuredPhoneCount > 0;
     }
 
+    /**
+     * Estado de canal de cada aviso para el selector: agrupado por área, con su
+     * estado (activa / pausada) y por dónde sale hoy (Telegram, listo para
+     * Telegram o solo WhatsApp). Una sola consulta para los 26 avisos.
+     *
+     * @return array{
+     *     areas: array<string, array{label: string, items: list<array{key: string, label: string, active: bool, channel: string, mode: string, stage: ?string}>}>,
+     *     counts: array{telegram: int, ready: int, whatsapp: int, paused: int, total: int}
+     * }
+     */
+    #[Computed]
+    public function keyCatalog(): array
+    {
+        $settings = SystemNotificationRecipientSetting::query()
+            ->get(['notification_key', 'is_active', 'telegram_mode'])
+            ->keyBy(fn (SystemNotificationRecipientSetting $setting): string => $setting->notification_key->value);
+
+        $areas = [];
+        $counts = ['telegram' => 0, 'ready' => 0, 'whatsapp' => 0, 'paused' => 0, 'total' => 0];
+
+        foreach (SystemNotificationKey::AREAS as $area => $label) {
+            $areas[$area] = ['label' => $label, 'items' => []];
+        }
+
+        foreach (SystemNotificationKey::managed() as $key) {
+            $setting = $settings->get($key->value);
+            $active = $setting === null || $setting->isActive();
+            $mode = $setting?->telegramMode() ?? TelegramDeliveryMode::Off;
+
+            $channel = match (true) {
+                ! $key->supportsTelegram() => 'whatsapp',
+                $mode !== TelegramDeliveryMode::Off => 'telegram',
+                default => 'ready',
+            };
+
+            $areas[$key->area()]['items'][] = [
+                'key' => $key->value,
+                'label' => $key->label(),
+                'active' => $active,
+                'channel' => $channel,
+                'mode' => match ($mode) {
+                    TelegramDeliveryMode::Person => 'Persona',
+                    TelegramDeliveryMode::Group => 'Grupo',
+                    TelegramDeliveryMode::Both => 'Ambos',
+                    TelegramDeliveryMode::Off => '',
+                },
+                'stage' => $key->telegramMigrationStage(),
+            ];
+
+            $counts[$channel]++;
+            $counts['total']++;
+
+            if (! $active) {
+                $counts['paused']++;
+            }
+        }
+
+        return ['areas' => array_filter($areas, fn (array $area): bool => $area['items'] !== []), 'counts' => $counts];
+    }
+
     public function selectNotificationKey(string $key): void
     {
         $notificationKey = SystemNotificationKey::tryFrom($key);
@@ -114,6 +178,9 @@ class ManageCompanyAssociateNotifications extends Page
                 ->map(fn (string $phone): array => ['phone' => $phone])
                 ->values()
                 ->all(),
+            'telegram_mode' => $settings->telegramMode()->value,
+            'telegram_group_ids' => $settings->telegramGroupIds(),
+            'telegram_recipient_ids' => $settings->telegramRecipientIds(),
         ]);
     }
 
@@ -171,6 +238,19 @@ class ManageCompanyAssociateNotifications extends Page
                 ->extraAttributes([
                     'class' => FilamentIosButton::extraClassForFilamentColor('success'),
                 ]),
+            Action::make('sendTelegramTest')
+                ->label('Enviar prueba')
+                ->icon('heroicon-o-paper-airplane')
+                ->color('info')
+                ->visible(fn (): bool => $this->getActiveNotificationKeyEnum() === SystemNotificationKey::TelegramTest)
+                ->requiresConfirmation()
+                ->modalHeading('Enviar «Prueba de notificación a Telegram»')
+                ->modalDescription('Se envía con la configuración GUARDADA de esta pestaña. Si cambió algo, guárdelo antes. Las personas vinculadas la reciben por Telegram; las demás, por WhatsApp o correo.')
+                ->modalSubmitActionLabel('Enviar prueba')
+                ->action(fn () => $this->sendTelegramTest())
+                ->extraAttributes([
+                    'class' => FilamentIosButton::extraClassForFilamentColor('info'),
+                ]),
         ];
     }
 
@@ -200,12 +280,15 @@ class ManageCompanyAssociateNotifications extends Page
             ->values()
             ->all();
 
+        $telegram = self::telegramStateFromForm($notificationKey, $data);
+
         $settings = SystemNotificationRecipientSetting::for($notificationKey);
         $settings->update([
             'is_active' => $isActive,
             'notification_emails' => $emails,
             'notification_email_modes' => $emailModes,
             'notification_phones' => $phones,
+            ...$telegram,
             'updated_by' => Auth::user()?->name,
         ]);
 
@@ -215,10 +298,13 @@ class ManageCompanyAssociateNotifications extends Page
             'emails_count' => count($emails),
             'bcc_emails_count' => is_array($emailModes) ? count(array_filter($emailModes, fn (string $mode): bool => $mode === SystemNotificationRecipientSetting::EMAIL_MODE_BCC)) : 0,
             'phones_count' => count($phones),
+            'telegram_mode' => $telegram['telegram_mode'] ?? null,
+            'telegram_groups_count' => count($telegram['telegram_group_ids'] ?? []),
+            'telegram_people_count' => count($telegram['telegram_recipient_ids'] ?? []),
             'updated_by' => Auth::user()?->name,
         ]);
 
-        unset($this->settingsRecord);
+        unset($this->settingsRecord, $this->keyCatalog);
 
         $this->fillForm();
 
@@ -256,6 +342,108 @@ class ManageCompanyAssociateNotifications extends Page
         }
 
         return $modes;
+    }
+
+    /**
+     * Solo los avisos que ya usan el repartidor interno guardan destino de Telegram;
+     * en los demás no se toca (siguen saliendo como siempre). Un OTP nunca guarda grupos.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{telegram_mode?: string, telegram_group_ids?: list<int>, telegram_recipient_ids?: list<int>}
+     */
+    private static function telegramStateFromForm(SystemNotificationKey $key, array $data): array
+    {
+        if (! $key->supportsTelegram()) {
+            return [];
+        }
+
+        $mode = TelegramDeliveryMode::tryFrom((string) ($data['telegram_mode'] ?? '')) ?? TelegramDeliveryMode::Off;
+
+        if ($mode->includesGroups() && ! $key->allowsTelegramGroups()) {
+            $mode = TelegramDeliveryMode::Person;
+        }
+
+        $groupIds = $mode->includesGroups()
+            ? array_values(array_unique(array_filter(array_map('intval', (array) ($data['telegram_group_ids'] ?? [])), static fn (int $id): bool => $id > 0)))
+            : [];
+
+        $recipientIds = $mode->includesPeople() && ! $key->isPersonTargeted()
+            ? array_values(array_unique(array_filter(array_map('intval', (array) ($data['telegram_recipient_ids'] ?? [])), static fn (int $id): bool => $id > 0)))
+            : [];
+
+        return ['telegram_mode' => $mode->value, 'telegram_group_ids' => $groupIds, 'telegram_recipient_ids' => $recipientIds];
+    }
+
+    public function sendTelegramTest(): void
+    {
+        if (! self::userCanAccessPage()) {
+            abort(403);
+        }
+
+        $actor = (string) (Auth::user()?->name ?? 'SUPERADMIN');
+
+        try {
+            $summary = InternalNotificationDispatcher::dispatch(new InternalNotification(
+                SystemNotificationKey::TelegramTest,
+                'Prueba de notificación a Telegram',
+                'Si lee este mensaje, el canal funciona.'."\n\n".'Enviado por '.$actor.' el '.now()->timezone(config('app.timezone'))->format('d/m/Y H:i').'.',
+                false,
+                $actor,
+            ));
+        } catch (Throwable $exception) {
+            report($exception);
+
+            Notification::make()
+                ->title('No se pudo enviar la prueba')
+                ->body('Ocurrió un error al registrar los envíos. Revise Negocios → Colas y errores. Nada quedó a medias.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        SecurityAudit::log('AUDIT_TELEGRAM_TEST_SENT', 'business.system-notifications.telegram-test', [
+            'mode' => $summary['mode']->value,
+            'telegram' => $summary['telegram'],
+            'groups' => $summary['groups'],
+            'whatsapp' => $summary['whatsapp'],
+            'mail' => $summary['mail'],
+        ]);
+
+        if ($summary['paused']) {
+            Notification::make()
+                ->title('La prueba está pausada')
+                ->body('Active «Tarea activa» en esta pestaña, guarde y vuelva a intentarlo.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $total = $summary['telegram'] + $summary['groups'] + $summary['whatsapp'] + $summary['mail'];
+
+        if ($total === 0) {
+            Notification::make()
+                ->title('No hay a quién enviar la prueba')
+                ->body('Agregue correos o teléfonos de personas, o elija grupos de Telegram, y guarde.'.($summary['skipped'] > 0 ? ' Hay grupos elegidos que no están activos.' : ''))
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $parts = array_filter([
+            $summary['telegram'] > 0 ? $summary['telegram'].' por Telegram a personas' : null,
+            $summary['groups'] > 0 ? $summary['groups'].' a grupos de Telegram' : null,
+            $summary['whatsapp'] > 0 ? $summary['whatsapp'].' por WhatsApp' : null,
+            $summary['mail'] > 0 ? $summary['mail'].' por correo' : null,
+        ]);
+
+        Notification::make()
+            ->title('Prueba en camino')
+            ->body(implode(' · ', $parts).'. Llega en segundos si el worker de la cola «'.config('telegram.queue').'» está encendido. Revise el resultado en CONFIGURACIÓN → Telegram.')
+            ->success()
+            ->send();
     }
 
     public static function shouldRegisterNavigation(): bool
