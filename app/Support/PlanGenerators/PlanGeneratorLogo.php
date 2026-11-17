@@ -12,11 +12,12 @@ use Throwable;
 /**
  * Logo que el analista carga para la página de cálculos de la cotización.
  *
- * El PDF reserva al logo la misma caja que ocupa el de Tu Doctor en Casa
- * (proporción 1678 × 428). Para no tocar la maqueta, el logo cargado se
- * acomoda dentro de un lienzo transparente con esa proporción: alineado a la
- * izquierda y centrado en vertical. Así un logo cuadrado no crece hacia abajo
- * ni empuja el encabezado.
+ * El logo cargado tiene su propia caja en el encabezado: hasta 120 × 40 pt
+ * (`PDF_WIDTH_PT`), la misma altura del bloque de título de la derecha, así
+ * que el encabezado no crece. Se acomoda en un lienzo transparente 3:1,
+ * alineado a la izquierda y centrado en vertical: un logo redondo queda de
+ * 40 × 40 pt y uno alargado llega hasta 120 pt de ancho. El logo de
+ * Tu Doctor en Casa, cuando no hay uno cargado, conserva su tamaño de siempre.
  *
  * Cualquier problema (archivo borrado, formato no soportado, imagen dañada)
  * devuelve null y el PDF sale con el logo de siempre.
@@ -32,11 +33,16 @@ final class PlanGeneratorLogo
      */
     public const ACCEPTED_TYPES = ['image/png', 'image/jpeg'];
 
+    /**
+     * Ancho con que el PDF dibuja el logo cargado; el alto sale del lienzo 3:1 (40 pt, el alto del bloque de título).
+     */
+    public const PDF_WIDTH_PT = 120;
+
     private const CANVAS_WIDTH = 1200;
 
-    private const CANVAS_HEIGHT = 306;
+    private const CANVAS_HEIGHT = 400;
 
-    private const CACHE_PREFIX = 'plan_generator_custom_logo_uri:v1:';
+    private const CACHE_PREFIX = 'plan_generator_custom_logo_uri:v2:';
 
     private const CACHE_SECONDS = 60 * 60 * 24 * 30;
 

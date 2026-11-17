@@ -65,7 +65,7 @@
         <tr>
             <td>
                 @if ($logoDataUri !== '')
-                    <img src="{{ $logoDataUri }}" alt="Tu Doctor en Casa" class="logo">
+                    <img src="{{ $logoDataUri }}" alt="Tu Doctor en Casa" class="logo"@if (! empty($customLogoWidth)) style="width: {{ (int) $customLogoWidth }}px;"@endif>
                 @endif
             </td>
             <td class="title">
