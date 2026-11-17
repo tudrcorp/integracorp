@@ -7,10 +7,12 @@ namespace App\Http\Controllers;
 use App\Models\Affiliation;
 use App\Models\AffiliationCertificateIssue;
 use App\Models\AffiliationCorporate;
+use App\Support\AffiliationCorporates\CorporateAffiliationContractedPlan;
 use App\Support\Affiliations\Certificates\CarnetDigitalContent;
 use App\Support\Affiliations\Certificates\CertificateVerificationKey;
 use App\Support\Affiliations\Certificates\CorporateCertificateDocument;
 use App\Support\Affiliations\Certificates\IndividualCertificateDocument;
+use App\Support\Affiliations\Certificates\PlanCarnetBrands;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -37,10 +39,14 @@ class AffiliationCertificateVerificationController extends Controller
             ? AffiliationCertificateIssue::query()->where('verification_key', $normalized)->first()
             : null;
 
+        $carnet = CarnetDigitalContent::for(
+            $issue !== null && ! $issue->isIndividual() ? CarnetDigitalContent::CORPORATE : CarnetDigitalContent::INDIVIDUAL,
+        );
+        $brand = $issue !== null ? PlanCarnetBrands::forWeb(self::planIdFor($issue)) : null;
+
         return view('affiliation-certificate-verification', [
-            'carnet' => CarnetDigitalContent::for(
-                $issue !== null && ! $issue->isIndividual() ? CarnetDigitalContent::CORPORATE : CarnetDigitalContent::INDIVIDUAL,
-            ),
+            'carnet' => $brand !== null ? PlanCarnetBrands::recolor($carnet, $brand['color']) : $carnet,
+            'brand' => $brand,
             'key' => $normalized ?? trim($candidate),
             'status' => match (true) {
                 trim($candidate) === '' => 'empty',
@@ -91,6 +97,23 @@ class AffiliationCertificateVerificationController extends Controller
             },
             'issued_at' => $issue->created_at?->format('d/m/Y') ?? '—',
         ];
+    }
+
+    /**
+     * Plan de la emisión para la marca del carnet: el de la afiliación individual o el contratado de la corporativa.
+     */
+    private static function planIdFor(AffiliationCertificateIssue $issue): ?int
+    {
+        if ($issue->isIndividual()) {
+            $planId = Affiliation::query()->whereKey($issue->affiliation_id)->value('plan_id');
+
+            return $planId !== null ? (int) $planId : null;
+        }
+
+        $corporate = AffiliationCorporate::query()->find($issue->affiliation_id);
+        $plan = $corporate !== null ? CorporateAffiliationContractedPlan::plan($corporate) : null;
+
+        return $plan !== null ? (int) $plan->getKey() : null;
     }
 
     /**

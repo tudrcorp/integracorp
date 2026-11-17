@@ -43,6 +43,70 @@ final class CertificateAssets
         return self::generated('svg', static fn (): string => $svg, $svg);
     }
 
+    /**
+     * Copia de un logo PNG/JPG acomodada en un lienzo transparente de la caja
+     * dada: alineada a la izquierda, centrada en vertical y sin deformar. '' si
+     * el archivo no es una imagen válida.
+     */
+    public static function fittedImage(string $source, int $width, int $height): string
+    {
+        if (! is_file($source)) {
+            return '';
+        }
+
+        $identity = 'fitted|'.$source.'|'.(int) @filemtime($source).'|'.(int) @filesize($source).'|'.$width.'x'.$height;
+        $path = self::directory().'/'.sha1($identity).'.png';
+
+        if (is_file($path)) {
+            return $path;
+        }
+
+        $png = self::fit($source, $width, $height);
+
+        return $png === null ? '' : self::generated('png', static fn (): string => $png, $identity);
+    }
+
+    private static function fit(string $source, int $width, int $height): ?string
+    {
+        $info = @getimagesize($source);
+
+        if ($info === false || ! in_array($info[2] ?? null, [IMAGETYPE_PNG, IMAGETYPE_JPEG], true)) {
+            return null;
+        }
+
+        [$sourceWidth, $sourceHeight] = [(int) $info[0], (int) $info[1]];
+
+        if ($sourceWidth < 1 || $sourceHeight < 1 || $sourceWidth * $sourceHeight > 40_000_000) {
+            return null;
+        }
+
+        $image = $info[2] === IMAGETYPE_PNG ? @imagecreatefrompng($source) : @imagecreatefromjpeg($source);
+
+        if ($image === false) {
+            return null;
+        }
+
+        $canvas = imagecreatetruecolor($width, $height);
+        imagealphablending($canvas, false);
+        imagesavealpha($canvas, true);
+        imagefill($canvas, 0, 0, imagecolorallocatealpha($canvas, 255, 255, 255, 127));
+        imagealphablending($canvas, true);
+
+        $scale = min($width / $sourceWidth, $height / $sourceHeight);
+        $targetWidth = max(1, (int) round($sourceWidth * $scale));
+        $targetHeight = max(1, (int) round($sourceHeight * $scale));
+
+        imagecopyresampled($canvas, $image, 0, (int) floor(($height - $targetHeight) / 2), 0, 0, $targetWidth, $targetHeight, $sourceWidth, $sourceHeight);
+        imagedestroy($image);
+
+        ob_start();
+        imagepng($canvas, null, 6);
+        $png = (string) ob_get_clean();
+        imagedestroy($canvas);
+
+        return $png !== '' ? $png : null;
+    }
+
     public static function directory(): string
     {
         return storage_path('app/certificados-generador/recursos');

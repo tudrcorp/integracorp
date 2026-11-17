@@ -98,6 +98,7 @@ final class IndividualCertificateDocument
             'tipo' => AffiliationCertificateIssue::TYPE_INDIVIDUAL,
             'codigo' => (string) $affiliation->code,
             'planLabel' => $planLabel !== '' ? $planLabel : 'Plan',
+            'planId' => $affiliation->plan_id ? (int) $affiliation->plan_id : null,
             'benefits' => $benefits,
             'preexNote' => (bool) ($affiliation->plan?->requires_preexistence_note),
             'heroSub' => 'Pago '.$frequency.($periodAmount !== null ? ' · Tarifa del período '.CertificateBenefits::money($periodAmount) : ' · Tarifa según contrato'),

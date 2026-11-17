@@ -116,6 +116,7 @@ final class CorporateCertificateDocument
                     ? ($planLabel !== '' ? CertificateDocumentData::shortPlanName($planLabel) : '—')
                     : Str::ucfirst(mb_strtolower(CorporateAffiliateRelationship::forCertificate($affiliate->relationship))),
                 'plan' => $planLabel !== '' ? CertificateDocumentData::shortPlanName($planLabel) : null,
+                'planId' => $planId,
                 'cobertura' => $benefitsFor($planId, $affiliate->coverage_id ? (int) $affiliate->coverage_id : null)['carnet'],
                 'coberturaMonto' => self::coverageLabel($affiliate->coverage_id ? $coverages->get((int) $affiliate->coverage_id) : null),
             ];
@@ -141,6 +142,7 @@ final class CorporateCertificateDocument
             'tipo' => AffiliationCertificateIssue::TYPE_CORPORATE,
             'codigo' => (string) $affiliation->code,
             'planLabel' => $planLabel,
+            'planId' => $mainPlanId,
             'benefits' => $benefits,
             'preexNote' => $plans->contains(fn (Plan $plan): bool => (bool) $plan->requires_preexistence_note),
             'heroSub' => 'Pago '.$frequency
