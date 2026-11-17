@@ -20,7 +20,7 @@ class PlanGeneratorPdfService
 {
     private const LOGO_CACHE_PREFIX = 'plan_generator_pdf_logo_uri:v1:';
 
-    private const PDF_CACHE_KEY_PREFIX = 'plan_generator_pdf:v3:';
+    private const PDF_CACHE_KEY_PREFIX = 'plan_generator_pdf:v4:';
 
     private const PDF_CACHE_TTL_FALLBACK_SECONDS = 900;
 
@@ -156,13 +156,15 @@ class PlanGeneratorPdfService
 
         $brandColor = PlanGeneratorBrandColor::resolve($planGenerator->brand_color);
         $brandColorBorder = PlanGeneratorBrandColor::headerBorderColor($brandColor);
+        $customLogoDataUri = PlanGeneratorLogo::dataUri($planGenerator->logo_path);
 
         $pdf = Pdf::loadView('documents.plan-generator-preview', [
             'planGenerator' => $planGenerator,
             'columns' => $matrix['columns'],
             'rows' => $matrix['rows'],
             'rateRows' => $matrix['rate_rows'],
-            'logoDataUri' => PlanGeneratorLogo::dataUri($planGenerator->logo_path) ?? self::cachedLogoDataUri(),
+            'logoDataUri' => $customLogoDataUri ?? self::cachedLogoDataUri(),
+            'customLogoWidth' => $customLogoDataUri !== null ? PlanGeneratorLogo::PDF_WIDTH_PT : null,
             'generatedAt' => $generatedAt,
             'brandColor' => $brandColor,
             'brandColorBorder' => $brandColorBorder,

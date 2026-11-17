@@ -48,11 +48,11 @@ it('acomoda un logo cuadrado en la misma caja del logo de siempre, a la izquierd
 
     $image = planGeneratorLogoDecode((string) PlanGeneratorLogo::dataUri('plan-generator-logos/cuadrado.png'));
 
-    $leftPixel = imagecolorsforindex($image, imagecolorat($image, 10, 153));
-    $rightPixel = imagecolorsforindex($image, imagecolorat($image, 1100, 153));
+    $leftPixel = imagecolorsforindex($image, imagecolorat($image, 10, 200));
+    $rightPixel = imagecolorsforindex($image, imagecolorat($image, 1100, 200));
 
     expect(imagesx($image))->toBe(1200)
-        ->and(imagesy($image))->toBe(306)
+        ->and(imagesy($image))->toBe(400)
         ->and($leftPixel['alpha'])->toBe(0)
         ->and([$leftPixel['red'], $leftPixel['green'], $leftPixel['blue']])->toBe([23, 97, 47])
         ->and($rightPixel['alpha'])->toBe(127);
@@ -68,9 +68,9 @@ it('acepta JPG y un logo muy ancho no se sale de la caja', function (): void {
     $result = planGeneratorLogoDecode((string) PlanGeneratorLogo::dataUri('plan-generator-logos/ancho.jpg'));
 
     expect(imagesx($result))->toBe(1200)
-        ->and(imagesy($result))->toBe(306)
+        ->and(imagesy($result))->toBe(400)
         ->and(imagecolorsforindex($result, imagecolorat($result, 600, 5))['alpha'])->toBe(127)
-        ->and(imagecolorsforindex($result, imagecolorat($result, 600, 153))['alpha'])->toBe(0);
+        ->and(imagecolorsforindex($result, imagecolorat($result, 600, 200))['alpha'])->toBe(0);
 });
 
 it('vuelve al logo de siempre si el archivo se borró, está dañado o la ruta no es de logos', function (string $path, ?string $content): void {
@@ -102,7 +102,14 @@ it('el formulario, el PDF y las derivadas usan el logo propio', function (): voi
     $form = (string) file_get_contents($root.'/app/Filament/Business/Resources/PlanGenerators/Schemas/PlanGeneratorForm.php');
     $cloner = (string) file_get_contents($root.'/app/Support/PlanGenerators/PlanGeneratorTemplateCloner.php');
 
-    expect($service)->toContain('PlanGeneratorLogo::dataUri($planGenerator->logo_path) ?? self::cachedLogoDataUri()')
+    $body = (string) file_get_contents($root.'/resources/views/documents/partials/plan-generator-plan-body.blade.php');
+
+    expect($service)->toContain('$customLogoDataUri = PlanGeneratorLogo::dataUri($planGenerator->logo_path);')
+        ->toContain("'logoDataUri' => \$customLogoDataUri ?? self::cachedLogoDataUri()")
+        ->toContain("'customLogoWidth' => \$customLogoDataUri !== null ? PlanGeneratorLogo::PDF_WIDTH_PT : null")
+        ->and($body)->toContain('@if (! empty($customLogoWidth)) style="width: {{ (int) $customLogoWidth }}px;"@endif')
+        ->and(PlanGeneratorLogo::PDF_WIDTH_PT)->toBe(120)
+        ->and($service)
         ->toContain('PlanGeneratorLogo::fingerprint($planGenerator->logo_path)')
         ->and($form)->toContain("FileUpload::make('logo_path')")
         ->toContain('->directory(PlanGeneratorLogo::DIRECTORY)')
