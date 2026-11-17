@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\PlanGenerator;
 use App\Support\PlanGenerators\PlanGeneratorBrandColor;
+use App\Support\PlanGenerators\PlanGeneratorLogo;
 use App\Support\PlanGenerators\PlanGeneratorPdfImageUri;
 use App\Support\PlanGenerators\PlanGeneratorPreviewBuilder;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -77,6 +78,7 @@ class PlanGeneratorPdfService
             (string) ($planGenerator->agent_name ?? ''),
             (string) ($planGenerator->population_summary ?? ''),
             PlanGeneratorBrandColor::resolve($planGenerator->brand_color),
+            PlanGeneratorLogo::fingerprint($planGenerator->logo_path),
         ];
 
         $matrixFingerprint = DB::table('plan_generator_columns')
@@ -160,7 +162,7 @@ class PlanGeneratorPdfService
             'columns' => $matrix['columns'],
             'rows' => $matrix['rows'],
             'rateRows' => $matrix['rate_rows'],
-            'logoDataUri' => self::cachedLogoDataUri(),
+            'logoDataUri' => PlanGeneratorLogo::dataUri($planGenerator->logo_path) ?? self::cachedLogoDataUri(),
             'generatedAt' => $generatedAt,
             'brandColor' => $brandColor,
             'brandColorBorder' => $brandColorBorder,

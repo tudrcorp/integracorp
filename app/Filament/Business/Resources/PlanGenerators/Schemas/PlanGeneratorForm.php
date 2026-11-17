@@ -14,6 +14,7 @@ use App\Support\PlanGenerators\PlanGeneratorAgentLookup;
 use App\Support\PlanGenerators\PlanGeneratorBrandColor;
 use App\Support\PlanGenerators\PlanGeneratorConditions;
 use App\Support\PlanGenerators\PlanGeneratorImageGallery;
+use App\Support\PlanGenerators\PlanGeneratorLogo;
 use App\Support\PlanGenerators\PlanGeneratorMatrixState;
 use App\Support\PlanGenerators\PlanGeneratorPopulationValidator;
 use App\Support\PlanGenerators\PlanGeneratorQuotationState;
@@ -351,6 +352,17 @@ class PlanGeneratorForm
                                                             ->hex()
                                                             ->default(PlanGeneratorBrandColor::DEFAULT)
                                                             ->required()
+                                                            ->columnSpan(['default' => 1, 'lg' => 2]),
+                                                        FileUpload::make('logo_path')
+                                                            ->label('Logo de la cotización PDF')
+                                                            ->helperText('Va arriba a la izquierda de la página de cálculos. PNG o JPG, máximo 5 MB; mejor con fondo transparente. Si lo deja vacío sale el logo de Tu Doctor en Casa.')
+                                                            ->image()
+                                                            ->acceptedFileTypes(PlanGeneratorLogo::ACCEPTED_TYPES)
+                                                            ->maxSize(PlanGeneratorLogo::MAX_KILOBYTES)
+                                                            ->disk('public')
+                                                            ->directory(PlanGeneratorLogo::DIRECTORY)
+                                                            ->visibility('public')
+                                                            ->imagePreviewHeight('80')
                                                             ->columnSpan(['default' => 1, 'lg' => 2]),
                                                     ]),
                                             ]),
