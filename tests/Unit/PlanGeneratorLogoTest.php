@@ -108,7 +108,7 @@ it('el formulario, el PDF y las derivadas usan el logo propio', function (): voi
         ->toContain("'logoDataUri' => \$customLogoDataUri ?? self::cachedLogoDataUri()")
         ->toContain("'customLogoWidth' => \$customLogoDataUri !== null ? PlanGeneratorLogo::PDF_WIDTH_PT : null")
         ->and($body)->toContain('@if (! empty($customLogoWidth)) style="width: {{ (int) $customLogoWidth }}px;"@endif')
-        ->and(PlanGeneratorLogo::PDF_WIDTH_PT)->toBe(120)
+        ->and(PlanGeneratorLogo::PDF_WIDTH_PT)->toBe(150)
         ->and($service)
         ->toContain('PlanGeneratorLogo::fingerprint($planGenerator->logo_path)')
         ->and($form)->toContain("FileUpload::make('logo_path')")

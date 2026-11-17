@@ -12,11 +12,11 @@ use Throwable;
 /**
  * Logo que el analista carga para la página de cálculos de la cotización.
  *
- * El logo cargado tiene su propia caja en el encabezado: hasta 120 × 40 pt
- * (`PDF_WIDTH_PT`), la misma altura del bloque de título de la derecha, así
- * que el encabezado no crece. Se acomoda en un lienzo transparente 3:1,
+ * El logo cargado tiene su propia caja en el encabezado: hasta 150 × 50 pt
+ * (`PDF_WIDTH_PT`), unos 10 pt más alta que el bloque de título de la derecha:
+ * el encabezado baja un poco, a pedido de Negocios. Lienzo transparente 3:1,
  * alineado a la izquierda y centrado en vertical: un logo redondo queda de
- * 40 × 40 pt y uno alargado llega hasta 120 pt de ancho. El logo de
+ * 50 × 50 pt y uno alargado llega hasta 150 pt de ancho. El logo de
  * Tu Doctor en Casa, cuando no hay uno cargado, conserva su tamaño de siempre.
  *
  * Cualquier problema (archivo borrado, formato no soportado, imagen dañada)
@@ -34,9 +34,9 @@ final class PlanGeneratorLogo
     public const ACCEPTED_TYPES = ['image/png', 'image/jpeg'];
 
     /**
-     * Ancho con que el PDF dibuja el logo cargado; el alto sale del lienzo 3:1 (40 pt, el alto del bloque de título).
+     * Ancho con que el PDF dibuja el logo cargado; el alto sale del lienzo 3:1 (50 pt).
      */
-    public const PDF_WIDTH_PT = 120;
+    public const PDF_WIDTH_PT = 150;
 
     private const CANVAS_WIDTH = 1200;
 
