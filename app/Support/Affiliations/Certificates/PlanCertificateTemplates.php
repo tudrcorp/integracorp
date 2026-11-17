@@ -253,6 +253,7 @@ final class PlanCertificateTemplates
             'tipo' => 'individual',
             'codigo' => 'TDEC-IND-MUESTRA',
             'planLabel' => (string) ($plan->description ?: 'Plan'),
+            'planId' => (int) $plan->getKey(),
             'benefits' => $benefits,
             'preexNote' => false,
             'heroSub' => 'Vista de muestra con datos de ejemplo',

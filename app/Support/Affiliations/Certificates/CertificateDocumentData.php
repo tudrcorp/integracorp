@@ -62,6 +62,12 @@ final class CertificateDocumentData
             'planLabel' => $in['planLabel'],
             'planNombre' => self::shortPlanName($in['planLabel']),
             'th' => $theme,
+            'planId' => isset($in['planId']) ? (int) $in['planId'] : null,
+            // Marca del carnet por plan (logo, color, pie): con varios planes, cada carnet usa la de su plan.
+            'carnetBrands' => PlanCarnetBrands::forDocument(array_merge(
+                [$in['planId'] ?? null],
+                array_map(static fn (array $carnet): ?int => isset($carnet['planId']) ? (int) $carnet['planId'] : null, $in['carnets']),
+            )),
             // Rutas de archivo, no data URI: ver CertificateAssets.
             'images' => [
                 'logo' => CertificateAssets::staticImage('logo-tu-doctor-en-casa.png'),

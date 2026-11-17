@@ -1,14 +1,21 @@
-{{-- Frente del carnet: color del plan, nombre, documento, plan, cobertura y vigencia. --}}
-@php($th = $data['th'])
+{{-- Frente del carnet: color del plan, nombre, documento, plan, cobertura y vigencia. Con marca del plan: su logo y su color. --}}
+@php($brand = ($data['carnetBrands'] ?? [])[(int) ($b['planId'] ?? $data['planId'] ?? 0)] ?? null)
+@php($th = $brand['th'] ?? $data['th'])
+@php($brandLogo = filled($brand['logo'] ?? null) ? $brand['logo'] : null)
 <div class="card-cut" style="width:332px; margin:0 auto;">
 <table style="width:324px; height:204px; background:{{ $th['bg'] }}; color:{{ $th['ink'] }}; border-radius:12px;">
-    <tr><td style="height:26px; padding:14px 18px 0 18px;">
+    {{-- Un logo de marca ocupa 44 px de alto: la fila del nombre cede ese espacio (70 → 55; el logo estándar ya mide 29 px) y el carnet mide lo mismo. --}}
+    <tr><td style="height:{{ $brandLogo !== null ? 44 : 26 }}px; padding:14px 18px 0 18px;">
         <table style="width:288px;"><tr>
-            <td style="width:200px; text-align:left;"><img src="{{ $data['images']['logoTheme'] }}" alt="Tu Doctor en Casa" style="width:122px;"></td>
+            @if ($brandLogo !== null)
+                <td style="width:200px; text-align:left;"><img src="{{ $brandLogo }}" alt="{{ $brand['label'] }}" style="width:150px; height:44px;"></td>
+            @else
+                <td style="width:200px; text-align:left;"><img src="{{ $data['images']['logoTheme'] }}" alt="Tu Doctor en Casa" style="width:122px;"></td>
+            @endif
             <td style="width:88px; text-align:right; padding-top:2px; font-size:8.5px; font-weight:bold; letter-spacing:1.2px; text-transform:uppercase; color:{{ $th['sub'] }};">Afiliado</td>
         </tr></table>
     </td></tr>
-    <tr><td style="height:70px; padding:0 18px; vertical-align:bottom; text-align:left;">
+    <tr><td style="height:{{ $brandLogo !== null ? 55 : 70 }}px; padding:0 18px; vertical-align:bottom; text-align:left;">
         <div style="font-size:16px; line-height:1.15; font-weight:bold; color:{{ $th['title'] }};">{{ $b['nombre'] }}</div>
         <div style="font-size:10px; color:{{ $th['sub'] }}; margin-top:3px;">{{ $b['docFmt'] }}</div>
     </td></tr>
@@ -28,6 +35,6 @@
             </td>
         </tr></table>
     </td></tr>
-    <tr><td style="height:44px; padding:0; line-height:0; vertical-align:bottom;"><img src="{{ $data['images']['carnetWave'] }}" alt="" style="width:324px; height:30px; display:block;"></td></tr>
+    <tr><td style="height:44px; padding:0; line-height:0; vertical-align:bottom;"><img src="{{ $brand['wave'] ?? $data['images']['carnetWave'] }}" alt="" style="width:324px; height:30px; display:block;"></td></tr>
 </table>
 </div>

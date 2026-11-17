@@ -2,6 +2,15 @@
     use App\Support\Affiliations\Certificates\CarnetDigitalIcons as Icon;
 
     $c = $carnet;
+    // Marca del carnet del plan (p. ej. Renacer): sus colores reemplazan los azules de Tu Doctor en Casa.
+    $brand ??= null;
+    $accent = $brand['color'] ?? '#2D89CA';
+    $accentLight = $brand['light'] ?? '#26B4E8';
+    $navy = $brand['dark'] ?? '#17335E';
+    $soft = $brand['soft'] ?? '#35657D';
+    $accentRgb = $brand['rgb'] ?? '45, 137, 202';
+    $accentLightRgb = $brand['lightRgb'] ?? '38, 180, 232';
+    $navyRgb = $brand['darkRgb'] ?? '23, 51, 94';
     $v = $verification;
     $tone = match (true) {
         $status === 'empty' => 'neutral',
@@ -11,7 +20,7 @@
     };
     // [fondo del chip, color del título]
     $toneColors = [
-        'neutral' => ['#17335E', '#0F2233'],
+        'neutral' => [$navy, '#0F2233'],
         'ok' => ['#00A859', '#007A40'],
         'warn' => ['#E39B17', '#8A5300'],
         'bad' => ['#E03A3A', '#A11B1B'],
@@ -35,7 +44,8 @@
     <link rel="icon" href="{{ asset('image/ico_Android_IOS.png') }}">
     <style>
         :root {
-            --ink: #0F2233; --soft: #35657D; --muted: #64748B; --brand: #17335E; --blue: #2D89CA;
+            --ink: #0F2233; --soft: {{ $soft }}; --muted: #64748B; --brand: {{ $navy }}; --blue: {{ $accent }};
+            --blue-rgb: {{ $accentRgb }}; --blue-light: {{ $accentLight }}; --blue-light-rgb: {{ $accentLightRgb }}; --brand-rgb: {{ $navyRgb }};
             --font-display: Helvetica, "Helvetica Neue", Arial, sans-serif;
             --font-body: Verdana, Tahoma, sans-serif;
             --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -44,7 +54,7 @@
         * { box-sizing: border-box; }
         html, body { margin: 0; background: #F6F6F6; -webkit-tap-highlight-color: transparent; }
         body { color: var(--ink); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
-        a { color: #2D89CA; text-decoration: none; }
+        a { color: var(--blue); text-decoration: none; }
         button { font: inherit; color: inherit; }
         svg { display: block; flex: 0 0 auto; }
         .display { font-family: var(--font-display); font-weight: 700; }
@@ -61,6 +71,7 @@
         .hero .photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
         .hero .top-shade { position: absolute; inset: 0 0 auto 0; height: 120px; background: linear-gradient(180deg, rgba(15,34,51,.45), rgba(15,34,51,0)); pointer-events: none; }
         .hero .logo { position: absolute; top: 18px; left: 18px; height: 42px; width: auto; min-width: 120px; filter: brightness(0) invert(1); }
+        .hero .logo.is-brand { height: 64px; min-width: 0; max-width: 60%; object-fit: contain; filter: none; padding: 6px; border-radius: 16px; background: rgba(255,255,255,.92); box-shadow: 0 6px 18px rgba(15,34,51,.18); }
         .hero .copy { position: absolute; left: 12px; right: 12px; bottom: 12px; padding: 16px 18px; border-radius: 20px; background: rgba(15,34,51,.38); -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%); border: 1px solid rgba(255,255,255,.35); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 8px 24px rgba(15,34,51,.2); display: flex; flex-direction: column; gap: 4px; }
         .hero h1 { margin: 0; font-size: 28px; line-height: 1.1; letter-spacing: -0.02em; color: #fff; text-wrap: balance; }
         .hero p { margin: 0; font-size: 14px; line-height: 1.45; color: #fff; text-wrap: pretty; }
@@ -94,7 +105,7 @@
 
         .chip { width: 42px; height: 42px; border-radius: 999px; display: grid; place-items: center; flex: 0 0 auto; }
 
-        .steps { position: relative; overflow: hidden; padding: 18px; border-radius: 24px; background: rgba(23,51,94,.82); -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%); border: 1px solid rgba(255,255,255,.28); box-shadow: 0 14px 30px rgba(23,51,94,.28), inset 0 1px 0 rgba(255,255,255,.35); display: flex; flex-direction: column; gap: 14px; }
+        .steps { position: relative; overflow: hidden; padding: 18px; border-radius: 24px; background: rgba(var(--brand-rgb),.82); -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%); border: 1px solid rgba(255,255,255,.28); box-shadow: 0 14px 30px rgba(var(--brand-rgb),.28), inset 0 1px 0 rgba(255,255,255,.35); display: flex; flex-direction: column; gap: 14px; }
         .steps .shine { position: absolute; inset: 0 0 55% 0; background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,0)); pointer-events: none; }
         .steps .orb { position: absolute; border-radius: 999px; filter: blur(40px); pointer-events: none; }
         .steps-head { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -134,7 +145,7 @@
         .bar a { min-height: 54px; padding: 0 8px; border-radius: 16px; background: #fff; border: 2px solid; color: var(--ink); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; line-height: 1.15; text-align: center; }
         .bar.is-single a { gap: 10px; font-size: 16px; }
 
-        .overlay { position: fixed; inset: 0; z-index: 40; background: rgba(23,51,94,.45); opacity: 0; pointer-events: none; transition: opacity 200ms var(--ease-standard); }
+        .overlay { position: fixed; inset: 0; z-index: 40; background: rgba(var(--brand-rgb),.45); opacity: 0; pointer-events: none; transition: opacity 200ms var(--ease-standard); }
         .overlay.is-on { opacity: 1; pointer-events: auto; }
         .sheet { position: fixed; left: 50%; bottom: 0; z-index: 41; width: 100%; max-width: 480px; max-height: 88vh; overflow-y: auto; transform: translate(-50%, 105%); visibility: hidden; transition: transform 360ms var(--ease-out), visibility 0s linear 360ms; background: rgba(246,246,246,.92); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%); border-radius: 26px 26px 0 0; border-top: 1px solid rgba(255,255,255,.9); box-shadow: 0 -16px 40px rgba(15,34,51,.18); padding: 10px 16px calc(20px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; }
         .sheet.is-on { transform: translate(-50%, 0); visibility: visible; transition: transform 360ms var(--ease-out), visibility 0s; }
@@ -146,8 +157,8 @@
         .group-head { display: flex; align-items: center; gap: 12px; }
         .group-head span { font-size: 16px; line-height: 1.25; color: var(--ink); }
         .phones { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; }
-        .phones a { min-height: 48px; padding: 0 10px; border-radius: 14px; background: #2D89CA; color: #fff; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; white-space: nowrap; }
-        .group .email { min-height: 44px; padding: 0 12px; border-radius: 14px; background: rgba(45,137,202,.08); color: var(--brand); display: flex; align-items: center; gap: 8px; font-size: 14px; overflow-wrap: anywhere; }
+        .phones a { min-height: 48px; padding: 0 10px; border-radius: 14px; background: var(--blue); color: #fff; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; white-space: nowrap; }
+        .group .email { min-height: 44px; padding: 0 12px; border-radius: 14px; background: rgba(var(--blue-rgb),.08); color: var(--brand); display: flex; align-items: center; gap: 8px; font-size: 14px; overflow-wrap: anywhere; }
 
         a:focus-visible, button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
         @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -156,15 +167,19 @@
 <body>
 <div class="page">
     <div class="glow" aria-hidden="true">
-        <span style="top:-150px; left:-90px; width:380px; height:380px; background:#26B4E8; opacity:.35;"></span>
-        <span style="top:20px; right:-130px; width:340px; height:340px; background:#2D89CA; opacity:.25;"></span>
+        <span style="top:-150px; left:-90px; width:380px; height:380px; background:var(--blue-light); opacity:.35;"></span>
+        <span style="top:20px; right:-130px; width:340px; height:340px; background:var(--blue); opacity:.25;"></span>
     </div>
 
     <main class="wrap">
         <section class="hero">
             <img class="photo" src="{{ asset($c['photo']) }}" alt="{{ $c['photo_alt'] }}" style="object-position: {{ $c['photo_position'] }};">
             <div class="top-shade"></div>
-            <img class="logo" src="{{ asset('image/certificado-afiliacion/carnet-digital-logo.png') }}" alt="Tu Doctor en Casa">
+            @if (filled($brand['logoUrl'] ?? null))
+                <img class="logo is-brand" src="{{ $brand['logoUrl'] }}" alt="{{ $brand['label'] }}">
+            @else
+                <img class="logo" src="{{ asset('image/certificado-afiliacion/carnet-digital-logo.png') }}" alt="Tu Doctor en Casa">
+            @endif
             <div class="copy">
                 <h1 class="display">Estamos contigo, 24/7</h1>
                 <p>{{ $c['subtitle'] }}</p>
@@ -200,7 +215,7 @@
             </div>
         @endif
 
-        <div class="note">{{ Icon::svg('id-card', 16, '#35657D') }}Ten tu cédula a mano al contactarnos</div>
+        <div class="note">{{ Icon::svg('id-card', 16, $soft) }}Ten tu cédula a mano al contactarnos</div>
         <a class="mail" href="mailto:24H@tudrencasa.com">
             {{ Icon::svg('mail', 16, '#FF0F0F') }}
             <span>Emergencias por correo:</span>
@@ -251,8 +266,8 @@
 
         <section class="steps" aria-label="Activa el servicio en 3 pasos" data-steps>
             <div class="shine" aria-hidden="true"></div>
-            <div class="orb" aria-hidden="true" style="top:-70px; right:-50px; width:200px; height:200px; background:rgba(38,180,232,.35);"></div>
-            <div class="orb" aria-hidden="true" style="bottom:-80px; left:-60px; width:180px; height:180px; background:rgba(45,137,202,.3);"></div>
+            <div class="orb" aria-hidden="true" style="top:-70px; right:-50px; width:200px; height:200px; background:rgba(var(--blue-light-rgb),.35);"></div>
+            <div class="orb" aria-hidden="true" style="bottom:-80px; left:-60px; width:180px; height:180px; background:rgba(var(--blue-rgb),.3);"></div>
             <div class="steps-head">
                 <span class="title display">Activa el servicio en 3 pasos</span>
                 <span class="count display"><span data-step-num>1</span>/3</span>
@@ -276,15 +291,15 @@
         </section>
 
         <a class="glass row-link press" href="{{ $c['info_href'] }}" target="_blank" rel="noopener">
-            <span class="chip" style="background: #17335E;">{{ Icon::svg('sparkles', 18, '#FFFFFF') }}</span>
+            <span class="chip" style="background: {{ $navy }};">{{ Icon::svg('sparkles', 18, '#FFFFFF') }}</span>
             <span class="t"><b class="display">¿Qué incluye tu plan?</b><span>Consulta tus beneficios extra por InfoChat</span></span>
-            {{ Icon::svg('chevron-right', 20, '#17335E') }}
+            {{ Icon::svg('chevron-right', 20, $navy) }}
         </a>
 
         <button type="button" class="glass row-link press" data-open-contacts aria-haspopup="dialog" aria-controls="contacts-sheet">
-            <span class="chip" style="background: #2D89CA;">{{ Icon::svg('contact', 18, '#FFFFFF') }}</span>
+            <span class="chip" style="background: {{ $accent }};">{{ Icon::svg('contact', 18, '#FFFFFF') }}</span>
             <span class="t"><b class="display">Más contactos</b><span>Servicios médicos, planes, tarifas y pagos</span></span>
-            {{ Icon::svg('chevron-right', 20, '#2D89CA') }}
+            {{ Icon::svg('chevron-right', 20, $accent) }}
         </button>
 
         <a class="pharmacy press" href="{{ $c['pharmacy_href'] }}" target="_blank" rel="noopener">
@@ -297,7 +312,7 @@
             <span class="go">{{ Icon::svg('arrow-up-right', 18, '#FFFFFF') }}</span>
         </a>
 
-        <footer><span>tudrencasa.com · RIF J-50358368-1</span></footer>
+        <footer><span>{{ filled($brand['label'] ?? null) ? $brand['label'] : 'tudrencasa.com · RIF J-50358368-1' }}</span></footer>
     </main>
 
     <nav @class(['bar', 'is-single' => $single]) data-bar aria-label="Contacto rápido" style="--bar-cols: {{ count($c['actions']) }};">
@@ -316,12 +331,12 @@
         <div class="grabber" aria-hidden="true"></div>
         <div class="sheet-head">
             <h2 id="contacts-title" class="display">Más contactos</h2>
-            <button type="button" class="sheet-close" data-close-contacts aria-label="Cerrar">{{ Icon::svg('x', 18, '#17335E') }}</button>
+            <button type="button" class="sheet-close" data-close-contacts aria-label="Cerrar">{{ Icon::svg('x', 18, $navy) }}</button>
         </div>
         @foreach ($c['contact_groups'] as $group)
             <div class="glass group">
                 <div class="group-head">
-                    <span class="chip" style="background: #17335E;">{{ Icon::svg($group['icon'], 18, '#FFFFFF') }}</span>
+                    <span class="chip" style="background: {{ $navy }};">{{ Icon::svg($group['icon'], 18, '#FFFFFF') }}</span>
                     <span class="display">{{ $group['title'] }}</span>
                 </div>
                 <div class="phones">
@@ -330,7 +345,7 @@
                     @endforeach
                 </div>
                 @foreach ($group['emails'] as $email)
-                    <a class="email press" href="mailto:{{ $email }}">{{ Icon::svg('mail', 16, '#2D89CA') }}{{ $email }}</a>
+                    <a class="email press" href="mailto:{{ $email }}">{{ Icon::svg('mail', 16, $accent) }}{{ $email }}</a>
                 @endforeach
             </div>
         @endforeach

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Business\Resources\Plans\Tables;
 
+use App\Filament\Business\Resources\Plans\Actions\PlanCarnetBrandActions;
 use App\Filament\Business\Resources\Plans\Actions\PlanCertificateTemplateActions;
 use App\Models\Plan;
 use App\Support\Plans\PlanQuotability;
@@ -141,6 +142,7 @@ class PlansTable
                         ->label('Editar')
                         ->hidden(fn (Plan $record): bool => $record->comesFromUpgrade()),
                     ...PlanCertificateTemplateActions::all(),
+                    ...PlanCarnetBrandActions::all(),
                     Action::make('update_status')
                         ->label('Actualizar Estatus')
                         ->icon('heroicon-s-check-circle')
