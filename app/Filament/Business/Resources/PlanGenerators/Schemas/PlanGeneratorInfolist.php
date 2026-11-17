@@ -9,6 +9,7 @@ use App\Models\PlanGenerator;
 use App\Support\PlanGenerators\PlanGeneratorConditions;
 use App\Support\PlanGenerators\PlanGeneratorPreviewBuilder;
 use App\Support\PlanGenerators\PlanGeneratorUpgrades;
+use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -143,6 +144,11 @@ class PlanGeneratorInfolist
                                                             ->formatStateUsing(fn (?string $state): string => strtoupper((string) ($state ?? '#1d4ed8')))
                                                             ->badge()
                                                             ->color('gray'),
+                                                        ImageEntry::make('logo_path')
+                                                            ->label('Logo de la cotización PDF')
+                                                            ->disk('public')
+                                                            ->imageHeight(40)
+                                                            ->placeholder('Logo de Tu Doctor en Casa'),
                                                     ]),
                                             ]),
                                     ]),

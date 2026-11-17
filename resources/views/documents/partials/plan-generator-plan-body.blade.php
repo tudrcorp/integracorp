@@ -106,7 +106,7 @@
 @if ($columnCount === 0)
     <p>Sin columnas configuradas para este plan.</p>
     <div class="footer">
-        Integracorp · Tu Dr en Casa · Plan generado
+        Plan generado por Integracorp
     </div>
 @endif
 </td>
@@ -181,7 +181,7 @@
 
             @if ($nextPageSections === [])
                 <div class="footer">
-                    Integracorp · Tu Dr en Casa · Plan generado
+                    Plan generado por Integracorp
                 </div>
             @endif
         </td>
@@ -198,7 +198,7 @@
             @endforeach
 
             <div class="footer">
-                Integracorp · Tu Dr en Casa · Plan generado
+                Plan generado por Integracorp
             </div>
         </td>
         </tr>

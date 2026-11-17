@@ -26,6 +26,7 @@ class PlanGenerator extends Model
         'group_total_hidden_rows',
         'conditions',
         'brand_color',
+        'logo_path',
         'quotation_page_count',
         'plan_page_number',
         'population_import_id',

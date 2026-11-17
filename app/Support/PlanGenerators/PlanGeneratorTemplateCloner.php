@@ -147,6 +147,8 @@ final class PlanGeneratorTemplateCloner
         $attributes['plan_id'] = $template->plan_id;
         $attributes['quotation_page_count'] = $template->quotation_page_count;
         $attributes['plan_page_number'] = $template->plan_page_number;
+        /** El logo pasa a la derivada; el archivo se comparte porque nunca se borra del disco. */
+        $attributes['logo_path'] = $template->logo_path;
         $attributes['created_by'] = $createdBy;
 
         return DB::transaction(function () use ($attributes, $formState, $quotationPages, $template): PlanGenerator {
