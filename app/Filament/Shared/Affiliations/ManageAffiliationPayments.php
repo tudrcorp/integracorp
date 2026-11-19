@@ -11,6 +11,7 @@ use App\Models\Sale;
 use App\Models\User;
 use App\Services\SaleInvoicePdfService;
 use App\Support\Affiliations\PaymentVoucherFile;
+use App\Support\Affiliations\PendingPaymentAnnulment;
 use App\Support\Affiliations\PendingPaymentDeletion;
 use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
@@ -136,6 +137,7 @@ abstract class ManageAffiliationPayments extends ManageRelatedRecords
                 ...$header['facts'],
                 'Pagos registrados' => (string) $summary['count'],
                 'Aprobados' => $summary['count'] > 0 ? (string) $summary['approved'] : null,
+                'Anulados' => $summary['annulled'] > 0 ? (string) $summary['annulled'] : null,
                 'Total aprobado US$' => RecordPageHeader::money($summary['approved_usd'], hideZero: true),
                 'Total aprobado Bs.' => $summary['approved_ves'] > 0 ? InvoiceVesLineAmounts::format($summary['approved_ves']) : null,
                 'Último pago' => $summary['last_at'],
@@ -171,7 +173,7 @@ abstract class ManageAffiliationPayments extends ManageRelatedRecords
     /**
      * Resumen de los pagos en una sola consulta agregada.
      *
-     * @return array{count: int, approved: int, pending: int, approved_usd: float, approved_ves: float, last_at: string|null}
+     * @return array{count: int, approved: int, pending: int, annulled: int, approved_usd: float, approved_ves: float, last_at: string|null}
      */
     public static function paymentsSummary(Model $owner): array
     {
@@ -181,6 +183,7 @@ abstract class ManageAffiliationPayments extends ManageRelatedRecords
             ->selectRaw('COUNT(*) as total_count')
             ->selectRaw("SUM(CASE WHEN UPPER(status) IN ('APROBADO', 'PAGADO') THEN 1 ELSE 0 END) as approved_count")
             ->selectRaw("SUM(CASE WHEN UPPER(status) = 'PENDIENTE' THEN 1 ELSE 0 END) as pending_count")
+            ->selectRaw("SUM(CASE WHEN UPPER(status) = 'ANULADO' THEN 1 ELSE 0 END) as annulled_count")
             ->selectRaw("SUM(CASE WHEN UPPER(status) IN ('APROBADO', 'PAGADO') THEN COALESCE(pay_amount_usd, 0) ELSE 0 END) as approved_usd")
             ->selectRaw("SUM(CASE WHEN UPPER(status) IN ('APROBADO', 'PAGADO') THEN COALESCE(pay_amount_ves, 0) ELSE 0 END) as approved_ves")
             ->selectRaw('MAX(created_at) as last_at')
@@ -191,6 +194,7 @@ abstract class ManageAffiliationPayments extends ManageRelatedRecords
             'count' => (int) ($row->total_count ?? 0),
             'approved' => (int) ($row->approved_count ?? 0),
             'pending' => (int) ($row->pending_count ?? 0),
+            'annulled' => (int) ($row->annulled_count ?? 0),
             'approved_usd' => round((float) ($row->approved_usd ?? 0), 2),
             'approved_ves' => round((float) ($row->approved_ves ?? 0), 2),
             'last_at' => filled($row->last_at ?? null) ? Carbon::parse($row->last_at)->format('d/m/Y') : null,
@@ -229,7 +233,8 @@ abstract class ManageAffiliationPayments extends ManageRelatedRecords
                     ->badge()
                     ->color(fn (?string $state): string => self::statusColor($state))
                     ->icon(fn (?string $state): Heroicon => self::statusIcon($state))
-                    ->description(fn (Model $record): ?string => filled($record->aproved_by) ? 'Aprobó: '.$record->aproved_by : null),
+                    ->description(fn (Model $record): ?string => self::statusDetail($record))
+                    ->wrap(),
                 TextColumn::make('payment_date')
                     ->label('Período pagado')
                     ->formatStateUsing(fn (Model $record): string => ($record->payment_date ?: '—').' → '.($record->prox_payment_date ?: '—'))
@@ -300,6 +305,7 @@ abstract class ManageAffiliationPayments extends ManageRelatedRecords
                         'APROBADO' => 'Aprobado',
                         'PENDIENTE' => 'Pendiente',
                         'PAGADO' => 'Pagado',
+                        PendingPaymentAnnulment::ANNULLED_STATUS => 'Anulado',
                     ]),
             ])
             ->recordActions([
@@ -309,7 +315,7 @@ abstract class ManageAffiliationPayments extends ManageRelatedRecords
                     self::downloadVoucherAction(PaymentVoucherFile::CURRENCY_USD),
                     self::viewVoucherAction(PaymentVoucherFile::CURRENCY_VES),
                     self::downloadVoucherAction(PaymentVoucherFile::CURRENCY_VES),
-                    self::deletePendingPaymentAction(),
+                    self::annulPendingPaymentAction(),
                 ])
                     ->icon('heroicon-c-ellipsis-vertical')
                     ->tooltip('Acciones del pago'),
@@ -578,47 +584,48 @@ abstract class ManageAffiliationPayments extends ManageRelatedRecords
     }
 
     /**
-     * Elimina un pago PENDIENTE que no dejó rastro (venta, cobranza, comisión ni
-     * conciliación). Con permiso propio y nota obligatoria; las reglas viven en
-     * {@see PendingPaymentDeletion}. Si está bloqueado, el modal explica por qué.
+     * Anula un pago PENDIENTE que no dejó rastro (venta, cobranza, comisión ni
+     * conciliación): la fila se queda con estatus ANULADO. Con permiso propio y
+     * motivo obligatorio; las reglas viven en {@see PendingPaymentAnnulment}. Si
+     * está bloqueado, el modal explica por qué.
      */
-    public static function deletePendingPaymentAction(): Action
+    public static function annulPendingPaymentAction(): Action
     {
-        return Action::make('deletePendingPayment')
-            ->label('Eliminar pago pendiente')
-            ->icon(Heroicon::OutlinedTrash)
+        return Action::make('annulPendingPayment')
+            ->label('Anular pago pendiente')
+            ->icon(Heroicon::OutlinedNoSymbol)
             ->color('danger')
             ->visible(fn (Model $record): bool => Str::upper(trim((string) $record->getAttribute('status'))) === PendingPaymentDeletion::PENDING_STATUS
                 && BusinessFilamentActionAccess::userCan(BusinessFilamentActionPermissionRegistry::DELETE_PENDING_PAYMENT))
-            ->modalIcon(Heroicon::OutlinedTrash)
+            ->modalIcon(Heroicon::OutlinedNoSymbol)
             ->modalIconColor('danger')
-            ->modalHeading('Eliminar pago pendiente')
-            ->modalDescription('Revise los datos. Esta acción saca el pago del historial; queda registrada con su nota y el comprobante se resguarda.')
+            ->modalHeading('Anular pago pendiente')
+            ->modalDescription('Revise los datos. El pago se queda en el historial como ANULADO, con su comprobante y el motivo.')
             ->modalWidth(Width::TwoExtraLarge)
-            ->modalSubmitActionLabel('Sí, eliminar el pago')
-            ->modalSubmitAction(fn (Action $action, Model $record): Action|false => PendingPaymentDeletion::blockers($record) === []
+            ->modalSubmitActionLabel('Sí, anular el pago')
+            ->modalSubmitAction(fn (Action $action, Model $record): Action|false => self::annulmentBlockers($record) === []
                 ? $action->color('danger')
                 : false)
             ->modalCancelActionLabel('Cerrar')
             ->schema(fn (Model $record): array => [
                 Placeholder::make('summary')
                     ->hiddenLabel()
-                    ->content(fn (): View => view('filament.shared.affiliations.payment-delete-summary', [
+                    ->content(fn (): View => view('filament.shared.affiliations.payment-annul-summary', [
                         'record' => $record,
-                        'blockers' => PendingPaymentDeletion::blockers($record),
+                        'blockers' => self::annulmentBlockers($record),
                         'references' => self::references($record),
                         'voucher' => self::voucherSummary($record),
                     ])),
-                Textarea::make('note')
-                    ->label('Nota: ¿por qué se elimina?')
+                Textarea::make('reason')
+                    ->label('Motivo: ¿por qué se anula?')
                     ->placeholder('Ej.: Comprobante duplicado; el mismo pago ya fue aprobado el 09/10/2025 con la referencia 211556.')
-                    ->helperText('Obligatoria, mínimo '.PendingPaymentDeletion::NOTE_MIN_LENGTH.' caracteres. Queda en la traza con su nombre y la fecha.')
+                    ->helperText('Obligatorio, mínimo '.PendingPaymentAnnulment::REASON_MIN_LENGTH.' caracteres. Queda en la traza con su nombre y la fecha.')
                     ->rows(3)
                     ->required()
-                    ->minLength(PendingPaymentDeletion::NOTE_MIN_LENGTH)
-                    ->maxLength(PendingPaymentDeletion::NOTE_MAX_LENGTH)
-                    ->validationAttribute('nota')
-                    ->visible(PendingPaymentDeletion::blockers($record) === []),
+                    ->minLength(PendingPaymentAnnulment::REASON_MIN_LENGTH)
+                    ->maxLength(PendingPaymentAnnulment::REASON_MAX_LENGTH)
+                    ->validationAttribute('motivo')
+                    ->visible(self::annulmentBlockers($record) === []),
             ])
             ->action(function (Model $record, array $data, Action $action): void {
                 $user = Auth::user();
@@ -630,10 +637,10 @@ abstract class ManageAffiliationPayments extends ManageRelatedRecords
                 );
 
                 try {
-                    $result = PendingPaymentDeletion::delete($record, (string) ($data['note'] ?? ''), $user, Filament::getCurrentPanel()?->getId());
+                    $result = PendingPaymentAnnulment::annul($record, (string) ($data['reason'] ?? ''), $user, Filament::getCurrentPanel()?->getId());
                 } catch (InvalidArgumentException $exception) {
                     Notification::make()
-                        ->title('No se eliminó el pago')
+                        ->title('No se anuló el pago')
                         ->body($exception->getMessage())
                         ->danger()
                         ->persistent()
@@ -646,7 +653,7 @@ abstract class ManageAffiliationPayments extends ManageRelatedRecords
                     report($exception);
 
                     Notification::make()
-                        ->title('No se eliminó el pago')
+                        ->title('No se anuló el pago')
                         ->body('No se cambió nada. Intente de nuevo; si se repite, avise a soporte con la hora del intento.')
                         ->danger()
                         ->send();
@@ -657,14 +664,23 @@ abstract class ManageAffiliationPayments extends ManageRelatedRecords
                 }
 
                 Notification::make()
-                    ->title('Pago pendiente eliminado')
-                    ->body(($result['kept'] !== []
-                        ? 'El comprobante se dejó en su sitio porque otro pago lo usa. '
-                        : ($result['archived'] !== [] ? 'El comprobante quedó resguardado en un archivo privado. ' : ''))
-                        .'Quedó registrado en la traza (#'.$result['trace_id'].').')
+                    ->title('Pago anulado')
+                    ->body('El pago quedó en el historial con estatus ANULADO y ya no cuenta como pendiente. Quedó registrado en la traza (#'.$result['trace_id'].').')
                     ->success()
                     ->send();
             });
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function annulmentBlockers(Model $record): array
+    {
+        if (! $record instanceof PaidMembership && ! $record instanceof PaidMembershipCorporate) {
+            return ['Este registro no es un pago de afiliación.'];
+        }
+
+        return PendingPaymentAnnulment::blockers($record);
     }
 
     public static function viewVoucherAction(string $currency): Action
@@ -736,6 +752,25 @@ abstract class ManageAffiliationPayments extends ManageRelatedRecords
             (string) $path,
             PaymentVoucherFile::downloadName($record, $currency, (string) $path, $affiliationCode),
         );
+    }
+
+    /**
+     * Debajo del estatus: quién aprobó o, si se anuló, quién, cuándo y por qué.
+     */
+    private static function statusDetail(Model $record): ?string
+    {
+        if (PendingPaymentAnnulment::isAnnulled($record->getAttribute('status'))) {
+            $when = $record->getAttribute('annulled_at');
+            $parts = array_filter([
+                filled($record->getAttribute('annulled_by_name')) ? 'Anuló: '.$record->getAttribute('annulled_by_name') : null,
+                filled($when) ? Carbon::parse($when)->timezone(config('app.timezone'))->format('d/m/Y h:i a') : null,
+                filled($record->getAttribute('annulment_reason')) ? 'Motivo: '.Str::limit((string) $record->getAttribute('annulment_reason'), 120) : null,
+            ]);
+
+            return $parts === [] ? null : implode(' · ', $parts);
+        }
+
+        return filled($record->aproved_by) ? 'Aprobó: '.$record->aproved_by : null;
     }
 
     public static function statusColor(?string $status): string

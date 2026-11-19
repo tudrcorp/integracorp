@@ -11,6 +11,7 @@ use App\Models\Commission;
 use App\Models\Sale;
 use App\Support\Affiliation\AffiliationDocumentAffiliatesCount;
 use App\Support\AffiliationCorporates\CorporateBillingDocument;
+use App\Support\Affiliations\PaymentApprovalGuard;
 use App\Support\CreditReconciliations\WhiteCompanyCreditMovementRecorder;
 use App\Support\PaidMemberships\AffiliationQuoteNumber;
 use App\Support\PaidMemberships\AgencyTypeForCommission;
@@ -45,6 +46,7 @@ class PaidMembershipCorporateController extends Controller
         DB::beginTransaction();
 
         try {
+            PaymentApprovalGuard::assertApprovable($record);
 
             if ($record->payment_method == 'MULTIPLE') {
                 $reference_payment = $record->reference_payment_ves.'-'.$record->reference_payment_usd;

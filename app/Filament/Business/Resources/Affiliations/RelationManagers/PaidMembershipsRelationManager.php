@@ -185,7 +185,7 @@ class PaidMembershipsRelationManager extends RelationManager
                         ->modalWidth(Width::TwoExtraLarge)
                         ->modalHeading('Aprobar comprobante de pago')
                         ->modalDescription('Seleccione los avisos de cobro que cubre este pago. Solo se listan avisos en estatus POR PAGAR.')
-                        ->hidden(fn (PaidMembership $record): bool => $record->status === 'APROBADO')
+                        ->hidden(fn (PaidMembership $record): bool => ! \App\Support\Affiliations\PaymentApprovalGuard::isApprovableStatus($record->status))
                         ->form([
                             Section::make('Validación del pago')
                                 ->icon(Heroicon::ClipboardDocumentCheck)

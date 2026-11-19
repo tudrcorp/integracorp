@@ -143,15 +143,11 @@ class PaidMembershipCorporatesRelationManager extends RelationManager
                 TextColumn::make('status')
                     ->label('Estatus')
                     ->badge()
-                    ->color(function ($record) {
-                        return $record->status == 'APROBADO' ? 'success' : 'warning';
-                    }),
+                    ->color(fn ($record): string => \App\Filament\Shared\Affiliations\ManageAffiliationPayments::statusColor($record->status)),
             ])
             ->recordActions([
                 Action::make('approve')
-                    ->hidden(function (PaidMembershipCorporate $record) {
-                        return $record->status == 'APROBADO';
-                    })
+                    ->hidden(fn (PaidMembershipCorporate $record): bool => ! \App\Support\Affiliations\PaymentApprovalGuard::isApprovableStatus($record->status))
                     ->label('Aprobar')
                     ->color('success')
                     ->icon('heroicon-s-check-circle')

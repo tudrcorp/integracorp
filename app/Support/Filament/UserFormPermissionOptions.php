@@ -31,6 +31,7 @@ class UserFormPermissionOptions
         'benefitcoverageresource' => ['beneficios-coberturas'],
         'benefitresource' => ['beneficios'],
         'upgraderesource' => ['gestionar-upgrades'],
+        'quotedesignresource' => ['disenio-de-cotizacion'],
         'birthdaynotificationresource' => ['notificaciones-cumpleaños'],
         'businesslineresource' => ['lineas-de-servicio'],
         'capemiacresource' => ['capemiac'],

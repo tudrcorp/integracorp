@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Support\Affiliations\PendingPaymentDeletion;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PaidMembership extends Model
 {
@@ -85,5 +87,14 @@ class PaidMembership extends Model
     public function sale()
     {
         return $this->belongsTo(Sale::class);
+    }
+
+    /**
+     * Ediciones hechas al pago mientras estaba PENDIENTE.
+     */
+    public function editLogs(): HasMany
+    {
+        return $this->hasMany(PaymentEditLog::class, 'payment_id')
+            ->where('payment_type', PendingPaymentDeletion::TYPE_INDIVIDUAL);
     }
 }

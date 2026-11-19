@@ -136,4 +136,17 @@ return [
         ))),
     ],
 
+    /*
+     * Aliado IntegraCorp en Farmadoc. El token es el secreto fd_ del cliente API;
+     * no se guarda en el repositorio. client_id es el cliente de Farmadoc al que
+     * el endpoint de pedidos exige asociar la orden (el analista no lo ve).
+     */
+    'farmadoc' => [
+        'base_url' => rtrim((string) env('FARMADOC_BASE_URL', 'https://farmasysdoc.test'), '/'),
+        'token' => env('FARMADOC_TOKEN'),
+        'partner_company' => env('FARMADOC_PARTNER_COMPANY', 'ALDO-2026-0021'),
+        'client_id' => env('FARMADOC_CLIENT_ID'),
+        'timeout' => (int) env('FARMADOC_TIMEOUT', 20),
+    ],
+
 ];

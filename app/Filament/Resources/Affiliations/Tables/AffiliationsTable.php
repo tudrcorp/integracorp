@@ -850,15 +850,15 @@ class AffiliationsTable
                         })
                         ->hidden(function (Affiliation $record) {
 
-                            if ($record->payment_frequency == 'ANUAL' && $record->paid_memberships()->count() == 1) {
+                            if ($record->payment_frequency == 'ANUAL' && $record->paid_memberships()->where('status', '!=', \App\Support\Affiliations\PendingPaymentAnnulment::ANNULLED_STATUS)->count() == 1) {
                                 return true;
                             }
 
-                            if ($record->payment_frequency == 'SEMESTRAL' && $record->paid_memberships()->count() == 2) {
+                            if ($record->payment_frequency == 'SEMESTRAL' && $record->paid_memberships()->where('status', '!=', \App\Support\Affiliations\PendingPaymentAnnulment::ANNULLED_STATUS)->count() == 2) {
                                 return true;
                             }
 
-                            if ($record->payment_frequency == 'TRIMESTRAL' && $record->paid_memberships()->count() == 4) {
+                            if ($record->payment_frequency == 'TRIMESTRAL' && $record->paid_memberships()->where('status', '!=', \App\Support\Affiliations\PendingPaymentAnnulment::ANNULLED_STATUS)->count() == 4) {
                                 return true;
                             }
 

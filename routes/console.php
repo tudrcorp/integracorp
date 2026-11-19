@@ -12,6 +12,7 @@ use App\Jobs\MarkHelpdeskSlaBreachesJob;
 use App\Jobs\PrepareAffiliationCorporateRenovations;
 use App\Jobs\PrepareAffiliationRenovations;
 use App\Jobs\ReconcileOrphanedMassNotificationEmails;
+use App\Jobs\RefreshFarmadocOrderStatuses;
 use App\Jobs\RegenerateSupplierReportPdfJob;
 use App\Jobs\ScanAffiliationDateInconsistenciesJob;
 use App\Jobs\ScanPersonIdentityFindingsJob;
@@ -228,6 +229,14 @@ Schedule::command('telemedicine:audit-patient-case-identity')
 Schedule::job(new SendOperationInventoryLowStockAlert, 'system')
     ->dailyAt('8:00')
     ->when($operationInventoryLowStockIsActive);
+
+/**
+ * Pedidos a Farmadoc (Operaciones → Inventario Diagnomóvil): cada 30 minutos consulta
+ * en el API de Farmadoc el estatus de los pedidos pendientes o en proceso.
+ */
+Schedule::job(new RefreshFarmadocOrderStatuses, 'system')
+    ->everyThirtyMinutes()
+    ->when(static fn (): bool => filled(config('services.farmadoc.token')));
 
 /**
  * Reporte de proveedores (Operaciones): deja el PDF listo en disco antes de la jornada.
