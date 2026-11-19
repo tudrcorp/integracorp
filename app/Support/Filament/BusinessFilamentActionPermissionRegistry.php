@@ -64,7 +64,10 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const DOWNLOAD_USER_ACTIVITY_PDF = 'descargar-pdf-actividad-usuarios';
 
+    /** Hoy anula (estatus ANULADO); conserva el slug para no perder asignaciones. */
     public const DELETE_PENDING_PAYMENT = 'eliminar-pago-pendiente';
+
+    public const EDIT_PENDING_PAYMENT = 'editar-pago-pendiente';
 
     public const UPDATE_CORPORATE_POPULATION = 'actualizar-poblacion-corporativa';
 
@@ -423,9 +426,14 @@ final class BusinessFilamentActionPermissionRegistry
                 'modules' => ['ADMINISTRACION'],
             ],
             self::DELETE_PENDING_PAYMENT => [
-                'name' => 'Eliminar pagos pendientes del historial de pagos (con nota obligatoria)',
+                'name' => 'Anular pagos pendientes del historial de pagos (con motivo obligatorio)',
                 'group' => 'AFILIACIONES',
                 'modules' => [self::OWNER_MODULE, 'ADMINISTRACION'],
+            ],
+            self::EDIT_PENDING_PAYMENT => [
+                'name' => 'Editar pagos pendientes en «Pagos registrados» (con motivo obligatorio)',
+                'group' => 'AFILIACIONES',
+                'modules' => ['ADMINISTRACION'],
             ],
             self::EDIT_ORG_STRUCTURE => [
                 'name' => 'Estructura organizacional: crear y editar borradores del organigrama y enviarlos a aprobación',

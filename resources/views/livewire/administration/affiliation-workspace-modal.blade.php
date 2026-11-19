@@ -277,6 +277,7 @@
                         <option value="all">Todos</option>
                         <option value="PENDIENTE">Pendiente</option>
                         <option value="APROBADO">Aprobado</option>
+                        <option value="ANULADO">Anulado</option>
                     </select>
                 </label>
                 <label class="space-y-1">
@@ -320,17 +321,17 @@
                                 @endif
                             </td>
                             <td class="px-4 py-3">
-                                <span class="inline-flex rounded-full px-2 py-1 text-[11px] font-semibold {{ $payment->status === 'APROBADO' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-700/30 dark:text-emerald-200' : 'bg-amber-100 text-amber-700 dark:bg-amber-700/30 dark:text-amber-200' }}">
+                                <span class="inline-flex rounded-full px-2 py-1 text-[11px] font-semibold {{ match (\App\Filament\Shared\Affiliations\ManageAffiliationPayments::statusColor($payment->status)) { 'success' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-700/30 dark:text-emerald-200', 'danger' => 'bg-rose-100 text-rose-700 dark:bg-rose-700/30 dark:text-rose-200', default => 'bg-amber-100 text-amber-700 dark:bg-amber-700/30 dark:text-amber-200' } }}">
                                     {{ $payment->status }}
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-right">
-                                @if ($payment->status !== 'APROBADO')
+                                @if (\App\Support\Affiliations\PaymentApprovalGuard::isApprovableStatus($payment->status))
                                     <button type="button" wire:click="openApprove({{ $payment->id }})" class="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700">
                                         Aprobar
                                     </button>
                                 @else
-                                    <span class="text-[11px] text-slate-400">Aprobado</span>
+                                    <span class="text-[11px] text-slate-400">{{ \Illuminate\Support\Str::ucfirst(\Illuminate\Support\Str::lower((string) $payment->status)) }}</span>
                                 @endif
                             </td>
                         </tr>

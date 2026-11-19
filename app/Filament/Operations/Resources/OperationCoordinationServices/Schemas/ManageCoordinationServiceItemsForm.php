@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\OperationCoordinationServices\Schemas;
 
+use App\Filament\Operations\Pages\FarmadocMedicationOrder;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ManageCoordinationServiceItems;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Tables\OperationCoordinationServicesTable;
 use App\Models\OperationInventoryUbication;
@@ -13,12 +14,14 @@ use App\Support\Operations\CoordinationServiceItemsManager;
 use App\Support\Operations\ManageQuoteSupplierCreator;
 use App\Support\Operations\MedicalAppointmentManager;
 use App\Support\Operations\MedicationInvoiceWizard;
+use App\Support\Operations\MedicationQuoteLineStock;
 use App\Support\Operations\OperationServiceOrderCoveredPricingFormFields;
 use App\Support\Operations\OperationServiceOrderProviderContacts;
 use App\Support\Operations\OperationServiceOrderProviderFormFields;
 use App\Support\Operations\OperationServiceOrderUnregisteredProviderFormFields;
 use App\Support\Operations\QuoteInvoiceFormFields;
 use App\Support\Operations\QuoteLineProfitField;
+use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
@@ -482,6 +485,17 @@ final class ManageCoordinationServiceItemsForm
                                         ->columnSpanFull(),
                                     Repeater::make('manage_quote_line_items')
                                         ->label('Precios unitarios por ítem')
+                                        ->hintAction(
+                                            Action::make('reorderMedicationFromSupplier')
+                                                ->label('Hacer Pedido al Proveedor')
+                                                ->icon(Heroicon::OutlinedShoppingCart)
+                                                ->button()
+                                                ->color('warning')
+                                                ->visible(fn (mixed $state): bool => MedicationQuoteLineStock::listNeedsSupplierOrder(is_array($state) ? $state : null))
+                                                ->url(fn (ManageCoordinationServiceItems $livewire): string => FarmadocMedicationOrder::getUrl([
+                                                    'coordinacion' => $livewire->getRecord()->getKey(),
+                                                ])),
+                                        )
                                         ->addable(false)
                                         ->deletable(false)
                                         ->reorderable(false)
@@ -502,7 +516,11 @@ final class ManageCoordinationServiceItemsForm
                                             TextInput::make('label')
                                                 ->label('Ítem')
                                                 ->disabled()
-                                                ->dehydrated(),
+                                                ->dehydrated()
+                                                ->helperText(fn (Get $get): ?string => MedicationQuoteLineStock::hint(
+                                                    is_string($get('category')) ? $get('category') : null,
+                                                    is_string($get('label')) ? $get('label') : null,
+                                                )),
                                             TextInput::make('unit_price_usd')
                                                 ->label('Precio del proveedor (USD)')
                                                 ->prefix('US$')

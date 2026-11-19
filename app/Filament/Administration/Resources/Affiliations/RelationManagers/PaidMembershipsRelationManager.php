@@ -2,6 +2,7 @@
 
 namespace App\Filament\Administration\Resources\Affiliations\RelationManagers;
 
+use App\Filament\Shared\Affiliations\PendingPaymentEditActions;
 use App\Http\Controllers\PaidMembershipController;
 use App\Models\Affiliation;
 use App\Models\Collection;
@@ -19,6 +20,7 @@ use Filament\Support\Enums\Alignment;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class PaidMembershipsRelationManager extends RelationManager
 {
@@ -34,6 +36,7 @@ class PaidMembershipsRelationManager extends RelationManager
             ->heading('PAGOS REGISTRADOS')
             ->description('Relacion de pago de la afiliacion')
             ->recordTitleAttribute('affiliation_id')
+            ->modifyQueryUsing(fn (Builder $query): Builder => PendingPaymentEditActions::withEditCount($query))
             ->columns([
                 TextColumn::make('plan.description')
                     ->label('Plan')
@@ -143,15 +146,14 @@ class PaidMembershipsRelationManager extends RelationManager
                 TextColumn::make('status')
                     ->label('Estatus')
                     ->badge()
-                    ->color(function ($record) {
-                        return $record->status == 'APROBADO' ? 'success' : 'warning';
-                    }),
+                    ->color(fn ($record): string => \App\Filament\Shared\Affiliations\ManageAffiliationPayments::statusColor($record->status))
+                    ->description(fn ($record): ?string => PendingPaymentEditActions::editedDescription($record)),
             ])
             ->recordActions([
+                PendingPaymentEditActions::edit(),
+                PendingPaymentEditActions::history(),
                 Action::make('approve')
-                    ->hidden(function (PaidMembership $record) {
-                        return $record->status == 'APROBADO';
-                    })
+                    ->hidden(fn (PaidMembership $record): bool => ! \App\Support\Affiliations\PaymentApprovalGuard::isApprovableStatus($record->status))
                     ->label('Aprobar')
                     ->color('success')
                     ->icon('heroicon-s-check-circle')

@@ -7,6 +7,7 @@ namespace App\Support;
 use App\Http\Controllers\IndividualQuoteController;
 use App\Models\Agency;
 use App\Models\IndividualQuote;
+use App\Support\Quotes\Design\QuoteDesignedProposal;
 use App\Support\Quotes\IndividualQuoteUpgrades;
 use App\Support\TuDrQuote\QuoteDocumentLayout;
 use App\Support\TuDrQuote\QuoteServiceAttempt;
@@ -20,18 +21,18 @@ class IndividualQuotePdfGenerator
      */
     public static function generateForQuote(IndividualQuote $record, array $detailsQuote = []): bool
     {
-        return self::generateProposal($record, $detailsQuote);
+        return self::generateProposal($record, $detailsQuote, quoteIsNew: true);
     }
 
     /**
      * @param  list<array<string, mixed>>  $detailsQuote
      */
-    private static function generateProposal(IndividualQuote $record, array $detailsQuote = []): bool
+    private static function generateProposal(IndividualQuote $record, array $detailsQuote = [], bool $quoteIsNew = true): bool
     {
         $agentName = self::resolveAgentName($record);
 
         if ($record->plan === 'CM') {
-            return self::generateMultiple($record, $detailsQuote, $agentName);
+            return self::generateMultiple($record, $detailsQuote, $agentName, $quoteIsNew);
         }
 
         $planId = (int) $record->plan;
@@ -40,6 +41,14 @@ class IndividualQuotePdfGenerator
 
         if ($details === null) {
             return false;
+        }
+
+        /**
+         * Plan con diseño de cotización: la propuesta se arma con sus colores e imágenes. Si no
+         * tiene diseño (o algo falla), sigue el flujo de siempre.
+         */
+        if (QuoteDesignedProposal::generate(QuoteDocumentLayout::SCOPE_INDIVIDUAL, $record, [$planId], $quoteIsNew)) {
+            return true;
         }
 
         /**
@@ -81,13 +90,13 @@ class IndividualQuotePdfGenerator
             return true;
         }
 
-        return self::generateForQuote($record);
+        return self::generateProposal($record, quoteIsNew: false);
     }
 
     /**
      * @param  list<array<string, mixed>>  $detailsQuote
      */
-    private static function generateMultiple(IndividualQuote $record, array $detailsQuote, string $agentName): bool
+    private static function generateMultiple(IndividualQuote $record, array $detailsQuote, string $agentName, bool $quoteIsNew = true): bool
     {
         $planIds = collect($detailsQuote)
             ->pluck('plan_id')
@@ -126,6 +135,10 @@ class IndividualQuotePdfGenerator
         }
 
         usort($groupDetails, fn (array $a, array $b): int => (int) $a['plan'] <=> (int) $b['plan']);
+
+        if (QuoteDesignedProposal::generate(QuoteDocumentLayout::SCOPE_INDIVIDUAL, $record, $processedPlanIds, $quoteIsNew)) {
+            return true;
+        }
 
         /**
          * La propuesta multiplan también la dibuja el microservicio: una

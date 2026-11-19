@@ -2,17 +2,15 @@
 
 namespace App\Filament\Agents\Resources\Affiliations\RelationManagers;
 
-use Filament\Tables\Table;
 use Filament\Actions\Action;
-use Filament\Support\Enums\Width;
 use Filament\Actions\CreateAction;
-use Filament\Support\Enums\Alignment;
 use Filament\Forms\Components\Textarea;
+use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Support\Enums\Alignment;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Illuminate\Support\Facades\Storage;
-use Filament\Resources\RelationManagers\RelationManager;
-use App\Filament\Agents\Resources\Affiliations\AffiliationResource;
+use Filament\Tables\Table;
 
 class PaidMembershipsRelationManager extends RelationManager
 {
@@ -56,7 +54,7 @@ class PaidMembershipsRelationManager extends RelationManager
                     ->label('Pago multiple')
                     ->prefix('US$: ')
                     ->description(function ($record) {
-                        return $record->payment_method_ves != 'N/A' ? 'VES: ' . $record->payment_method_ves : 'VES: N/A';
+                        return $record->payment_method_ves != 'N/A' ? 'VES: '.$record->payment_method_ves : 'VES: N/A';
                     })
                     ->searchable(),
                 TextColumn::make('bank_usd')
@@ -69,7 +67,7 @@ class PaidMembershipsRelationManager extends RelationManager
                     ->label('Referencia de pago')
                     ->prefix('Ref(Zelle): ')
                     ->description(function ($record) {
-                        return $record->reference_payment_ves != 'N/A' ?  'Ref(VES): ' . $record->reference_payment_ves : 'Ref(VES): N/A';
+                        return $record->reference_payment_ves != 'N/A' ? 'Ref(VES): '.$record->reference_payment_ves : 'Ref(VES): N/A';
                     })
                     ->searchable(),
                 IconColumn::make('document_ves')
@@ -89,7 +87,7 @@ class PaidMembershipsRelationManager extends RelationManager
                             : 'danger'; // Rojo si no existe
                     })
                     ->url(function ($record) {
-                        return asset('storage/' . $record->document_ves);
+                        return asset('storage/'.$record->document_ves);
                     })
                     ->openUrlInNewTab(),
                 IconColumn::make('document_usd')
@@ -109,14 +107,14 @@ class PaidMembershipsRelationManager extends RelationManager
                             : 'danger'; // Rojo si no existe
                     })
                     ->url(function ($record) {
-                        return asset('storage/' . $record->document_usd);
+                        return asset('storage/'.$record->document_usd);
                     })
                     ->openUrlInNewTab(),
                 TextColumn::make('pay_amount_usd')
                     ->label('Pago registrado')
                     ->suffix(' US$')
                     ->description(function ($record) {
-                        return $record->pay_amount_ves != 'N/A' ? $record->pay_amount_ves . ' VES' : 'N/A';
+                        return $record->pay_amount_ves != 'N/A' ? $record->pay_amount_ves.' VES' : 'N/A';
                     }),
                 TextColumn::make('tasa_bcv')
                     ->label('Tasa BCV')
@@ -137,9 +135,7 @@ class PaidMembershipsRelationManager extends RelationManager
                 TextColumn::make('status')
                     ->label('Estatus')
                     ->badge()
-                    ->color(function ($record) {
-                        return $record->status == 'APROBADO' ? 'success' : 'warning';
-                    }),
+                    ->color(fn ($record): string => \App\Filament\Shared\Affiliations\ManageAffiliationPayments::statusColor($record->status)),
             ])
             ->filters([
                 //
@@ -159,7 +155,7 @@ class PaidMembershipsRelationManager extends RelationManager
                             ->label('Observaciones')
                             ->disabled()
                             ->autoSize()
-                            ->default(fn($record) => $record->observations_payment)
+                            ->default(fn ($record) => $record->observations_payment)
                             ->required(),
                     ]),
             ])

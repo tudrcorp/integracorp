@@ -6,7 +6,7 @@
 |--------------------------------------------------------------------------
 |
 | The closure you provide to your test functions is always bound to a specific PHPUnit test
-| case class. By default, that class is "PHPUnit\Framework\TestCase". Of course, you may
+| case class. By default, that class Pest "PHPUnit\Framework\TestCase". Of course, you may
 | need to change it using the "pest()" function to bind a different classes or traits.
 |
 */
@@ -483,4 +483,96 @@ function upgradeVouchersFor(array $affiliateIds): array
     }
 
     return $vouchers;
+}
+
+/**
+ * Esquema mínimo en sqlite `:memory:` para los tests de pagos de afiliación
+ * (editar y anular pendientes): pagos individuales y corporativos, sus dueños,
+ * lo que bloquea (ventas, cuotas, comisiones, conciliaciones), la traza de
+ * ediciones y `logs` de `SecurityAudit`. Nunca toca la base de desarrollo,
+ * esté o no cacheada la config.
+ */
+function bootAffiliationPaymentsSqliteSchema(): void
+{
+    config([
+        'database.default' => 'sqlite',
+        'database.connections.sqlite.database' => ':memory:',
+        'session.driver' => 'array',
+    ]);
+
+    Illuminate\Support\Facades\DB::purge('sqlite');
+    Illuminate\Support\Facades\DB::reconnect('sqlite');
+
+    $schema = Illuminate\Support\Facades\Schema::connection('sqlite');
+
+    $schema->create('logs', function (Illuminate\Database\Schema\Blueprint $table): void {
+        $table->id();
+        $table->unsignedBigInteger('user_id')->nullable();
+        $table->string('action')->nullable();
+        $table->string('route')->nullable();
+        $table->text('response')->nullable();
+        $table->string('method')->nullable();
+        $table->string('ip')->nullable();
+        $table->text('user_agent')->nullable();
+        $table->timestamps();
+    });
+
+    foreach (['affiliations', 'affiliation_corporates'] as $ownerTable) {
+        $schema->create($ownerTable, function (Illuminate\Database\Schema\Blueprint $table): void {
+            $table->id();
+            $table->string('code')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
+    }
+
+    foreach (['paid_memberships' => 'affiliation_id', 'paid_membership_corporates' => 'affiliation_corporate_id'] as $paymentTable => $ownerKey) {
+        $schema->create($paymentTable, function (Illuminate\Database\Schema\Blueprint $table) use ($ownerKey): void {
+            $table->id();
+            $table->unsignedBigInteger($ownerKey)->nullable();
+            foreach (['payment_method', 'payment_method_usd', 'payment_method_ves', 'name_ti_usd', 'bank_usd', 'bank_ves', 'reference_payment_usd', 'reference_payment_ves', 'document_usd', 'document_ves', 'date_payment_voucher', 'observations_payment', 'status', 'invoice_number', 'created_by', 'payment_date'] as $column) {
+                $table->string($column)->nullable();
+            }
+            $table->decimal('total_amount', 8, 2)->default(0);
+            $table->decimal('pay_amount_usd', 8, 2)->default(0);
+            $table->decimal('pay_amount_ves', 8, 2)->default(0);
+            $table->decimal('tasa_bcv', 8, 2)->nullable();
+            $table->timestamp('annulled_at')->nullable();
+            $table->unsignedBigInteger('annulled_by_user_id')->nullable();
+            $table->string('annulled_by_name')->nullable();
+            $table->text('annulment_reason')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    $schema->create('sales', function (Illuminate\Database\Schema\Blueprint $table): void {
+        $table->id();
+        $table->string('affiliation_code')->nullable();
+        $table->string('invoice_number')->nullable();
+        $table->timestamps();
+    });
+
+    $schema->create('collections', function (Illuminate\Database\Schema\Blueprint $table): void {
+        $table->id();
+        $table->string('affiliation_code')->nullable();
+        $table->string('collection_invoice_number')->nullable();
+        $table->unsignedBigInteger('sale_id')->nullable();
+        $table->timestamps();
+    });
+
+    $schema->create('commissions', function (Illuminate\Database\Schema\Blueprint $table): void {
+        $table->id();
+        $table->string('affiliation_code')->nullable();
+        $table->string('code')->nullable();
+        $table->timestamps();
+    });
+
+    $schema->create('credit_reconciliations', function (Illuminate\Database\Schema\Blueprint $table): void {
+        $table->id();
+        $table->unsignedBigInteger('paid_membership_id')->nullable();
+        $table->unsignedBigInteger('paid_membership_corporate_id')->nullable();
+        $table->timestamps();
+    });
+
+    (require dirname(__DIR__).'/database/migrations/2026_11_19_104710_create_payment_edit_logs_table.php')->up();
 }

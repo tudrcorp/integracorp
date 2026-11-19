@@ -99,7 +99,11 @@ final class CoordinationServiceQuoteEditForm
                             TextInput::make('label')
                                 ->label('Ítem')
                                 ->disabled()
-                                ->dehydrated(),
+                                ->dehydrated()
+                                ->helperText(fn (Get $get): ?string => MedicationQuoteLineStock::hint(
+                                    is_string($get('category')) ? $get('category') : null,
+                                    is_string($get('label')) ? $get('label') : null,
+                                )),
                             TextInput::make('unit_price_usd')
                                 ->label('Precio del proveedor (USD)')
                                 ->prefix('US$')

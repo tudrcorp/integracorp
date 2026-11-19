@@ -9,6 +9,7 @@ use App\Http\Controllers\PaidMembershipController;
 use App\Models\Affiliation;
 use App\Models\Collection;
 use App\Models\PaidMembership;
+use App\Support\Affiliations\PaymentApprovalGuard;
 use App\Support\SecurityAudit;
 use Filament\Notifications\Notification;
 use Illuminate\Contracts\View\View;
@@ -254,10 +255,11 @@ class AffiliationWorkspaceModal extends Component
             return;
         }
 
-        if ($membership->status === 'APROBADO') {
+        if (! PaymentApprovalGuard::isApprovableStatus($membership->status)) {
             $this->auditWorkspaceAction('AUDIT_ADMIN_AFFILIATION_WORKSPACE_APPROVAL_OPEN_SKIPPED', [
                 'paid_membership_id' => $paidMembershipId,
-                'reason' => 'membership_already_approved',
+                'reason' => 'membership_not_pending',
+                'status' => $membership->status,
             ]);
 
             return;

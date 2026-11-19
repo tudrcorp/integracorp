@@ -209,12 +209,12 @@ function pendingPaymentUser(array $departments): User
     ]);
 }
 
-it('desde el historial de pagos se elimina un pendiente con nota, y un aprobado no ofrece la acción', function (): void {
+it('desde el historial de pagos se anula un pendiente con motivo (la fila se queda), y un aprobado no ofrece la acción', function (): void {
     Filament\Facades\Filament::setCurrentPanel('business');
 
     $payment = makePendingIndividualPayment();
     $approved = PaidMembership::query()->where('affiliation_id', $payment->affiliation_id)->where('status', 'APROBADO')->first();
-    $action = Filament\Actions\Testing\TestAction::make('deletePendingPayment')->table($payment);
+    $action = Filament\Actions\Testing\TestAction::make('annulPendingPayment')->table($payment);
 
     $component = Livewire\Livewire::actingAs(pendingPaymentUser(['SUPERADMIN', 'NEGOCIOS']))
         ->test(App\Filament\Business\Resources\Affiliations\Pages\AffiliationPayments::class, ['record' => $payment->affiliation_id])
@@ -222,24 +222,24 @@ it('desde el historial de pagos se elimina un pendiente con nota, y un aprobado 
         ->assertActionVisible($action);
 
     if ($approved !== null) {
-        $component->assertActionHidden(Filament\Actions\Testing\TestAction::make('deletePendingPayment')->table($approved));
+        $component->assertActionHidden(Filament\Actions\Testing\TestAction::make('annulPendingPayment')->table($approved));
     }
 
     $component
         ->mountAction($action)
-        ->set('mountedActions.0.data.note', 'corta')
+        ->set('mountedActions.0.data.reason', 'corta')
         ->callMountedAction()
-        ->assertHasActionErrors(['note']);
+        ->assertHasActionErrors(['reason']);
 
     expect(PaidMembership::query()->whereKey($payment->id)->exists())->toBeTrue();
 
     $component
-        ->set('mountedActions.0.data.note', pendingPaymentNote())
+        ->set('mountedActions.0.data.reason', pendingPaymentNote())
         ->callMountedAction()
         ->assertHasNoActionErrors()
-        ->assertNotified('Pago pendiente eliminado');
+        ->assertNotified('Pago anulado');
 
-    expect(PaidMembership::query()->whereKey($payment->id)->exists())->toBeFalse();
+    expect(PaidMembership::query()->find($payment->id)?->status)->toBe('ANULADO');
 });
 
 it('un analista sin el permiso no ve la acción', function (): void {
