@@ -363,6 +363,7 @@ class FarmadocMedicationOrder extends Page implements HasTable
                 $this->branchId,
                 $this->orderNotes(),
                 $orderNumber,
+                $this->serviceOrderContext(),
             );
         } catch (FarmadocException $exception) {
             Notification::make()
@@ -412,9 +413,22 @@ class FarmadocMedicationOrder extends Page implements HasTable
         $this->orderLines = [];
         $this->reviewingOrder = false;
 
+        $serviceOrderNumber = is_string($placed['service_order_number'] ?? null) ? $placed['service_order_number'] : null;
+
+        if ($serviceOrderNumber === null) {
+            Notification::make()
+                ->title('Pedido enviado sin orden de servicio')
+                ->body('Farmadoc recibió '.$placed['order_number'].', pero no confirmó la orden de servicio. Avise a Farmadoc antes de enviarlo otra vez.')
+                ->warning()
+                ->persistent()
+                ->send();
+
+            return;
+        }
+
         Notification::make()
             ->title('Pedido enviado a Farmadoc')
-            ->body($placed['order_number'].' quedó '.$placed['status_label'].'. Puede armar otro pedido.')
+            ->body($placed['order_number'].' quedó '.$placed['status_label'].'. Orden de servicio '.$serviceOrderNumber.'.')
             ->success()
             ->send();
     }
@@ -548,6 +562,47 @@ class FarmadocMedicationOrder extends Page implements HasTable
         $this->coordinationReference = $reference;
         $this->patientName = $patient !== '' ? $patient : null;
         $this->coordinationLabel = 'Coordinación '.$reference.($patient !== '' ? ' · '.$patient : '').'.';
+    }
+
+    /**
+     * Datos clínicos que Farmadoc necesita para abrir la orden de servicio del pedido.
+     * Los campos que la coordinación no tiene viajan vacíos: Farmadoc igual abre la orden.
+     *
+     * @return array<string, mixed>
+     */
+    private function serviceOrderContext(): array
+    {
+        $coordination = $this->coordinationId === null
+            ? null
+            : OperationCoordinationService::query()
+                ->with('telemedicinePatient')
+                ->find($this->coordinationId);
+
+        $patient = $coordination?->telemedicinePatient;
+        $email = is_string($patient?->email) ? trim($patient->email) : '';
+
+        return [
+            'patient_name' => $this->patientName ?? (is_string($coordination?->patient) ? trim($coordination->patient) : null),
+            'patient_document' => $this->textOrNull($coordination?->ci_patient) ?? $this->textOrNull($patient?->nro_identificacion),
+            'patient_phone' => $this->textOrNull($coordination?->phone_holder) ?? $this->textOrNull($patient?->phone),
+            'patient_email' => filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : null,
+            'diagnosis' => $this->textOrNull($coordination?->symptoms_diagnosis),
+            'external_reference' => $this->coordinationReference,
+            'service_type' => 'medicamentos',
+            'status' => 'en-proceso',
+            'priority' => 'media',
+        ];
+    }
+
+    private function textOrNull(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        return $value === '' ? null : $value;
     }
 
     private function orderNotes(): string

@@ -27,6 +27,8 @@ class FarmadocOrder extends Model
     protected $fillable = [
         'order_number',
         'farmadoc_order_id',
+        'farmadoc_service_order_id',
+        'service_order_number',
         'operation_coordination_service_id',
         'coordination_reference',
         'patient_name',
@@ -51,6 +53,7 @@ class FarmadocOrder extends Model
             'items_count' => 'integer',
             'units_count' => 'integer',
             'farmadoc_order_id' => 'integer',
+            'farmadoc_service_order_id' => 'integer',
             'farmadoc_updated_at' => 'datetime',
             'status_checked_at' => 'datetime',
         ];

@@ -18,6 +18,10 @@ beforeEach(function (): void {
         (require dirname(__DIR__, 2).'/database/migrations/2026_11_19_103231_create_farmadoc_orders_table.php')->up();
     }
 
+    if (Schema::hasTable('farmadoc_orders') && ! Schema::hasColumn('farmadoc_orders', 'service_order_number')) {
+        (require dirname(__DIR__, 2).'/database/migrations/2026_11_19_180100_add_service_order_to_farmadoc_orders_table.php')->up();
+    }
+
     DB::beginTransaction();
 
     config()->set('services.farmadoc', [
@@ -36,7 +40,13 @@ it('guarda el pedido enviado sin precios y no lo duplica', function (): void {
         ['product_id' => 15, 'quantity' => 2, 'unit_price' => 0.0, 'product_name_snapshot' => 'Acetaminofen', 'sku_snapshot' => 'MED'],
         ['product_id' => 16, 'quantity' => 3, 'unit_price' => 0.0, 'product_name_snapshot' => 'Ibuprofeno', 'sku_snapshot' => null],
     ];
-    $placed = ['order_number' => 'IC-TEST-1', 'order_id' => 77, 'status' => 'pendiente'];
+    $placed = [
+        'order_number' => 'IC-TEST-1',
+        'order_id' => 77,
+        'status' => 'pendiente',
+        'service_order_number' => 'ORD-009',
+        'service_order_id' => 9,
+    ];
 
     $order = FarmadocOrderTracker::record($placed, $items, 9, 'COORD-9', 'Paciente Prueba', null);
     $again = FarmadocOrderTracker::record($placed, $items, 9, 'COORD-9', 'Paciente Prueba', null);
@@ -46,6 +56,8 @@ it('guarda el pedido enviado sin precios y no lo duplica', function (): void {
         ->and($order->items_count)->toBe(2)
         ->and($order->units_count)->toBe(5)
         ->and($order->farmadoc_order_id)->toBe(77)
+        ->and($order->service_order_number)->toBe('ORD-009')
+        ->and($order->farmadoc_service_order_id)->toBe(9)
         ->and($order->status)->toBe(FarmadocOrder::STATUS_PENDING)
         ->and($order->items[0])->toBe(['product_id' => 15, 'name' => 'Acetaminofen', 'sku' => 'MED', 'quantity' => 2])
         ->and(json_encode($order->items))->not->toContain('price');

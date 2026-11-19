@@ -24,7 +24,7 @@ class FarmadocOrdersTable
             ->description('Pedidos de medicamentos enviados por los analistas. El estatus se consulta en Farmadoc cada 30 minutos.')
             ->defaultSort('created_at', 'desc')
             ->poll('60s')
-            ->searchPlaceholder('Buscar por número, coordinación, paciente o analista')
+            ->searchPlaceholder('Buscar por pedido, orden de servicio, coordinación, paciente o analista')
             ->columns([
                 TextColumn::make('created_at')
                     ->label('Enviado')
@@ -36,6 +36,12 @@ class FarmadocOrdersTable
                     ->copyable()
                     ->copyMessage('Número copiado')
                     ->searchable(),
+                TextColumn::make('service_order_number')
+                    ->label('Orden de servicio')
+                    ->placeholder('—')
+                    ->copyable()
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('coordination_reference')
                     ->label('Coordinación')
                     ->description(fn (FarmadocOrder $record): ?string => $record->patient_name)

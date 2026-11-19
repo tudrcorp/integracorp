@@ -18,7 +18,7 @@ use Throwable;
 final class FarmadocOrderTracker
 {
     /**
-     * @param  array{order_number: string, order_id?: int|null, status?: string|null}  $placed
+     * @param  array{order_number: string, order_id?: int|null, status?: string|null, service_order_number?: string|null, service_order_id?: int|null}  $placed
      * @param  list<array{product_id: int, quantity: int, product_name_snapshot?: string|null, sku_snapshot?: string|null}>  $items
      */
     public static function record(
@@ -40,6 +40,11 @@ final class FarmadocOrderTracker
             ['order_number' => $placed['order_number']],
             [
                 'farmadoc_order_id' => $placed['order_id'] ?? null,
+                'farmadoc_service_order_id' => $placed['service_order_id'] ?? null,
+                'service_order_number' => self::limit(
+                    is_string($placed['service_order_number'] ?? null) ? $placed['service_order_number'] : null,
+                    100,
+                ),
                 'operation_coordination_service_id' => $coordinationId,
                 'coordination_reference' => self::limit($coordinationReference, 100),
                 'patient_name' => self::limit($patientName, 255),

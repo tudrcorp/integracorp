@@ -157,6 +157,11 @@ it('envía el pedido a Farmadoc con precio cero y descarta el precio del catálo
                 'status' => 'pendiente',
                 'items_count' => 1,
                 'total' => 0,
+                'service_order' => [
+                    'order_service_id' => 4,
+                    'service_order_number' => 'ORD-004',
+                    'status' => 'en-proceso',
+                ],
             ],
         ], 201),
     ]);
@@ -171,10 +176,16 @@ it('envía el pedido a Farmadoc con precio cero y descarta el precio del catálo
         ['product_id' => 15, 'quantity' => 2, 'unit_price' => 99],
     ], $catalog['medications']);
 
-    $order = $client->placeOrder($items, $catalog['branch_id'], 'Pedido de prueba', 'IC-1');
+    $order = $client->placeOrder($items, $catalog['branch_id'], 'Pedido de prueba', 'IC-1', [
+        'patient_name' => 'Paciente Prueba',
+        'external_reference' => 'REF-1',
+        'service_type' => 'medicamentos',
+    ]);
 
     expect($order['order_number'])->toBe('IC-1')
         ->and($order['status_label'])->toBe('Pendiente')
+        ->and($order['service_order_number'])->toBe('ORD-004')
+        ->and($order['service_order_id'])->toBe(4)
         ->and(array_key_exists('total', $order))->toBeFalse();
 
     Http::assertSent(function ($request): bool {
@@ -188,6 +199,8 @@ it('envía el pedido a Farmadoc con precio cero y descarta el precio del catálo
             && ($body['partner_company'] ?? null) === 'ALDO-2026-0021'
             && (int) ($body['client_id'] ?? 0) === 12
             && (int) ($body['branch_id'] ?? 0) === 3
+            && ($body['service_order']['patient_name'] ?? null) === 'Paciente Prueba'
+            && ($body['service_order']['external_reference'] ?? null) === 'REF-1'
             && ! array_key_exists('sale_price', $body['items'][0]);
     });
 });

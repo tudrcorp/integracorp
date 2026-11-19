@@ -13,6 +13,8 @@ use App\Support\TuDrQuote\QuoteDocumentLayout;
 use App\Support\TuDrQuote\QuoteServiceAttempt;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class IndividualQuotePdfGenerator
 {
@@ -47,7 +49,7 @@ class IndividualQuotePdfGenerator
          * Plan con diseño de cotización: la propuesta se arma con sus colores e imágenes. Si no
          * tiene diseño (o algo falla), sigue el flujo de siempre.
          */
-        if (QuoteDesignedProposal::generate(QuoteDocumentLayout::SCOPE_INDIVIDUAL, $record, [$planId], $quoteIsNew)) {
+        if (self::attemptDesignedProposal(QuoteDocumentLayout::SCOPE_INDIVIDUAL, $record, [$planId], $quoteIsNew)) {
             return true;
         }
 
@@ -136,7 +138,7 @@ class IndividualQuotePdfGenerator
 
         usort($groupDetails, fn (array $a, array $b): int => (int) $a['plan'] <=> (int) $b['plan']);
 
-        if (QuoteDesignedProposal::generate(QuoteDocumentLayout::SCOPE_INDIVIDUAL, $record, $processedPlanIds, $quoteIsNew)) {
+        if (self::attemptDesignedProposal(QuoteDocumentLayout::SCOPE_INDIVIDUAL, $record, $processedPlanIds, $quoteIsNew)) {
             return true;
         }
 
@@ -211,5 +213,29 @@ class IndividualQuotePdfGenerator
         }
 
         return Auth::user()->name;
+    }
+
+    /**
+     * El diseño es opcional. Si la clase no está desplegada o falla al cargar, la cotización
+     * sigue con el microservicio y el generador local.
+     *
+     * @param  list<int|string>  $planIds
+     */
+    private static function attemptDesignedProposal(string $scope, IndividualQuote $record, array $planIds, bool $quoteIsNew): bool
+    {
+        if (! class_exists(QuoteDesignedProposal::class)) {
+            return false;
+        }
+
+        try {
+            return QuoteDesignedProposal::generate($scope, $record, $planIds, $quoteIsNew);
+        } catch (Throwable $exception) {
+            Log::warning('quote-design: la cotización individual sigue sin diseño', [
+                'code' => $record->code,
+                'message' => $exception->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 }

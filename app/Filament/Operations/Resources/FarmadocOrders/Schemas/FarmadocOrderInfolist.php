@@ -24,6 +24,11 @@ class FarmadocOrderInfolist
                     ->extraAttributes(['class' => self::SECTION_CARD])
                     ->schema([
                         TextEntry::make('order_number')->label('Número de pedido')->weight(FontWeight::SemiBold)->copyable(),
+                        TextEntry::make('service_order_number')
+                            ->label('Orden de servicio')
+                            ->placeholder('Sin orden de servicio')
+                            ->weight(FontWeight::SemiBold)
+                            ->copyable(),
                         TextEntry::make('status')
                             ->label('Estatus en Farmadoc')
                             ->badge()

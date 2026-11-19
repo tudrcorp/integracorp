@@ -47,9 +47,10 @@ final class FarmadocAllyClient
 
     /**
      * @param  list<array<string, mixed>>  $items
-     * @return array{order_number: string, order_id: int|null, items_count: int, status: string, status_label: string}
+     * @param  array<string, mixed>|null  $serviceOrder
+     * @return array{order_number: string, order_id: int|null, items_count: int, status: string, status_label: string, service_order_number: string|null, service_order_id: int|null}
      */
-    public function placeOrder(array $items, ?int $branchId, ?string $notes, ?string $orderNumber = null): array
+    public function placeOrder(array $items, ?int $branchId, ?string $notes, ?string $orderNumber = null, ?array $serviceOrder = null): array
     {
         $this->assertConfigured(requireClient: true);
 
@@ -82,6 +83,10 @@ final class FarmadocAllyClient
             $payload['order_number'] = $orderNumber;
         }
 
+        if (is_array($serviceOrder)) {
+            $payload['service_order'] = $serviceOrder;
+        }
+
         $response = $this->send('post', '/api/external/orders', $payload);
         $data = $response->json('data');
 
@@ -90,6 +95,7 @@ final class FarmadocAllyClient
         }
 
         $status = is_string($data['status'] ?? null) ? $data['status'] : 'pendiente';
+        $service = is_array($data['service_order'] ?? null) ? $data['service_order'] : [];
 
         return [
             'order_number' => $data['order_number'],
@@ -97,6 +103,10 @@ final class FarmadocAllyClient
             'items_count' => (int) ($data['items_count'] ?? count($items)),
             'status' => $status,
             'status_label' => $this->statusLabel($status),
+            'service_order_number' => is_string($service['service_order_number'] ?? null) && $service['service_order_number'] !== ''
+                ? $service['service_order_number']
+                : null,
+            'service_order_id' => is_numeric($service['order_service_id'] ?? null) ? (int) $service['order_service_id'] : null,
         ];
     }
 
