@@ -14,6 +14,7 @@ enum AdministrationReportType: string
     case DroppedAffiliationCollections = 'dropped_affiliation_collections';
     case CommissionsDetail = 'commissions_detail';
     case CapitationBilling = 'capitation_billing';
+    case CorporateDirectory = 'corporate_directory';
 
     public function label(): string
     {
@@ -23,6 +24,7 @@ enum AdministrationReportType: string
             self::DroppedAffiliationCollections => 'Cuotas de afiliaciones dadas de baja',
             self::CommissionsDetail => 'Detallado de comisiones',
             self::CapitationBilling => 'Pre-facturación de capitado',
+            self::CorporateDirectory => 'Afiliaciones corporativas',
         };
     }
 
@@ -34,6 +36,7 @@ enum AdministrationReportType: string
             self::DroppedAffiliationCollections => 'Cuotas por pagar de afiliaciones excluidas, inactivas o anuladas, con la fecha de baja y si vencen antes o después de ella, para decidir si se anulan o se mantienen como deuda.',
             self::CommissionsDetail => 'Una fila por comisión calculada con toda la estructura: agencia master, agencia general, agente, subagente y referidor, y lo que cobra cada uno en USD y VES.',
             self::CapitationBilling => 'Lo que se le paga a un proveedor Outsourcing en el mes: afiliados con su tarifa de capitado, resumen por tomador, prorrateo de nuevos afiliados, retiros, descuentos y tasa BCV. Se cierra el mes para dejarlo fijo.',
+            self::CorporateDirectory => 'Una fila por afiliación corporativa con su razón social, RIF y dirección (calle, ciudad, estado y país).',
         };
     }
 
@@ -45,6 +48,7 @@ enum AdministrationReportType: string
             self::DroppedAffiliationCollections => 'heroicon-o-user-minus',
             self::CommissionsDetail => 'heroicon-o-banknotes',
             self::CapitationBilling => 'heroicon-o-receipt-percent',
+            self::CorporateDirectory => 'heroicon-o-building-office',
         };
     }
 
@@ -56,6 +60,7 @@ enum AdministrationReportType: string
             self::DroppedAffiliationCollections => 'cuotas-afiliaciones-de-baja',
             self::CommissionsDetail => 'detallado-comisiones',
             self::CapitationBilling => 'prefacturacion-capitado',
+            self::CorporateDirectory => 'afiliaciones-corporativas',
         };
     }
 
@@ -90,6 +95,14 @@ enum AdministrationReportType: string
     public function isCapitation(): bool
     {
         return $this === self::CapitationBilling;
+    }
+
+    /**
+     * Directorio de afiliaciones corporativas: no filtra por vencimiento ni por estatus de cobro.
+     */
+    public function isCorporateDirectory(): bool
+    {
+        return $this === self::CorporateDirectory;
     }
 
     public function isGrouped(): bool

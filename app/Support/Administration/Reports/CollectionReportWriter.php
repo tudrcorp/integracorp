@@ -86,10 +86,17 @@ final class CollectionReportWriter
     private static function xlsx(CollectionReportData $data, string $path, ?string $notice): void
     {
         $options = new XlsxOptions;
-        $options->setColumnWidth(14, CollectionReportBuilder::COL_EMISSION_DATE + 1);
-        $options->setColumnWidth(34, CollectionReportBuilder::COL_HOLDER + 1, CollectionReportBuilder::COL_PAYER + 1, CollectionReportBuilder::COL_AGENCY + 1, CollectionReportBuilder::COL_AGENT + 1);
-        $options->setColumnWidth(26, CollectionReportBuilder::COL_EMAIL + 1, CollectionReportBuilder::COL_PLAN + 1);
-        $options->setColumnWidth(16, CollectionReportBuilder::COL_ANNUAL_FEE + 1, CollectionReportBuilder::COL_AMOUNT_BY_FREQUENCY + 1, CollectionReportBuilder::COL_INSTALLMENT_AMOUNT + 1, CollectionReportBuilder::COL_DUE_DATE + 1);
+
+        if ($data->columnWidths !== null) {
+            foreach ($data->columnWidths as $index => $width) {
+                $options->setColumnWidth($width, $index + 1);
+            }
+        } else {
+            $options->setColumnWidth(14, CollectionReportBuilder::COL_EMISSION_DATE + 1);
+            $options->setColumnWidth(34, CollectionReportBuilder::COL_HOLDER + 1, CollectionReportBuilder::COL_PAYER + 1, CollectionReportBuilder::COL_AGENCY + 1, CollectionReportBuilder::COL_AGENT + 1);
+            $options->setColumnWidth(26, CollectionReportBuilder::COL_EMAIL + 1, CollectionReportBuilder::COL_PLAN + 1);
+            $options->setColumnWidth(16, CollectionReportBuilder::COL_ANNUAL_FEE + 1, CollectionReportBuilder::COL_AMOUNT_BY_FREQUENCY + 1, CollectionReportBuilder::COL_INSTALLMENT_AMOUNT + 1, CollectionReportBuilder::COL_DUE_DATE + 1);
+        }
 
         $writer = new XlsxWriter($options);
         $writer->openToFile($path);

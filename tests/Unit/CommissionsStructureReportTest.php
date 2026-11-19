@@ -104,7 +104,7 @@ it('el Centro de reportes ofrece el Detallado de comisiones por fecha de cálcul
 
     expect($page)
         ->toContain('CollectionReportFilters::periodOptionsFor(self::reportType($get))')
-        ->toContain('->visible(fn (Get $get): bool => ! self::isCommissions($get) && ! self::isCapitation($get))')
+        ->toContain('->visible(fn (Get $get): bool => self::showsCollectionStatus($get))')
         ->toContain('Por fecha de cálculo de la comisión.');
 });
 
