@@ -199,6 +199,10 @@ final class CollectionReportBuilder
             return CommissionsDetailReport::count($filters);
         }
 
+        if ($filters->type === AdministrationReportType::CorporateDirectory) {
+            return CorporateAffiliationsDirectoryReport::count();
+        }
+
         return self::query($filters, $network)->reorder()->count();
     }
 
@@ -213,6 +217,10 @@ final class CollectionReportBuilder
 
         if ($filters->type === AdministrationReportType::CommissionsDetail) {
             return CommissionsDetailReport::build($filters, $rowLimit);
+        }
+
+        if ($filters->type === AdministrationReportType::CorporateDirectory) {
+            return CorporateAffiliationsDirectoryReport::build($filters, $rowLimit);
         }
 
         $network = self::network($filters);

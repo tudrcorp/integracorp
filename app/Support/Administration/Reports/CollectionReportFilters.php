@@ -165,6 +165,10 @@ final readonly class CollectionReportFilters
         $type = AdministrationReportType::tryFrom((string) ($data['type'] ?? ''))
             ?? throw new InvalidArgumentException('Seleccione el reporte que necesita.');
 
+        if ($type->isCorporateDirectory()) {
+            return new self(type: $type, from: null, to: null);
+        }
+
         [$from, $to] = self::resolvePeriod(
             (string) ($data['period'] ?? self::PERIOD_THIS_MONTH),
             $data['from'] ?? null,
@@ -223,6 +227,10 @@ final readonly class CollectionReportFilters
                     ? 'Fecha de cálculo: todo el historial'
                     : 'Fecha de cálculo: del '.$this->from->format('d/m/Y').' al '.$this->to?->format('d/m/Y'),
             ];
+        }
+
+        if ($this->type->isCorporateDirectory()) {
+            return ['Todas las afiliaciones corporativas: razón social, RIF y dirección.'];
         }
 
         $lines = [

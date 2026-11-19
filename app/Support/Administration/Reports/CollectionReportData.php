@@ -31,6 +31,7 @@ final readonly class CollectionReportData
      * @param  list<string>  $criteria  Periodo, estatus y alcance en texto, para el encabezado.
      * @param  list<int>  $pdfColumns  Columnas que caben en el PDF horizontal.
      * @param  list<int>|null  $moneyColumns  Columnas con formato de moneda en Excel (null: las del reporte de cobranza).
+     * @param  list<float>|null  $columnWidths  Ancho de cada columna en Excel (null: los anchos del reporte de cobranza).
      */
     public function __construct(
         public string $title,
@@ -40,5 +41,6 @@ final readonly class CollectionReportData
         public array $criteria,
         public array $pdfColumns,
         public ?array $moneyColumns = null,
+        public ?array $columnWidths = null,
     ) {}
 }

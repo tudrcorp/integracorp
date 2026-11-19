@@ -125,7 +125,7 @@ class CentroDeReportes extends Page
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'Elija el reporte, el periodo y el formato, y pulse «Generar reporte». Los reportes de cobranza traen los mismos datos de «Cuentas por cobrar»; el de afiliaciones dadas de baja, una fila por cuota pendiente; el de comisiones, una fila por comisión con toda la estructura comercial.';
+        return 'Elija el reporte, el periodo y el formato, y pulse «Generar reporte». Los reportes de cobranza traen los mismos datos de «Cuentas por cobrar»; el de afiliaciones dadas de baja, una fila por cuota pendiente; el de comisiones, una fila por comisión con toda la estructura comercial; el de afiliaciones corporativas, la razón social, el RIF y la dirección de cada empresa.';
     }
 
     public function form(Schema $schema): Schema
@@ -295,13 +295,13 @@ class CentroDeReportes extends Page
                     ->description(fn (Get $get): string => self::isCommissions($get)
                         ? 'Por fecha de cálculo de la comisión.'
                         : 'Por fecha de vencimiento de la cuota pendiente.')
-                    ->visible(fn (Get $get): bool => ! self::isCapitation($get))
+                    ->visible(fn (Get $get): bool => self::showsPeriod($get))
                     ->schema([
                         ToggleButtons::make('period')
                             ->hiddenLabel()
                             ->options(fn (Get $get): array => CollectionReportFilters::periodOptionsFor(self::reportType($get)))
                             ->inline()
-                            ->required(fn (Get $get): bool => ! self::isCapitation($get))
+                            ->required(fn (Get $get): bool => self::showsPeriod($get))
                             ->live(),
                         Grid::make(2)
                             ->visible(fn (Get $get): bool => $get('period') === CollectionReportFilters::PERIOD_CUSTOM)
@@ -310,7 +310,7 @@ class CentroDeReportes extends Page
                                     ->label('Desde')
                                     ->native(false)
                                     ->displayFormat('d/m/Y')
-                                    ->required(fn (Get $get): bool => $get('period') === CollectionReportFilters::PERIOD_CUSTOM)
+                                    ->required(fn (Get $get): bool => self::showsPeriod($get) && $get('period') === CollectionReportFilters::PERIOD_CUSTOM)
                                     ->live(onBlur: true),
                                 DatePicker::make('to')
                                     ->label('Hasta')
@@ -318,7 +318,7 @@ class CentroDeReportes extends Page
                                     ->displayFormat('d/m/Y')
                                     ->afterOrEqual('from')
                                     ->validationMessages(['after_or_equal' => '«Hasta» debe ser igual o posterior a «Desde».'])
-                                    ->required(fn (Get $get): bool => $get('period') === CollectionReportFilters::PERIOD_CUSTOM)
+                                    ->required(fn (Get $get): bool => self::showsPeriod($get) && $get('period') === CollectionReportFilters::PERIOD_CUSTOM)
                                     ->live(onBlur: true),
                             ]),
                         ToggleButtons::make('collection_status')
@@ -330,12 +330,12 @@ class CentroDeReportes extends Page
                                 CollectionReceivableReport::STATUS_OVERDUE => 'danger',
                             ])
                             ->inline()
-                            ->visible(fn (Get $get): bool => ! self::isCommissions($get) && ! self::isCapitation($get))
-                            ->required(fn (Get $get): bool => ! self::isCommissions($get) && ! self::isCapitation($get))
+                            ->visible(fn (Get $get): bool => self::showsCollectionStatus($get))
+                            ->required(fn (Get $get): bool => self::showsCollectionStatus($get))
                             ->live(),
                     ])
                     ->columnSpanFull(),
-                Section::make(fn (Get $get): string => self::isStructure($get) || self::isCapitation($get) ? '4. Formato' : '3. Formato')
+                Section::make(fn (Get $get): string => self::formatStepTitle($get))
                     ->schema([
                         ToggleButtons::make('format')
                             ->hiddenLabel()
@@ -413,9 +413,11 @@ class CentroDeReportes extends Page
         $count = CollectionReportBuilder::count($filters);
 
         if ($count === 0) {
-            $this->notifyError('No hay datos', $filters->type->isCommissions()
-                ? 'No hay comisiones calculadas en ese periodo. Pruebe con «Este año» o «Todo el historial».'
-                : 'No hay datos con el periodo y los filtros seleccionados. Pruebe con «Toda la cartera» o cambie el estatus de cobro.', 'warning');
+            $this->notifyError('No hay datos', match (true) {
+                $filters->type->isCommissions() => 'No hay comisiones calculadas en ese periodo. Pruebe con «Este año» o «Todo el historial».',
+                $filters->type->isCorporateDirectory() => 'No hay afiliaciones corporativas para incluir en el reporte.',
+                default => 'No hay datos con el periodo y los filtros seleccionados. Pruebe con «Toda la cartera» o cambie el estatus de cobro.',
+            }, 'warning');
 
             return null;
         }
@@ -616,6 +618,7 @@ class CentroDeReportes extends Page
 
         $hint = match (true) {
             $count === 0 && $filters->type->isCommissions() => 'Pruebe con «Este año» o «Todo el historial».',
+            $count === 0 && $filters->type->isCorporateDirectory() => 'No hay afiliaciones corporativas registradas.',
             $count === 0 => 'Pruebe con «Toda la cartera» o cambie el estatus de cobro.',
             $format === OperationReportFormat::Pdf && $count > AdministrationReportGenerator::PDF_ROW_LIMIT => 'El PDF mostrará las primeras '.number_format(AdministrationReportGenerator::PDF_ROW_LIMIT, 0, ',', '.').' '.$plural.' y se generará en segundo plano. Para el listado completo use Excel o CSV.',
             $format !== null && AdministrationReportGenerator::shouldQueue($format, $count) => 'Es un reporte grande: se generará en segundo plano y le avisaremos en la campana al terminar.',
@@ -848,6 +851,34 @@ class CentroDeReportes extends Page
     private static function isCommissions(Get $get): bool
     {
         return self::reportType($get)?->isCommissions() ?? false;
+    }
+
+    private static function isCorporateDirectory(Get $get): bool
+    {
+        return self::reportType($get)?->isCorporateDirectory() ?? false;
+    }
+
+    private static function showsPeriod(Get $get): bool
+    {
+        return ! self::isCapitation($get) && ! self::isCorporateDirectory($get);
+    }
+
+    private static function showsCollectionStatus(Get $get): bool
+    {
+        return self::showsPeriod($get) && ! self::isCommissions($get);
+    }
+
+    private static function formatStepTitle(Get $get): string
+    {
+        if (self::isStructure($get) || self::isCapitation($get)) {
+            return '4. Formato';
+        }
+
+        if (self::isCorporateDirectory($get)) {
+            return '2. Formato';
+        }
+
+        return '3. Formato';
     }
 
     private static function reportType(Get $get): ?AdministrationReportType
