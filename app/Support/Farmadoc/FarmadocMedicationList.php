@@ -14,6 +14,10 @@ use Illuminate\Support\Str;
  */
 final class FarmadocMedicationList
 {
+    public const LABEL_PRESCRIPTION = 'Requiere fórmula';
+
+    public const LABEL_CONTROLLED = 'Controlado';
+
     /**
      * @param  list<mixed>  $rows
      * @return list<array<string, mixed>>
@@ -85,6 +89,78 @@ final class FarmadocMedicationList
             $page,
             ['path' => '/'],
         );
+    }
+
+    /**
+     * Filtros de la tabla del analista. `$filters` llega tal cual lo guarda Filament
+     * (`['requires_prescription' => ['isActive' => true], …]`).
+     *
+     * @param  list<array<string, mixed>>  $medications
+     * @param  array<string, mixed>|null  $filters
+     * @param  list<int>  $orderedProductIds
+     * @return list<array<string, mixed>>
+     */
+    public static function applyFilters(array $medications, ?array $filters, array $orderedProductIds = []): array
+    {
+        $isActive = static fn (string $name): bool => is_array($filters[$name] ?? null)
+            && (bool) ($filters[$name]['isActive'] ?? false);
+
+        $onlyPrescription = $isActive('requires_prescription');
+        $onlyControlled = $isActive('controlled');
+        $onlyInOrder = $isActive('in_order');
+
+        if (! $onlyPrescription && ! $onlyControlled && ! $onlyInOrder) {
+            return $medications;
+        }
+
+        $ordered = array_fill_keys(array_map(intval(...), $orderedProductIds), true);
+
+        return array_values(array_filter(
+            $medications,
+            static fn (array $medication): bool => (! $onlyPrescription || (bool) ($medication['requires_prescription'] ?? false))
+                && (! $onlyControlled || (bool) ($medication['is_controlled_substance'] ?? false))
+                && (! $onlyInOrder || isset($ordered[(int) ($medication['product_id'] ?? 0)])),
+        ));
+    }
+
+    /**
+     * Segunda línea de la columna «Medicamento»: concentración · presentación · marca.
+     *
+     * @param  array<string, mixed>  $medication
+     */
+    public static function detailsLine(array $medication): ?string
+    {
+        $parts = array_values(array_unique(array_filter(
+            [
+                $medication['concentration'] ?? null,
+                $medication['presentation'] ?? null,
+                $medication['brand'] ?? null,
+            ],
+            static fn (mixed $value): bool => is_string($value) && trim($value) !== '',
+        )));
+
+        return $parts === [] ? null : implode(' · ', array_map(trim(...), $parts));
+    }
+
+    /**
+     * Etiquetas de la columna «Condiciones»: solo lo que exige atención.
+     *
+     * @param  array<string, mixed>  $medication
+     * @return list<string>
+     */
+    public static function conditionLabels(array $medication): array
+    {
+        $labels = [];
+
+        if ((bool) ($medication['requires_prescription'] ?? false)) {
+            $labels[] = self::LABEL_PRESCRIPTION;
+        }
+
+        if ((bool) ($medication['is_controlled_substance'] ?? false)) {
+            $labels[] = self::LABEL_CONTROLLED;
+        }
+
+        return $labels;
     }
 
     /**

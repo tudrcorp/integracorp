@@ -18,11 +18,14 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Support\Enums\FontWeight;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -37,6 +40,16 @@ class FarmadocMedicationOrder extends Page implements HasTable
     use InteractsWithTable;
 
     private const CACHE_KEY = 'farmadoc.las-delicias.catalog';
+
+    /**
+     * Copia de respaldo del último catálogo que respondió bien: si la API de Farmadoc
+     * falla, el analista sigue eligiendo con ella en lugar de quedarse sin tabla.
+     */
+    private const STALE_CACHE_KEY = 'farmadoc.las-delicias.catalog.stale';
+
+    private const CACHE_MINUTES = 10;
+
+    private const STALE_CACHE_HOURS = 24;
 
     protected static bool $shouldRegisterNavigation = false;
 
@@ -67,6 +80,8 @@ class FarmadocMedicationOrder extends Page implements HasTable
     public ?string $logoUrl = null;
 
     public ?string $catalogError = null;
+
+    public ?string $catalogNotice = null;
 
     private bool $catalogAttempted = false;
 
@@ -127,9 +142,9 @@ class FarmadocMedicationOrder extends Page implements HasTable
     public function table(Table $table): Table
     {
         return $table
-            ->records(function (?string $search, int|string $page, int|string $recordsPerPage, ?string $sortColumn, ?string $sortDirection): LengthAwarePaginator {
+            ->records(function (?string $search, int|string $page, int|string $recordsPerPage, ?string $sortColumn, ?string $sortDirection, ?array $filters): LengthAwarePaginator {
                 $paginator = FarmadocMedicationList::paginate(
-                    $this->medications(),
+                    FarmadocMedicationList::applyFilters($this->medications(), $filters, $this->orderedProductIds()),
                     $search,
                     (int) $page,
                     is_numeric($recordsPerPage) ? (int) $recordsPerPage : 25,
@@ -151,49 +166,91 @@ class FarmadocMedicationOrder extends Page implements HasTable
             ->heading('Medicamentos Farmadoc')
             ->description('Catálogo de Las Delicias. No se muestran precios ni existencias.')
             ->searchable()
+            ->searchDebounce('400ms')
             ->searchPlaceholder('Buscar por nombre, principio activo, presentación o SKU')
-            ->emptyStateHeading(fn (): string => $this->catalogError !== null ? 'No se pudo cargar el catálogo' : 'Sin medicamentos')
-            ->emptyStateDescription(fn (): ?string => $this->catalogError ?? 'Farmadoc no devolvió medicamentos activos para Las Delicias.')
+            ->emptyStateHeading(fn (): string => match (true) {
+                $this->catalogError !== null => 'No se pudo cargar el catálogo',
+                $this->isTableFilterActive('in_order') && $this->orderLines === [] => 'Aún no hay medicamentos en el pedido',
+                default => 'Sin medicamentos',
+            })
+            ->emptyStateDescription(fn (): ?string => match (true) {
+                $this->catalogError !== null => $this->catalogError,
+                $this->isTableFilterActive('in_order') && $this->orderLines === [] => 'Quite el filtro «Solo los del pedido» y pulse «Agregar» en los medicamentos que necesite.',
+                filled($this->getTableSearch()) || $this->hasActiveTableFilters() => 'Ningún medicamento coincide con la búsqueda o los filtros. Pruebe con otro término o quite los filtros.',
+                default => 'Farmadoc no devolvió medicamentos activos para Las Delicias.',
+            })
             ->emptyStateIcon(Heroicon::OutlinedBeaker)
             ->defaultPaginationPageOption(25)
             ->paginated([10, 25, 50])
             ->defaultSort('name')
+            ->recordClasses(fn (array $record): ?string => ((int) ($record['order_quantity'] ?? 0)) > 0 ? 'fi-farmadoc-row-in-order' : null)
+            ->filters([
+                Filter::make('requires_prescription')
+                    ->label(FarmadocMedicationList::LABEL_PRESCRIPTION)
+                    ->toggle(),
+                Filter::make('controlled')
+                    ->label(FarmadocMedicationList::LABEL_CONTROLLED)
+                    ->toggle(),
+                Filter::make('in_order')
+                    ->label('Solo los del pedido')
+                    ->toggle(),
+            ], layout: FiltersLayout::Dropdown)
+            ->deferFilters(false)
             ->columns([
                 TextColumn::make('name')
                     ->label('Medicamento')
-                    ->description(fn (array $record): ?string => $record['brand'] ?? null)
+                    ->weight(FontWeight::SemiBold)
+                    ->description(fn (array $record): ?string => FarmadocMedicationList::detailsLine($record))
                     ->wrap()
                     ->sortable(),
                 TextColumn::make('active_ingredient')
                     ->label('Principio activo')
                     ->placeholder('—')
                     ->wrap(),
-                TextColumn::make('concentration')
-                    ->label('Concentración')
-                    ->placeholder('—')
-                    ->sortable(),
-                TextColumn::make('presentation')
-                    ->label('Presentación')
-                    ->placeholder('—')
-                    ->wrap()
-                    ->sortable(),
                 TextColumn::make('sku')
                     ->label('SKU')
                     ->placeholder('—')
-                    ->sortable(),
-                TextColumn::make('formula_label')
-                    ->label('Fórmula')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('conditions')
+                    ->label('Condiciones')
+                    ->state(fn (array $record): array => FarmadocMedicationList::conditionLabels($record))
                     ->badge()
-                    ->color(fn (array $record): string => ($record['requires_prescription'] ?? false) ? 'warning' : 'gray'),
-                TextColumn::make('controlled_label')
-                    ->label('Control')
-                    ->badge()
-                    ->color(fn (array $record): string => ($record['is_controlled_substance'] ?? false) ? 'danger' : 'gray'),
+                    ->color(fn (string $state): string => $state === FarmadocMedicationList::LABEL_CONTROLLED ? 'danger' : 'warning')
+                    ->placeholder(''),
                 ViewColumn::make('order_quantity')
                     ->label('Cantidad')
                     ->view('filament.operations.columns.farmadoc-quantity-stepper')
-                    ->alignEnd(),
+                    // Centrada y con ancho fijo: el encabezado «Cantidad» y el control quedan
+                    // en el mismo eje. La celda de un ViewColumn es un flex que Filament alinea
+                    // al inicio; alignEnd() solo movía el texto del encabezado.
+                    ->alignCenter()
+                    ->width('11rem'),
             ]);
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function orderedProductIds(): array
+    {
+        return array_map(static fn (array $line): int => (int) $line['product_id'], $this->orderLines);
+    }
+
+    private function isTableFilterActive(string $name): bool
+    {
+        return (bool) ($this->tableFilters[$name]['isActive'] ?? false);
+    }
+
+    private function hasActiveTableFilters(): bool
+    {
+        foreach (['requires_prescription', 'controlled', 'in_order'] as $name) {
+            if ($this->isTableFilterActive($name)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -449,6 +506,16 @@ class FarmadocMedicationOrder extends Page implements HasTable
             return;
         }
 
+        if ($this->catalogNotice !== null) {
+            Notification::make()
+                ->title('Farmadoc no respondió')
+                ->body('Sigue disponible el último catálogo consultado. Intente actualizar de nuevo en unos minutos.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
         Notification::make()
             ->title('Catálogo actualizado')
             ->success()
@@ -492,11 +559,26 @@ class FarmadocMedicationOrder extends Page implements HasTable
 
         try {
             $catalog = app(FarmadocAllyClient::class)->catalog();
-            Cache::put(self::CACHE_KEY, $catalog, now()->addMinutes(2));
+            $catalog['fetched_at'] = now()->toIso8601String();
+            Cache::put(self::CACHE_KEY, $catalog, now()->addMinutes(self::CACHE_MINUTES));
+            Cache::put(self::STALE_CACHE_KEY, $catalog, now()->addHours(self::STALE_CACHE_HOURS));
             $this->applyCatalog($catalog);
             $this->catalogError = null;
+            $this->catalogNotice = null;
         } catch (FarmadocException $exception) {
-            $this->catalogError = $exception->getMessage();
+            $stale = Cache::get(self::STALE_CACHE_KEY);
+
+            if (! is_array($stale) || ! is_array($stale['medications'] ?? null) || $stale['medications'] === []) {
+                $this->catalogError = $exception->getMessage();
+
+                return;
+            }
+
+            // La copia vuelve a la caché corta: así cada clic no reintenta la API caída.
+            Cache::put(self::CACHE_KEY, $stale, now()->addMinutes(2));
+            $this->applyCatalog($stale);
+            $this->catalogError = null;
+            $this->catalogNotice = 'No fue posible conectar con Farmadoc ('.$exception->getMessage().'). Se muestra el catálogo consultado '.$this->fetchedAtLabel($stale).'; pulse «Actualizar catálogo» para reintentar.';
         }
     }
 
@@ -509,6 +591,20 @@ class FarmadocMedicationOrder extends Page implements HasTable
         $this->branchName = is_string($catalog['branch_name'] ?? null) ? $catalog['branch_name'] : null;
         $this->logoUrl = is_string($catalog['logo_url'] ?? null) ? $catalog['logo_url'] : null;
         $this->catalogError = null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $catalog
+     */
+    private function fetchedAtLabel(array $catalog): string
+    {
+        try {
+            return is_string($catalog['fetched_at'] ?? null)
+                ? 'el '.\Illuminate\Support\Carbon::parse($catalog['fetched_at'])->timezone((string) config('app.timezone'))->format('d/m/Y \a \l\a\s h:i a')
+                : 'anteriormente';
+        } catch (Throwable) {
+            return 'anteriormente';
+        }
     }
 
     /**

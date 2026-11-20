@@ -11,6 +11,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function (): void {
             require base_path('routes/storefront.php');
+            /** API de aliados: sin sesión ni CSRF; autenticación por token propia. */
+            require base_path('routes/partners-api.php');
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
@@ -24,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'storefront.auth' => \App\Http\Middleware\EnsureStorefrontAuthenticated::class,
             'storefront.guest' => \App\Http\Middleware\RedirectIfStorefrontAuthenticated::class,
             'birthday.coupon.auth' => \App\Http\Middleware\EnsureAuthenticatedForBirthdayCoupon::class,
+            'api.partner' => \App\Http\Middleware\AuthenticateApiPartner::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

@@ -383,7 +383,10 @@ final class OperationServiceOrderProviderSummary
 
     private static function isRejectedQuote(OperationQuoteGenerator $quote): bool
     {
-        return mb_strtoupper(trim((string) ($quote->status ?? ''))) === OperationQuoteGenerator::STATUS_REJECTED;
+        return in_array(mb_strtoupper(trim((string) ($quote->status ?? ''))), [
+            OperationQuoteGenerator::STATUS_REJECTED,
+            OperationQuoteGenerator::STATUS_ANNULLED,
+        ], true);
     }
 
     /**

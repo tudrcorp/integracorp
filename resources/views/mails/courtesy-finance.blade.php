@@ -39,8 +39,12 @@
                     <tr>
                         <td style="padding:20px 28px 8px 28px; color:#334155; font-size:15px; line-height:1.6;">
                             <p style="margin:0 0 12px 0;">
-                                Se generó el documento <strong>{{ $documentLabel }}</strong> marcado como
-                                <strong>CORTESÍA</strong>. Detalle:
+                                @if (filled($introLine ?? null))
+                                    {{ $introLine }}
+                                @else
+                                    Se generó el documento <strong>{{ $documentLabel }}</strong> marcado como
+                                    <strong>CORTESÍA</strong>. Detalle:
+                                @endif
                             </p>
                         </td>
                     </tr>

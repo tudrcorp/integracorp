@@ -61,8 +61,11 @@ it('OperationQuoteGenerator ofrece estatus Atencion Particular sin orden de serv
         ->toContain('STATUS_PRIVATE_CARE')
         ->toContain('Hidden::make(\'status_locked\')')
         ->toContain('status_locked')
-        ->toContain('El estatus de esta cotización ya fue definido y no puede modificarse.')
+        ->toContain('CoordinationServiceQuoteManager::lockedStatusHelperText(')
         ->toContain('Atención particular: finaliza la cotización y los ítems sin generar orden de servicio.');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/CoordinationServiceQuoteManager.php'))
+        ->toContain('El estatus de esta cotización ya fue definido y no puede modificarse.');
 });
 
 it('quoteStatusUpdateIsLocked bloquea cotizaciones con estatus terminal', function (): void {

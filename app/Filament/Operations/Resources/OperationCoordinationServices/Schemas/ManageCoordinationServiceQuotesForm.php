@@ -8,6 +8,7 @@ use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\Manage
 use App\Models\OperationInventoryUbication;
 use App\Models\OperationQuoteGenerator;
 use App\Models\TelemedicinePriority;
+use App\Support\Operations\CoordinationServiceQuoteAnnulment;
 use App\Support\Operations\CoordinationServiceQuoteManager;
 use App\Support\Operations\MedicalAppointmentManager;
 use App\Support\Operations\ServiceOrderFlowTrace;
@@ -108,7 +109,7 @@ final class ManageCoordinationServiceQuotesForm
                             ->columnSpanFull(),
                         Select::make('status')
                             ->label('Estatus')
-                            ->options(OperationQuoteGenerator::statusOptions())
+                            ->options(fn (): array => CoordinationServiceQuoteManager::quoteStatusOptions())
                             ->required()
                             ->native(false)
                             ->live()
@@ -118,10 +119,13 @@ final class ManageCoordinationServiceQuotesForm
                             ))
                             ->disabled(fn (Get $get): bool => (bool) $get('has_service_order') || (bool) $get('status_locked'))
                             ->helperText(fn (Get $get): ?string => match (true) {
-                                (bool) $get('status_locked') => 'El estatus de esta cotización ya fue definido y no puede modificarse.',
+                                (bool) $get('status_locked') => CoordinationServiceQuoteManager::lockedStatusHelperText((int) $get('quote_id')),
                                 (bool) $get('has_service_order') => 'Esta cotización ya tiene una orden de servicio vinculada.',
                                 (string) $get('status') === OperationQuoteGenerator::STATUS_PRIVATE_CARE => 'Atención particular: finaliza la cotización y los ítems sin generar orden de servicio.',
-                                default => 'También puede rechazarla o marcarla como atención particular; se quitará de la selección pendiente.',
+                                (string) $get('status') === OperationQuoteGenerator::STATUS_ANNULLED => 'Anular: la cotización queda sin efecto, sus ítems vuelven a PENDIENTE para cotizarse de nuevo y, si no queda nada más en curso, el servicio vuelve a PENDIENTE. No se puede deshacer.',
+                                default => CoordinationServiceQuoteAnnulment::isAvailable()
+                                    ? 'También puede rechazarla, marcarla como atención particular o anularla para volver a cotizar; se quitará de la selección pendiente.'
+                                    : 'También puede rechazarla o marcarla como atención particular; se quitará de la selección pendiente.',
                             })
                             ->afterStateUpdated(function (Get $get, Set $set, ?string $state, ManageCoordinationServiceQuotes $livewire): void {
                                 $quoteId = (int) $get('quote_id');
@@ -151,6 +155,24 @@ final class ManageCoordinationServiceQuotesForm
                                     $quoteId
                                 );
                             }),
+                        Textarea::make('annulment_reason')
+                            ->label('Motivo de la anulación')
+                            ->placeholder('Ej.: el proveedor actualizó sus precios; se registrará una nueva cotización.')
+                            ->helperText('Obligatorio. Quedará en el historial de la cotización y en la bitácora del caso.')
+                            ->rows(3)
+                            ->required(fn (Get $get): bool => (string) $get('status') === OperationQuoteGenerator::STATUS_ANNULLED)
+                            ->minLength(CoordinationServiceQuoteAnnulment::MINIMUM_REASON_LENGTH)
+                            ->maxLength(CoordinationServiceQuoteAnnulment::MAXIMUM_REASON_LENGTH)
+                            ->validationMessages([
+                                'required' => 'Indique el motivo de la anulación.',
+                                'min' => 'El motivo de la anulación debe tener al menos :min caracteres.',
+                                'max' => 'El motivo de la anulación no puede superar los :max caracteres.',
+                            ])
+                            ->dehydrated()
+                            ->visible(fn (Get $get): bool => (string) $get('status') === OperationQuoteGenerator::STATUS_ANNULLED
+                                && ! (bool) $get('has_service_order')
+                                && ! (bool) $get('status_locked'))
+                            ->columnSpanFull(),
                         Checkbox::make('is_cash')
                             ->label('Pago de contado')
                             ->helperText('Debe cancelarse de inmediato. Se notificará a administración por correo y WhatsApp al guardar.')

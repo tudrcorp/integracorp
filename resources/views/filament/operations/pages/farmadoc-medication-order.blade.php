@@ -1,4 +1,171 @@
 <x-filament-panels::page>
+    {{--
+        Estilos propios de la tabla: el panel usa el tema compilado de admin y estas
+        clases nuevas no existirían sin recompilar los assets.
+    --}}
+    <style>
+        .fi-farmadoc-row-in-order > td {
+            background-color: rgb(255 251 235);
+        }
+
+        .fi-farmadoc-row-in-order > td:first-child {
+            box-shadow: inset 3px 0 0 rgb(245 158 11);
+        }
+
+        .dark .fi-farmadoc-row-in-order > td {
+            background-color: rgb(245 158 11 / 0.08);
+        }
+
+        /*
+         * La celda de un ViewColumn es un flex alineado al inicio: el control ocupa todo el
+         * ancho y se centra para quedar justo debajo del encabezado «Cantidad», con el mismo
+         * margen interno que las demás celdas (px-3, como el encabezado).
+         */
+        .fi-farmadoc-stepper-cell {
+            display: flex;
+            flex: 1 1 auto;
+            width: 100%;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem;
+            transition: opacity 150ms ease;
+        }
+
+        .fi-farmadoc-add-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            height: 2.5rem;
+            padding: 0 1rem;
+            border: 1px solid rgb(245 158 11 / 0.55);
+            background-color: rgb(255 251 235);
+            color: rgb(146 64 14);
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: background-color 150ms ease, border-color 150ms ease, transform 100ms ease;
+        }
+
+        .fi-farmadoc-add-button:hover {
+            background-color: rgb(254 243 199);
+            border-color: rgb(245 158 11);
+        }
+
+        .fi-farmadoc-add-button:active,
+        .fi-farmadoc-stepper-button:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+
+        .fi-farmadoc-add-button:focus-visible,
+        .fi-farmadoc-stepper-button:focus-visible {
+            outline: 2px solid rgb(245 158 11);
+            outline-offset: 2px;
+        }
+
+        .dark .fi-farmadoc-add-button {
+            background-color: rgb(245 158 11 / 0.1);
+            border-color: rgb(245 158 11 / 0.4);
+            color: rgb(252 211 77);
+        }
+
+        .dark .fi-farmadoc-add-button:hover {
+            background-color: rgb(245 158 11 / 0.2);
+        }
+
+        .fi-farmadoc-add-icon {
+            width: 1rem;
+            height: 1rem;
+        }
+
+        .fi-farmadoc-stepper {
+            display: inline-flex;
+            align-items: center;
+            height: 2.5rem;
+            padding: 0 0.25rem;
+            border: 1px solid rgb(245 158 11);
+            background-color: rgb(255 255 255);
+            color: rgb(3 7 18);
+            box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+        }
+
+        .dark .fi-farmadoc-stepper {
+            background-color: rgb(17 24 39);
+            color: rgb(255 255 255);
+        }
+
+        .fi-farmadoc-stepper-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+            font-size: 1.125rem;
+            line-height: 1;
+            transition: background-color 150ms ease, transform 100ms ease;
+        }
+
+        .fi-farmadoc-stepper-button:hover:not(:disabled) {
+            background-color: rgb(243 244 246);
+        }
+
+        .dark .fi-farmadoc-stepper-button:hover:not(:disabled) {
+            background-color: rgb(255 255 255 / 0.1);
+        }
+
+        .fi-farmadoc-stepper-button:disabled {
+            cursor: default;
+            opacity: 0.3;
+        }
+
+        .fi-farmadoc-stepper-input {
+            width: 2.75rem;
+            border: 0;
+            background: transparent;
+            padding: 0;
+            text-align: center;
+            font-size: 0.875rem;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            appearance: textfield;
+            -moz-appearance: textfield;
+        }
+
+        .fi-farmadoc-stepper-input:focus {
+            outline: none;
+            box-shadow: none;
+        }
+
+        .fi-farmadoc-stepper-input::-webkit-inner-spin-button,
+        .fi-farmadoc-stepper-input::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .fi-farmadoc-stepper-cell.is-syncing .fi-farmadoc-stepper-input {
+            opacity: 0.6;
+        }
+
+        .fi-farmadoc-order-bar-units {
+            font-weight: 400;
+            opacity: 0.8;
+        }
+
+        .fi-farmadoc-catalog-notice {
+            margin-bottom: 1rem;
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+            background-color: rgb(255 251 235);
+            color: rgb(120 53 15);
+            box-shadow: inset 0 0 0 1px rgb(253 230 138);
+        }
+
+        .dark .fi-farmadoc-catalog-notice {
+            background-color: rgb(245 158 11 / 0.1);
+            color: rgb(253 230 138);
+            box-shadow: inset 0 0 0 1px rgb(245 158 11 / 0.3);
+        }
+    </style>
+
     @if ($reviewingOrder)
         @php
             $medicationCount = count($orderLines);
@@ -138,6 +305,12 @@
             </div>
         @endif
 
+        @if (filled($catalogNotice))
+            <div class="fi-farmadoc-catalog-notice" role="status">
+                {{ $catalogNotice }}
+            </div>
+        @endif
+
         @if ($placedOrders !== [])
             <section class="mb-4 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
                 <h2 class="text-sm font-semibold text-gray-950 dark:text-white">Pedidos enviados en esta visita</h2>
@@ -155,8 +328,12 @@
 
         @if ($orderLines !== [])
             <div class="sticky top-0 z-20 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-50 px-4 py-3 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:ring-amber-400/30">
+                @php
+                    $barUnits = (int) collect($orderLines)->sum(fn (array $line): int => (int) ($line['quantity'] ?? 0));
+                @endphp
                 <p class="text-sm font-medium text-amber-950 dark:text-amber-100">
                     {{ count($orderLines) }} {{ count($orderLines) === 1 ? 'medicamento listo' : 'medicamentos listos' }} para validar
+                    <span class="fi-farmadoc-order-bar-units">· {{ $barUnits }} {{ $barUnits === 1 ? 'unidad' : 'unidades' }}</span>
                 </p>
                 <button
                     type="button"

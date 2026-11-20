@@ -59,6 +59,17 @@ final class TelemedicineMedicationCoverage
         });
     }
 
+    /**
+     * Negación exacta de {@see whereCovered()}: los medicamentos NO CUBIERTOS.
+     *
+     * @param  Builder<TelemedicinePatientMedications>  $medications
+     * @return Builder<TelemedicinePatientMedications>
+     */
+    public static function whereNotCovered(Builder $medications): Builder
+    {
+        return $medications->whereNot(fn (Builder $covered): Builder => self::whereCovered($covered));
+    }
+
     public static function hasLinkedInventory(TelemedicinePatientMedications $record): bool
     {
         return filled($record->operation_inventory_id);
