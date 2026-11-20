@@ -33,6 +33,9 @@ class ApiPartner extends Model
 
     public const MAX_RATE_LIMIT = 600;
 
+    /** Documentación pública para los aliados (ruta `api.partners.documentation`). */
+    public const DOCUMENTATION_PATH = '/aliados/api/documentacion';
+
     protected $table = 'api_partners';
 
     protected $fillable = [
@@ -172,6 +175,14 @@ class ApiPartner extends Model
             ! $this->hasToken() => self::STATUS_WITHOUT_TOKEN,
             default => self::STATUS_ACTIVE,
         };
+    }
+
+    /**
+     * Con `url()` y no `route()`: la ficha no se rompe si la cache de rutas aún no tiene la ruta.
+     */
+    public static function documentationUrl(): string
+    {
+        return url(self::DOCUMENTATION_PATH);
     }
 
     public static function statusColor(string $status): string

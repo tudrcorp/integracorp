@@ -234,3 +234,95 @@ it('el aliado se puede vincular a un proveedor jurídico sin que eso cambie su a
 
     expect($middleware)->not->toContain('supplier');
 });
+
+it('la documentación para aliados es pública, sin datos sensibles y con los valores reales del API', function () use ($root): void {
+    $routes = file_get_contents($root.'/routes/partners-api.php');
+    $view = file_get_contents($root.'/resources/views/api-partners/documentation.blade.php');
+    $model = file_get_contents($root.'/app/Models/ApiPartner.php');
+    $viewPage = file_get_contents($root.'/app/Filament/Operations/Resources/ApiPartners/Pages/ViewApiPartner.php');
+
+    expect($routes)
+        ->toContain("Route::view('aliados/api/documentacion', 'api-partners.documentation')")
+        ->toContain("->name('api.partners.documentation')");
+
+    // La ruta de la documentación no lleva el middleware del API: es pública.
+    $start = strpos($routes, "Route::view('aliados/api/documentacion'");
+    $documentationRoute = substr($routes, $start, strpos($routes, ';', $start) - $start);
+    expect($documentationRoute)->not->toContain('->middleware(');
+
+    expect($view)
+        ->toContain('<meta name="robots" content="noindex, nofollow">')
+        ->toContain("url('/api/v1/aliados')")
+        ->toContain('NonCoveredMedicationFeed::STATUSES')
+        ->toContain('NonCoveredMedicationFeed::MAX_PER_PAGE')
+        ->toContain('AuthenticateApiPartner::MAX_FAILED_ATTEMPTS_PER_MINUTE')
+        ->toContain('MedicationInventoryStockStatus::values()')
+        ->toContain('prefers-color-scheme: dark')
+        ->not->toContain('@csrf')
+        ->not->toContain('token_hash')
+        ->not->toContain('ip_no_permitida');
+
+    expect($model)
+        ->toContain("public const DOCUMENTATION_PATH = '/aliados/api/documentacion';")
+        ->toContain('return url(self::DOCUMENTATION_PATH);');
+
+    expect($viewPage)
+        ->toContain("Action::make('documentation')")
+        ->toContain('ApiPartner::documentationUrl(), shouldOpenInNewTab: true')
+        ->not->toContain("route('api.partners.documentation')");
+});
+
+it('acepta el token aunque venga con errores típicos de copiado, sin aflojar la verificación', function (string $wrap): void {
+    $generated = ApiPartnerToken::generate();
+    $presented = ApiPartnerToken::normalize(sprintf($wrap, $generated['token']));
+
+    expect(ApiPartnerToken::prefixOf($presented))->toBe($generated['prefix'])
+        ->and(ApiPartnerToken::matches($presented, $generated['hash']))->toBeTrue();
+})->with([
+    'espacios y salto de línea' => ["  %s \n"],
+    'comillas' => ['"%s"'],
+    'entre < >' => ['<%s>'],
+    'Bearer repetido' => ['Bearer %s'],
+    'Bearer repetido y < >' => ['Bearer <%s>'],
+]);
+
+it('explica en la bitácora por qué un token tiene mala forma, sin revelar el secreto', function (): void {
+    $token = ApiPartnerToken::generate()['token'];
+
+    expect(ApiPartnerToken::formatProblem(substr($token, 0, 40)))->toBe('largo 40 (se esperaban 65)')
+        ->and(ApiPartnerToken::formatProblem(substr($token, 4)))->toContain('no empieza con icp_')
+        ->and(ApiPartnerToken::formatProblem(substr($token, 0, 40)))->not->toContain(substr($token, 17, 10))
+        ->and(ApiPartnerToken::normalize('   '))->toBeNull();
+});
+
+it('distingue en la bitácora token mal copiado, desconocido y que no coincide, pero responde igual al cliente', function () use ($root): void {
+    $middleware = file_get_contents($root.'/app/Http/Middleware/AuthenticateApiPartner.php');
+
+    expect($middleware)
+        ->toContain('ApiPartnerToken::normalize($request->bearerToken())')
+        ->toContain('ApiPartnerAccessLog::OUTCOME_MALFORMED_TOKEN')
+        ->toContain('ApiPartnerAccessLog::OUTCOME_UNKNOWN_TOKEN')
+        ->toContain('ApiPartnerAccessLog::OUTCOME_TOKEN_MISMATCH')
+        ->toContain("'_diagnostico'")
+        ->and(substr_count($middleware, "'El token de acceso no es válido.'"))->toBe(1);
+});
+
+it('el API informa los códigos de barras de los productos del inventario que coinciden', function () use ($root): void {
+    $feed = file_get_contents($root.'/app/Support/ApiPartners/NonCoveredMedicationFeed.php');
+    $status = file_get_contents($root.'/app/Support/Operations/MedicationInventoryStockStatus.php');
+    $docs = file_get_contents($root.'/resources/views/api-partners/documentation.blade.php');
+
+    expect($feed)
+        ->toContain('MedicationInventoryStockStatus::detailsForMedications($input)')
+        ->toContain("'codigos_barras' => array_values(\$barcodes)");
+
+    expect($status)
+        ->toContain("'existence', 'min_stock', 'barcode']")
+        ->toContain('public static function detailsForMedications(array $medications): array');
+
+    expect($docs)->toContain('codigos_barras')->toContain('no el producto exacto a despachar');
+
+    expect(MedicationInventoryStockStatus::uniqueBarcodes([' 7591 585 ', '7591585', 7591585, null, '', ['x'], '0730170649487']))
+        ->toBe(['0730170649487', '7591585'])
+        ->and(MedicationInventoryStockStatus::uniqueBarcodes([]))->toBe([]);
+});

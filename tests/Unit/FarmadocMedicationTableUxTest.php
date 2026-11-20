@@ -126,3 +126,29 @@ it('alinea el control de cantidad justo debajo del encabezado «Cantidad»', fun
         ->toMatch('/\.fi-farmadoc-stepper-cell \{[^}]*width: 100%;/')
         ->not->toContain('min-width: 8.5rem');
 });
+
+it('muestra el código de barras en la tabla, copiable, ordenable y buscable', function (): void {
+    $page = farmadocTableSource('app/Filament/Operations/Pages/FarmadocMedicationOrder.php');
+
+    expect($page)
+        ->toContain("TextColumn::make('barcode')")
+        ->toContain("->label('Código de barras')")
+        ->toContain('->fontFamily(FontFamily::Mono)')
+        ->toContain("->copyMessage('Código de barras copiado')")
+        ->toContain("->searchPlaceholder('Buscar por nombre, código de barras, principio activo o SKU')");
+
+    $barcodeColumn = strpos($page, "TextColumn::make('barcode')");
+    expect($barcodeColumn)->toBeGreaterThan(strpos($page, "TextColumn::make('name')"))
+        ->and($barcodeColumn)->toBeLessThan(strpos($page, "TextColumn::make('active_ingredient')"));
+
+    $medications = [
+        ['product_id' => 1, 'name' => 'Losartan', 'sku' => 'A', 'barcode' => '7591929232021'],
+        ['product_id' => 2, 'name' => 'Acetaminofen', 'sku' => 'B', 'barcode' => '7590000000001'],
+    ];
+
+    $found = \App\Support\Farmadoc\FarmadocMedicationList::paginate($medications, '7591929232021', 1, 25);
+    expect(collect($found->items())->pluck('product_id')->all())->toBe([1]);
+
+    $sorted = \App\Support\Farmadoc\FarmadocMedicationList::paginate($medications, null, 1, 25, 'barcode', 'asc');
+    expect(collect($sorted->items())->pluck('barcode')->all())->toBe(['7590000000001', '7591929232021']);
+});

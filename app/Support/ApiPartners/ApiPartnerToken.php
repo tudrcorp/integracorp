@@ -53,6 +53,56 @@ final class ApiPartnerToken
         return preg_match($pattern, $token, $matches) === 1 ? $matches[1] : null;
     }
 
+    /**
+     * Quita los errores típicos al copiar el token: espacios y saltos de línea, comillas,
+     * `<` `>` (del ejemplo «Bearer <token>») o un «Bearer» repetido. No afloja la seguridad:
+     * el resultado igual tiene que coincidir con el hash guardado.
+     */
+    public static function normalize(?string $token): ?string
+    {
+        if ($token === null) {
+            return null;
+        }
+
+        $token = trim($token);
+
+        while (preg_match('/^bearer\s+/i', $token) === 1) {
+            $token = (string) preg_replace('/^bearer\s+/i', '', $token);
+        }
+
+        $token = trim($token, " \t\n\r\0\x0B\"'<>`");
+
+        return $token === '' ? null : $token;
+    }
+
+    /**
+     * Por qué un token no tiene la forma esperada, sin revelar el secreto. Solo para la bitácora interna.
+     */
+    public static function formatProblem(string $token): string
+    {
+        $length = strlen($token);
+        $expected = strlen(self::SCHEME) + self::PREFIX_LENGTH + 1 + self::SECRET_LENGTH;
+        $problems = [];
+
+        if (! str_starts_with($token, self::SCHEME)) {
+            $problems[] = 'no empieza con '.self::SCHEME;
+        }
+
+        if ($length !== $expected) {
+            $problems[] = 'largo '.$length.' (se esperaban '.$expected.')';
+        }
+
+        if (substr_count($token, '.') !== 1) {
+            $problems[] = substr_count($token, '.').' puntos (se espera 1)';
+        }
+
+        if (preg_match('/[^A-Za-z0-9._]/', $token) === 1) {
+            $problems[] = 'contiene caracteres no permitidos';
+        }
+
+        return $problems === [] ? 'formato no reconocido' : implode('; ', $problems);
+    }
+
     public static function matches(string $token, ?string $storedHash): bool
     {
         if ($storedHash === null || $storedHash === '') {

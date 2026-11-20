@@ -19,6 +19,12 @@ class ApiPartnerAccessLog extends Model
 
     public const OUTCOME_INVALID_TOKEN = 'TOKEN_INVALIDO';
 
+    public const OUTCOME_MALFORMED_TOKEN = 'TOKEN_MAL_FORMADO';
+
+    public const OUTCOME_UNKNOWN_TOKEN = 'TOKEN_DESCONOCIDO';
+
+    public const OUTCOME_TOKEN_MISMATCH = 'TOKEN_NO_COINCIDE';
+
     public const OUTCOME_INACTIVE = 'ALIADO_INACTIVO';
 
     public const OUTCOME_EXPIRED = 'ALIADO_VENCIDO';
@@ -76,6 +82,9 @@ class ApiPartnerAccessLog extends Model
             self::OUTCOME_OK => 'Respondida',
             self::OUTCOME_MISSING_TOKEN => 'Sin token',
             self::OUTCOME_INVALID_TOKEN => 'Token inválido',
+            self::OUTCOME_MALFORMED_TOKEN => 'Token mal copiado',
+            self::OUTCOME_UNKNOWN_TOKEN => 'Token desconocido o rotado',
+            self::OUTCOME_TOKEN_MISMATCH => 'Token no coincide',
             self::OUTCOME_INACTIVE => 'Aliado inactivo',
             self::OUTCOME_EXPIRED => 'Acceso vencido',
             self::OUTCOME_FORBIDDEN => 'Sin permiso',

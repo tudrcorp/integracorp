@@ -92,6 +92,15 @@ class ApiPartnerInfolist
                             ->fontFamily('mono')
                             ->helperText('Encabezado: Authorization: Bearer <token>')
                             ->columnSpanFull(),
+                        TextEntry::make('documentation')
+                            ->label('Documentación para el aliado (pública)')
+                            ->state(fn (): string => ApiPartner::documentationUrl())
+                            ->url(fn (): string => ApiPartner::documentationUrl(), shouldOpenInNewTab: true)
+                            ->copyable()
+                            ->copyMessage('Enlace copiado')
+                            ->fontFamily('mono')
+                            ->helperText('Compártela con el aliado. No contiene datos de pacientes ni el token.')
+                            ->columnSpanFull(),
                         TextEntry::make('notes')
                             ->label('Notas internas')
                             ->placeholder('—')

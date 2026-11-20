@@ -6,9 +6,11 @@ namespace App\Filament\Operations\Resources\ApiPartners\Pages;
 
 use App\Filament\Operations\Resources\ApiPartners\Actions\ApiPartnerTokenActions;
 use App\Filament\Operations\Resources\ApiPartners\ApiPartnerResource;
+use App\Models\ApiPartner;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Icons\Heroicon;
 
 class ViewApiPartner extends ViewRecord
 {
@@ -22,6 +24,11 @@ class ViewApiPartner extends ViewRecord
                 $this->replaceMountedAction(ApiPartnerTokenActions::SHOW_TOKEN_ACTION, ['token' => $token]);
             }),
             ApiPartnerTokenActions::revoke()->after(fn () => $this->getRecord()->refresh()),
+            Action::make('documentation')
+                ->label('Ver documentación')
+                ->icon(Heroicon::OutlinedBookOpen)
+                ->color('gray')
+                ->url(fn (): string => ApiPartner::documentationUrl(), shouldOpenInNewTab: true),
             EditAction::make(),
         ];
     }

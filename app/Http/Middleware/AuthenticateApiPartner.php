@@ -39,6 +39,9 @@ class AuthenticateApiPartner
 
     public const RECORDS_ATTRIBUTE = 'api_partner_records_count';
 
+    /** Motivo interno de un rechazo de token (nunca el secreto); se guarda en la bitácora, no se responde. */
+    public const DIAGNOSTIC_ATTRIBUTE = 'api_partner_diagnostic';
+
     public const MAX_FAILED_ATTEMPTS_PER_MINUTE = 20;
 
     private const LAST_USED_REFRESH_SECONDS = 60;
@@ -67,7 +70,7 @@ class AuthenticateApiPartner
             return $this->reject($request, null, $ip, $startedAt, 403, ApiPartnerAccessLog::OUTCOME_INSECURE, 'https_requerido', 'La conexión debe hacerse por HTTPS.');
         }
 
-        $token = $request->bearerToken();
+        $token = ApiPartnerToken::normalize($request->bearerToken());
 
         if ($token === null || $token === '') {
             RateLimiter::hit($failureKey, 60);
@@ -75,12 +78,13 @@ class AuthenticateApiPartner
             return $this->reject($request, null, $ip, $startedAt, 401, ApiPartnerAccessLog::OUTCOME_MISSING_TOKEN, 'no_autenticado', 'Falta el token de acceso (encabezado Authorization: Bearer).');
         }
 
-        $partner = $this->resolvePartner($token);
+        [$partner, $failure, $diagnostic] = $this->resolvePartner($token);
 
         if ($partner === null) {
             RateLimiter::hit($failureKey, 60);
+            $request->attributes->set(self::DIAGNOSTIC_ATTRIBUTE, $diagnostic);
 
-            return $this->reject($request, null, $ip, $startedAt, 401, ApiPartnerAccessLog::OUTCOME_INVALID_TOKEN, 'no_autenticado', 'El token de acceso no es válido.');
+            return $this->reject($request, null, $ip, $startedAt, 401, $failure, 'no_autenticado', 'El token de acceso no es válido.');
         }
 
         if (! $partner->is_active) {
@@ -153,21 +157,31 @@ class AuthenticateApiPartner
         return $response;
     }
 
-    private function resolvePartner(string $token): ?ApiPartner
+    /**
+     * El aliado dueño del token, o por qué se rechaza. Al cliente siempre se le responde lo
+     * mismo (401); el motivo detallado queda solo en la bitácora para poder dar soporte.
+     *
+     * @return array{0: ApiPartner|null, 1: string, 2: string|null}
+     */
+    private function resolvePartner(string $token): array
     {
         $prefix = ApiPartnerToken::prefixOf($token);
 
         if ($prefix === null) {
-            return null;
+            return [null, ApiPartnerAccessLog::OUTCOME_MALFORMED_TOKEN, ApiPartnerToken::formatProblem($token)];
         }
 
         $partner = ApiPartner::query()->where('token_prefix', $prefix)->first();
 
-        if ($partner === null || ! ApiPartnerToken::matches($token, $partner->token_hash)) {
-            return null;
+        if ($partner === null) {
+            return [null, ApiPartnerAccessLog::OUTCOME_UNKNOWN_TOKEN, 'prefijo '.$prefix.' no pertenece a ningún aliado (¿token rotado o revocado?)'];
         }
 
-        return $partner;
+        if (! ApiPartnerToken::matches($token, $partner->token_hash)) {
+            return [null, ApiPartnerAccessLog::OUTCOME_TOKEN_MISMATCH, 'prefijo '.$prefix.' de '.$partner->name.', pero el secreto no coincide (¿copiado incompleto?)'];
+        }
+
+        return [$partner, ApiPartnerAccessLog::OUTCOME_OK, null];
     }
 
     /**
@@ -234,7 +248,7 @@ class AuthenticateApiPartner
                 'user_agent' => Str::limit((string) $request->userAgent(), 255, ''),
                 'status_code' => $status,
                 'outcome' => $outcome,
-                'query' => self::loggableQuery($request->query()),
+                'query' => self::loggableQuery($request->query(), $request->attributes->get(self::DIAGNOSTIC_ATTRIBUTE)),
                 'records_count' => is_int($records) ? $records : null,
                 'duration_ms' => (int) round((hrtime(true) - $startedAt) / 1_000_000),
             ]);
@@ -254,9 +268,13 @@ class AuthenticateApiPartner
      * @param  array<int|string, mixed>  $query
      * @return array<string, string>|null
      */
-    public static function loggableQuery(array $query): ?array
+    public static function loggableQuery(array $query, mixed $diagnostic = null): ?array
     {
         $loggable = [];
+
+        if (is_string($diagnostic) && $diagnostic !== '') {
+            $loggable['_diagnostico'] = Str::limit($diagnostic, 160);
+        }
 
         foreach (array_slice($query, 0, 15, true) as $key => $value) {
             $value = is_array($value) ? implode(',', array_map(fn (mixed $item): string => is_scalar($item) ? (string) $item : '…', array_slice($value, 0, 10))) : (is_scalar($value) ? (string) $value : '…');
