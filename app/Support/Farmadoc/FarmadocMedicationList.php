@@ -200,7 +200,7 @@ final class FarmadocMedicationList
      */
     private static function sort(array $medications, ?string $sortColumn, ?string $sortDirection): array
     {
-        $column = in_array($sortColumn, ['name', 'sku', 'concentration', 'presentation'], true)
+        $column = in_array($sortColumn, ['name', 'barcode', 'sku', 'concentration', 'presentation'], true)
             ? $sortColumn
             : 'name';
         $descending = $sortDirection === 'desc';

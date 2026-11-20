@@ -121,14 +121,12 @@ final class NonCoveredMedicationFeed
             ];
         }
 
-        $statuses = MedicationInventoryStockStatus::forMedications($input);
+        $details = MedicationInventoryStockStatus::detailsForMedications($input);
         $payload = [];
 
         foreach ($medications as $medication) {
-            $payload[] = self::payload(
-                $medication,
-                $statuses[(int) $medication->getKey()] ?? MedicationInventoryStockStatus::MISSING,
-            );
+            $detail = $details[(int) $medication->getKey()] ?? ['status' => MedicationInventoryStockStatus::MISSING, 'barcodes' => []];
+            $payload[] = self::payload($medication, $detail['status'], $detail['barcodes']);
         }
 
         return $payload;
@@ -138,9 +136,10 @@ final class NonCoveredMedicationFeed
      * Forma pública de un medicamento. Solo los datos acordados con el aliado:
      * nunca diagnóstico, historia clínica ni montos.
      *
+     * @param  list<string>  $barcodes  códigos de barras de los productos de nuestro inventario que coinciden
      * @return array<string, mixed>
      */
-    public static function payload(TelemedicinePatientMedications $medication, string $inventoryStatus): array
+    public static function payload(TelemedicinePatientMedications $medication, string $inventoryStatus, array $barcodes = []): array
     {
         $patient = $medication->telemedicinePatient;
         $coordination = $medication->operationCoordinationService;
@@ -171,6 +170,7 @@ final class NonCoveredMedicationFeed
             ],
             'inventario' => [
                 'estado' => $inventoryStatus,
+                'codigos_barras' => array_values($barcodes),
             ],
             'registrado_en' => $medication->created_at?->toIso8601String(),
             'actualizado_en' => $medication->updated_at?->toIso8601String(),

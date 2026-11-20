@@ -53,27 +53,76 @@ final class MedicationInventoryStockStatus
      */
     public static function forMedications(array $medications): array
     {
+        return array_map(
+            fn (array $detail): string => $detail['status'],
+            self::detailsForMedications($medications),
+        );
+    }
+
+    /**
+     * Estado y códigos de barras de los productos del inventario que coinciden con cada medicamento.
+     * Los códigos salen de los almacenes activos; puede haber varios (varias presentaciones o marcas)
+     * y la lista va vacía si ningún producto coincide.
+     *
+     * @param  array<int, array{name: string|null, operation_inventory_id: int|null}>  $medications  por id del medicamento
+     * @return array<int, array{status: string, barcodes: list<string>}>
+     */
+    public static function detailsForMedications(array $medications): array
+    {
         if ($medications === []) {
             return [];
         }
 
         $productIdsByMedication = self::productIdsByMedication($medications);
         $allProductIds = array_values(array_unique(array_merge([], ...array_values($productIdsByMedication))));
-        $rowsByProduct = self::stockRowsByProduct($allProductIds);
+        [$rowsByProduct, $barcodesByProduct] = self::stockByProduct($allProductIds);
 
-        $statuses = [];
+        $details = [];
 
         foreach ($productIdsByMedication as $medicationId => $productIds) {
             $rows = [];
+            $barcodes = [];
 
             foreach ($productIds as $productId) {
                 array_push($rows, ...($rowsByProduct[$productId] ?? []));
+                array_push($barcodes, ...($barcodesByProduct[$productId] ?? []));
             }
 
-            $statuses[$medicationId] = self::classify(count($productIds), $rows);
+            $details[$medicationId] = [
+                'status' => self::classify(count($productIds), $rows),
+                'barcodes' => self::uniqueBarcodes($barcodes),
+            ];
         }
 
-        return $statuses;
+        return $details;
+    }
+
+    /**
+     * Códigos sin espacios, sin vacíos ni repetidos, en orden estable.
+     *
+     * @param  array<int, mixed>  $barcodes
+     * @return list<string>
+     */
+    public static function uniqueBarcodes(array $barcodes): array
+    {
+        $clean = [];
+
+        foreach ($barcodes as $barcode) {
+            if (! is_scalar($barcode)) {
+                continue;
+            }
+
+            $barcode = preg_replace('/\s+/', '', (string) $barcode) ?? '';
+
+            if ($barcode !== '') {
+                $clean[$barcode] = true;
+            }
+        }
+
+        $list = array_keys($clean);
+        sort($list, SORT_STRING);
+
+        return array_map('strval', $list);
     }
 
     /**
@@ -185,15 +234,15 @@ final class MedicationInventoryStockStatus
     }
 
     /**
-     * Existencia vendible y mínimo por almacén activo de cada producto.
+     * Existencia vendible, mínimo y código de barras por almacén activo de cada producto.
      *
      * @param  list<int>  $productIds
-     * @return array<int, list<array{existence: int, minimum: int}>>
+     * @return array{0: array<int, list<array{existence: int, minimum: int}>>, 1: array<int, list<string>>}
      */
-    private static function stockRowsByProduct(array $productIds): array
+    private static function stockByProduct(array $productIds): array
     {
         if ($productIds === []) {
-            return [];
+            return [[], []];
         }
 
         $activeUbicationIds = OperationInventoryUbication::query()
@@ -202,13 +251,13 @@ final class MedicationInventoryStockStatus
             ->all();
 
         if ($activeUbicationIds === []) {
-            return [];
+            return [[], []];
         }
 
         $inventories = OperationInventory::query()
             ->whereIn('operation_inventory_product_id', $productIds)
             ->whereIn('operation_inventory_ubication_id', $activeUbicationIds)
-            ->get(['operation_inventory_product_id', 'operation_inventory_ubication_id', 'existence', 'min_stock']);
+            ->get(['operation_inventory_product_id', 'operation_inventory_ubication_id', 'existence', 'min_stock', 'barcode']);
 
         $stocks = OperationInventoryProductStock::query()
             ->whereIn('operation_inventory_product_id', $productIds)
@@ -217,8 +266,13 @@ final class MedicationInventoryStockStatus
             ->keyBy(fn (OperationInventoryProductStock $stock): string => $stock->operation_inventory_product_id.':'.$stock->operation_inventory_ubication_id);
 
         $rows = [];
+        $barcodes = [];
 
         foreach ($inventories as $inventory) {
+            if (filled($inventory->barcode)) {
+                $barcodes[(int) $inventory->operation_inventory_product_id][] = (string) $inventory->barcode;
+            }
+
             $stock = $stocks->get($inventory->operation_inventory_product_id.':'.$inventory->operation_inventory_ubication_id);
 
             $rows[(int) $inventory->operation_inventory_product_id][] = [
@@ -227,7 +281,7 @@ final class MedicationInventoryStockStatus
             ];
         }
 
-        return $rows;
+        return [$rows, $barcodes];
     }
 
     private static function plain(string $value): string

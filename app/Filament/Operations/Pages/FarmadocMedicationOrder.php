@@ -18,6 +18,7 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Support\Enums\FontFamily;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -167,7 +168,7 @@ class FarmadocMedicationOrder extends Page implements HasTable
             ->description('Catálogo de Las Delicias. No se muestran precios ni existencias.')
             ->searchable()
             ->searchDebounce('400ms')
-            ->searchPlaceholder('Buscar por nombre, principio activo, presentación o SKU')
+            ->searchPlaceholder('Buscar por nombre, código de barras, principio activo o SKU')
             ->emptyStateHeading(fn (): string => match (true) {
                 $this->catalogError !== null => 'No se pudo cargar el catálogo',
                 $this->isTableFilterActive('in_order') && $this->orderLines === [] => 'Aún no hay medicamentos en el pedido',
@@ -202,6 +203,15 @@ class FarmadocMedicationOrder extends Page implements HasTable
                     ->weight(FontWeight::SemiBold)
                     ->description(fn (array $record): ?string => FarmadocMedicationList::detailsLine($record))
                     ->wrap()
+                    ->sortable(),
+                TextColumn::make('barcode')
+                    ->label('Código de barras')
+                    ->placeholder('—')
+                    ->fontFamily(FontFamily::Mono)
+                    ->weight(FontWeight::Medium)
+                    ->copyable()
+                    ->copyMessage('Código de barras copiado')
+                    ->copyMessageDuration(1500)
                     ->sortable(),
                 TextColumn::make('active_ingredient')
                     ->label('Principio activo')

@@ -98,6 +98,7 @@ final class ApiPartnerTokenActions
     public static function tokenContent(string $token): Htmlable
     {
         $escaped = e($token);
+        $docs = e(ApiPartner::documentationUrl());
 
         return new HtmlString(<<<HTML
             <div x-data="{ copied: false }" style="display:flex;flex-direction:column;gap:0.75rem;">
@@ -112,7 +113,7 @@ final class ApiPartnerTokenActions
                         <span x-show="copied" style="display:none;">Copiado</span>
                     </button>
                 </div>
-                <p style="font-size:0.75rem;opacity:0.75;">Uso: encabezado <code>Authorization: Bearer &lt;token&gt;</code> en cada petición.</p>
+                <p style="font-size:0.75rem;opacity:0.75;">Uso: encabezado <code>Authorization: Bearer &lt;token&gt;</code> en cada petición. Documentación para el aliado: <a href="{$docs}" target="_blank" rel="noopener" style="text-decoration:underline;">{$docs}</a></p>
             </div>
         HTML);
     }
