@@ -135,7 +135,7 @@ class IndividualQuoteForm
                             ->icon(Heroicon::OutlinedUserCircle)
                             ->schema([
                                 Section::make('data_client')
-                                    ->heading('¡Bienvenido/a de nuevo! 👋 ')
+                                    ->heading('¡Bienvenido/a de nuevo! 📝')
                                     ->description('Estás a punto de comenzar a crear una nueva cotización, por favor ingresa la información del cliente para personalizarla. ¡Puede ver el avance del proceso en la barra de estatus!')
                                     ->schema([
                                         Grid::make(4)

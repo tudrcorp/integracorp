@@ -32,3 +32,12 @@ it('requiere al menos una persona en la cotización', function (): void {
         ->toContain('La cantidad de personas debe ser como mínimo una (1) persona.')
         ->toContain('->minValue(1)');
 });
+
+it('usa el emoji de cotización en el encabezado de bienvenida, no el de la mano', function (): void {
+    $path = dirname(__DIR__, 2).'/app/Filament/Business/Resources/IndividualQuotes/Schemas/IndividualQuoteForm.php';
+    $source = file_get_contents($path);
+
+    expect($source)
+        ->toContain("->heading('¡Bienvenido/a de nuevo! 📝')")
+        ->not->toContain('👋');
+});
