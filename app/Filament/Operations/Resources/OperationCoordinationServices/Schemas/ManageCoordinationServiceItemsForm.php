@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Filament\Operations\Resources\OperationCoordinationServices\Schemas;
 
-use App\Filament\Operations\Pages\FarmadocMedicationOrder;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ManageCoordinationServiceItems;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Tables\OperationCoordinationServicesTable;
 use App\Models\OperationInventoryUbication;
@@ -21,7 +20,6 @@ use App\Support\Operations\OperationServiceOrderProviderFormFields;
 use App\Support\Operations\OperationServiceOrderUnregisteredProviderFormFields;
 use App\Support\Operations\QuoteInvoiceFormFields;
 use App\Support\Operations\QuoteLineProfitField;
-use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
@@ -149,21 +147,6 @@ final class ManageCoordinationServiceItemsForm
                     ->label('Sin ítems pendientes')
                     ->content(fn (): HtmlString => CoordinationServiceItemsManager::manageServiceEmptyState())
                     ->visible(fn (ManageCoordinationServiceItems $livewire): bool => ! CoordinationServiceItemsManager::hasManageServiceItems($livewire->getRecord()))
-                    ->columnSpanFull(),
-                Section::make('Resumen de selección')
-                    ->description('Vista previa en tiempo real de los ítems que gestionará al confirmar.')
-                    ->icon(Heroicon::OutlinedEye)
-                    ->iconColor('info')
-                    ->visible(fn (ManageCoordinationServiceItems $livewire): bool => CoordinationServiceItemsManager::hasManageServiceItems($livewire->getRecord()))
-                    ->schema([
-                        Placeholder::make('manage_service_items_preview')
-                            ->hiddenLabel()
-                            ->content(fn (ManageCoordinationServiceItems $livewire, Get $get): HtmlString => CoordinationServiceItemsManager::manageServiceSelectedItemsTable(
-                                $livewire->getRecord(),
-                                $get('managed_service_item_keys')
-                            ))
-                            ->columnSpanFull(),
-                    ])
                     ->columnSpanFull(),
             ]),
             Step::make('Orden de servicio')
@@ -485,17 +468,6 @@ final class ManageCoordinationServiceItemsForm
                                         ->columnSpanFull(),
                                     Repeater::make('manage_quote_line_items')
                                         ->label('Precios unitarios por ítem')
-                                        ->hintAction(
-                                            Action::make('reorderMedicationFromSupplier')
-                                                ->label('Hacer Pedido al Proveedor')
-                                                ->icon(Heroicon::OutlinedShoppingCart)
-                                                ->button()
-                                                ->color('warning')
-                                                ->visible(fn (mixed $state): bool => MedicationQuoteLineStock::listNeedsSupplierOrder(is_array($state) ? $state : null))
-                                                ->url(fn (ManageCoordinationServiceItems $livewire): string => FarmadocMedicationOrder::getUrl([
-                                                    'coordinacion' => $livewire->getRecord()->getKey(),
-                                                ])),
-                                        )
                                         ->addable(false)
                                         ->deletable(false)
                                         ->reorderable(false)

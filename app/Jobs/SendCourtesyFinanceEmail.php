@@ -48,6 +48,12 @@ class SendCourtesyFinanceEmail implements ShouldQueue
                 return;
             }
 
+            if ($this->type === 'quote_annulled') {
+                $this->sendForAnnulledQuote();
+
+                return;
+            }
+
             if ($this->type === 'receivable') {
                 $this->sendForReceivable();
             }
@@ -92,6 +98,46 @@ class SendCourtesyFinanceEmail implements ShouldQueue
         Mail::to(config('parameters.EMAIL_ADMINISTRACION'))
             ->cc(self::EMAIL_CC)
             ->send(new CourtesyFinanceMail('Cotización '.$quoteNumber, $details));
+    }
+
+    private function sendForAnnulledQuote(): void
+    {
+        $quote = OperationQuoteGenerator::query()
+            ->with([
+                'supplier',
+                'telemedicinePatient',
+                'telemedicineCase',
+                'operationCoordinationService',
+            ])
+            ->find($this->entityId);
+
+        if (! $quote instanceof OperationQuoteGenerator
+            || ! (bool) $quote->is_courtesy
+            || $quote->status !== OperationQuoteGenerator::STATUS_ANNULLED) {
+            return;
+        }
+
+        $quoteNumber = AccountsPayablePresenter::quoteNumber($quote);
+        $details = [
+            'Documento' => 'Cotización ANULADA',
+            'Cotización' => $quoteNumber,
+            'Paciente' => AccountsPayablePresenter::patientName($quote),
+            'Caso' => AccountsPayablePresenter::caseCode($quote),
+            'Proveedor' => AccountsPayablePresenter::quoteSupplierLabel($quote),
+            'Monto US$' => AccountsPayablePresenter::formatUsd(AccountsPayablePresenter::quoteAmountUsd($quote)),
+            'Anulada por' => filled($quote->annulled_by_name) ? (string) $quote->annulled_by_name : '—',
+            'Fecha de anulación' => $quote->annulled_at?->timezone((string) config('app.timezone'))->format('d/m/Y H:i') ?? '—',
+            'Motivo' => filled($quote->annulment_reason) ? trim((string) $quote->annulment_reason) : '—',
+            'Tratamiento' => 'CORTESÍA',
+        ];
+
+        Mail::to(config('parameters.EMAIL_ADMINISTRACION'))
+            ->cc(self::EMAIL_CC)
+            ->send(new CourtesyFinanceMail(
+                'Cotización '.$quoteNumber.' ANULADA',
+                $details,
+                'Se anuló la cotización '.$quoteNumber.', marcada como CORTESÍA, que ya se les había notificado. No debe gestionarse. Detalle:',
+            ));
     }
 
     private function sendForReceivable(): void

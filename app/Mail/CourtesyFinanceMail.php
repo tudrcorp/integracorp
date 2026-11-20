@@ -19,6 +19,7 @@ class CourtesyFinanceMail extends Mailable
     public function __construct(
         public string $documentLabel,
         public array $details,
+        public ?string $introLine = null,
     ) {}
 
     public function envelope(): Envelope
@@ -35,6 +36,7 @@ class CourtesyFinanceMail extends Mailable
             with: [
                 'documentLabel' => $this->documentLabel,
                 'details' => $this->details,
+                'introLine' => $this->introLine,
             ],
         );
     }

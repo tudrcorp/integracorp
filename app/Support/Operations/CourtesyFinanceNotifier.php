@@ -45,6 +45,38 @@ final class CourtesyFinanceNotifier
         );
     }
 
+    /**
+     * Avisa a administración que una cotización por CORTESÍA ya notificada se anuló,
+     * para que no la gestionen como cuenta por pagar.
+     */
+    public static function dispatchForAnnulledQuote(int $quoteId): void
+    {
+        $quote = OperationQuoteGenerator::query()
+            ->with([
+                'supplier',
+                'telemedicinePatient',
+                'telemedicineCase',
+                'operationCoordinationService',
+            ])
+            ->find($quoteId);
+
+        if (! $quote instanceof OperationQuoteGenerator
+            || ! (bool) $quote->is_courtesy
+            || $quote->status !== OperationQuoteGenerator::STATUS_ANNULLED) {
+            return;
+        }
+
+        self::dispatchNotifications(
+            context: 'courtesy_quote_annulled',
+            entityId: $quoteId,
+            caption: self::buildAnnulledQuoteWhatsAppCaption($quote),
+            emailPayload: [
+                'type' => 'quote_annulled',
+                'id' => $quoteId,
+            ],
+        );
+    }
+
     public static function dispatchForReceivable(int $receivableId): void
     {
         $receivable = OperationAccountsReceivable::query()
@@ -156,6 +188,34 @@ final class CourtesyFinanceNotifier
         *Fecha:* {$date}
 
         Favor gestionar con el tratamiento de cortesía.
+        TEXT;
+    }
+
+    public static function buildAnnulledQuoteWhatsAppCaption(OperationQuoteGenerator $quote): string
+    {
+        $quoteNumber = AccountsPayablePresenter::quoteNumber($quote);
+        $patient = AccountsPayablePresenter::patientName($quote);
+        $caseCode = AccountsPayablePresenter::caseCode($quote);
+        $supplier = AccountsPayablePresenter::quoteSupplierLabel($quote);
+        $amountUsd = AccountsPayablePresenter::formatUsd(AccountsPayablePresenter::quoteAmountUsd($quote));
+        $analyst = filled($quote->annulled_by_name) ? (string) $quote->annulled_by_name : '—';
+        $reason = filled($quote->annulment_reason) ? trim((string) $quote->annulment_reason) : '—';
+        $date = now()->timezone((string) config('app.timezone'))->format('d/m/Y H:i');
+
+        return <<<TEXT
+        ❌ *COTIZACIÓN POR CORTESÍA ANULADA* ❌
+        Se anuló una cotización marcada como CORTESÍA que ya se les había notificado.
+
+        *Cotización:* {$quoteNumber}
+        *Paciente:* {$patient}
+        *Caso:* {$caseCode}
+        *Proveedor:* {$supplier}
+        *Monto US\$:* {$amountUsd}
+        *Anulada por:* {$analyst}
+        *Motivo:* {$reason}
+        *Fecha:* {$date}
+
+        Favor no gestionar esta cotización. Si se emite una nueva, recibirán el aviso correspondiente.
         TEXT;
     }
 

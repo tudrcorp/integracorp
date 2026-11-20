@@ -206,6 +206,8 @@ final class DepartmentNavigationPermissionRegistry
         AccountManagerResource::class,
         /** Muestra claves OTP en claro: solo SUPERADMIN, nunca un permiso asignable. */
         \App\Filament\Business\Resources\SystemOtpCodes\SystemOtpCodeResource::class,
+        /** Emite credenciales con acceso a datos de pacientes para aliados externos. */
+        \App\Filament\Operations\Resources\ApiPartners\ApiPartnerResource::class,
     ];
 
     /**

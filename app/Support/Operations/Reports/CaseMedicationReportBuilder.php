@@ -324,6 +324,7 @@ final class CaseMedicationReportBuilder
         $quotes = OperationQuoteGenerator::query()
             ->whereIn('operation_coordination_service_id', $coordinationIds)
             ->where('type_service', 'MEDICAMENTOS')
+            ->where('status', '!=', OperationQuoteGenerator::STATUS_ANNULLED)
             ->orderByRaw('CASE WHEN status = ? THEN 0 ELSE 1 END', [OperationQuoteGenerator::STATUS_APPROVED])
             ->orderByDesc('id')
             ->get(['id', 'operation_coordination_service_id', 'status', 'items']);

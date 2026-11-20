@@ -20,6 +20,8 @@ class OperationQuoteGenerator extends Model
 
     public const STATUS_PRIVATE_CARE = 'ATENCION PARTICULAR';
 
+    public const STATUS_ANNULLED = 'ANULADA';
+
     protected $table = 'operation_quote_generators';
 
     protected $fillable = [
@@ -47,6 +49,10 @@ class OperationQuoteGenerator extends Model
         'subtotal',
         'total',
         'quote_pdf_path',
+        'annulled_at',
+        'annulled_by_user_id',
+        'annulled_by_name',
+        'annulment_reason',
         'created_by',
         'updated_by',
     ];
@@ -56,6 +62,7 @@ class OperationQuoteGenerator extends Model
         'is_cash' => 'boolean',
         'is_courtesy' => 'boolean',
         'generates_invoice' => 'boolean',
+        'annulled_at' => 'datetime',
     ];
 
     public function telemedicinePatient()
@@ -103,6 +110,7 @@ class OperationQuoteGenerator extends Model
             self::STATUS_APPROVED => 'Aprobada',
             self::STATUS_REJECTED => 'Rechazada',
             self::STATUS_PRIVATE_CARE => 'Atención Particular',
+            self::STATUS_ANNULLED => 'Anulada',
         ];
     }
 
@@ -114,6 +122,7 @@ class OperationQuoteGenerator extends Model
             self::STATUS_APPROVED,
             self::STATUS_REJECTED,
             self::STATUS_PRIVATE_CARE,
+            self::STATUS_ANNULLED,
         ], true);
     }
 

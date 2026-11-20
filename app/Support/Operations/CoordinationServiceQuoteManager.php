@@ -27,6 +27,9 @@ final class CoordinationServiceQuoteManager
     /** @var list<string> Facturas emitidas en el guardado en curso (para el aviso final). */
     private static array $issuedInvoiceNumbers = [];
 
+    /** @var list<array{quote_id: int, items_reverted: int, coordination_reopened: bool, is_courtesy: bool}> Anulaciones del guardado en curso (para el aviso final). */
+    private static array $annulmentOutcomes = [];
+
     public static function coordinationQuotes(OperationCoordinationService $record): Collection
     {
         return OperationQuoteGenerator::query()
@@ -158,6 +161,7 @@ final class CoordinationServiceQuoteManager
                     'is_cash' => (bool) $quote->is_cash,
                     'has_service_order' => filled($quote->operation_service_order_id),
                     'status_locked' => self::quoteStatusUpdateIsLocked($quote),
+                    'annulment_reason' => null,
                 ])
                 ->all(),
             'selected_pending_quote_ids' => [],
@@ -185,6 +189,7 @@ final class CoordinationServiceQuoteManager
                 OperationQuoteGenerator::STATUS_APPROVED => 'bg-emerald-100 text-emerald-800 ring-emerald-300/70 dark:bg-emerald-500/20 dark:text-emerald-100',
                 OperationQuoteGenerator::STATUS_REJECTED => 'bg-rose-100 text-rose-800 ring-rose-300/70 dark:bg-rose-500/20 dark:text-rose-100',
                 OperationQuoteGenerator::STATUS_PRIVATE_CARE => 'bg-gray-100 text-gray-800 ring-gray-300/70 dark:bg-gray-500/20 dark:text-gray-100',
+                OperationQuoteGenerator::STATUS_ANNULLED => 'bg-zinc-200 text-zinc-700 ring-zinc-400/60 line-through decoration-zinc-500/60 dark:bg-zinc-700/40 dark:text-zinc-200',
                 default => 'bg-amber-100 text-amber-900 ring-amber-300/70 dark:bg-amber-500/20 dark:text-amber-100',
             };
 
@@ -192,7 +197,7 @@ final class CoordinationServiceQuoteManager
                 .'<td class="px-3 py-2 font-medium">#'.e((string) $quote->id).'</td>'
                 .'<td class="px-3 py-2">'.e((string) $quote->type_service).'</td>'
                 .'<td class="px-3 py-2">'.e(self::formatManageQuoteAmountPreview((float) $quote->total)).'</td>'
-                .'<td class="px-3 py-2"><span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 '.$statusClass.'">'.e((string) ($quote->status ?? OperationQuoteGenerator::STATUS_PENDING)).'</span></td>'
+                .'<td class="px-3 py-2"><span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 '.$statusClass.'">'.e((string) ($quote->status ?? OperationQuoteGenerator::STATUS_PENDING)).'</span>'.self::renderAnnulmentDetail($quote).'</td>'
                 .'<td class="px-3 py-2">'.self::renderQuoteGeneratorPdfCell($quote).'</td>'
                 .'<td class="px-3 py-2">'.e(optional($quote->created_at)->format('d/m/Y H:i') ?? '—').'</td>'
                 .'</tr>';
@@ -210,6 +215,60 @@ final class CoordinationServiceQuoteManager
             .'<th class="px-3 py-2 text-left font-semibold">Creada</th>'
             .'</tr></thead><tbody>'.$rows.'</tbody></table></div>'
         );
+    }
+
+    /**
+     * Opciones del select de estatus. «Anulada» solo aparece cuando su migración ya
+     * está aplicada; mientras tanto no se ofrece en lugar de fallar al guardar.
+     *
+     * @return array<string, string>
+     */
+    public static function quoteStatusOptions(): array
+    {
+        $options = OperationQuoteGenerator::statusOptions();
+
+        if (! CoordinationServiceQuoteAnnulment::isAvailable()) {
+            unset($options[OperationQuoteGenerator::STATUS_ANNULLED]);
+        }
+
+        return $options;
+    }
+
+    /**
+     * Motivo, analista y fecha de una cotización anulada, para el resumen.
+     */
+    public static function renderAnnulmentDetail(OperationQuoteGenerator $quote): string
+    {
+        if ($quote->status !== OperationQuoteGenerator::STATUS_ANNULLED) {
+            return '';
+        }
+
+        $meta = collect([
+            filled($quote->annulled_by_name) ? (string) $quote->annulled_by_name : null,
+            $quote->annulled_at?->format('d/m/Y H:i'),
+        ])->filter()->implode(' · ');
+
+        return '<div class="mt-1 max-w-xs text-xs leading-snug text-gray-600 dark:text-gray-300">'
+            .'<span class="font-semibold">Motivo:</span> '.e(filled($quote->annulment_reason) ? (string) $quote->annulment_reason : '—')
+            .($meta !== '' ? '<div class="text-gray-500 dark:text-gray-400">'.e($meta).'</div>' : '')
+            .'</div>';
+    }
+
+    /**
+     * Texto de ayuda de una cotización cuyo estatus ya no puede cambiarse.
+     */
+    public static function lockedStatusHelperText(int $quoteId): string
+    {
+        $quote = OperationQuoteGenerator::query()->find($quoteId, ['id', 'status', 'annulled_by_name', 'annulled_at', 'annulment_reason']);
+
+        if ($quote instanceof OperationQuoteGenerator && $quote->status === OperationQuoteGenerator::STATUS_ANNULLED) {
+            return 'Cotización anulada'
+                .(filled($quote->annulled_by_name) ? ' por '.$quote->annulled_by_name : '')
+                .($quote->annulled_at !== null ? ' el '.$quote->annulled_at->format('d/m/Y H:i') : '')
+                .'. Motivo: '.(filled($quote->annulment_reason) ? trim((string) $quote->annulment_reason) : '—');
+        }
+
+        return 'El estatus de esta cotización ya fue definido y no puede modificarse.';
     }
 
     public static function renderQuoteGeneratorPdfCell(OperationQuoteGenerator $quote): string
@@ -714,8 +773,12 @@ final class CoordinationServiceQuoteManager
             );
         }
 
-        if ($status === OperationQuoteGenerator::STATUS_PRIVATE_CARE) {
+        if (in_array($status, [OperationQuoteGenerator::STATUS_PRIVATE_CARE, OperationQuoteGenerator::STATUS_ANNULLED], true)) {
             $set('approved_quote_id', null);
+        }
+
+        if ($status !== OperationQuoteGenerator::STATUS_ANNULLED) {
+            $set('annulment_reason', null);
         }
     }
 
@@ -976,6 +1039,7 @@ final class CoordinationServiceQuoteManager
         }
 
         self::$issuedInvoiceNumbers = [];
+        self::$annulmentOutcomes = [];
         $ordersCreated = 0;
         $createdOrderId = 0;
         $privateCareItemsFinalized = 0;
@@ -1001,6 +1065,15 @@ final class CoordinationServiceQuoteManager
 
                 self::persistQuoteStatusesAndOrders($record, $data, $entries, $shouldCreateOrder, $quotesPendingOrder, $ordersCreated, $createdOrderId, $privateCareItemsFinalized, $contadoQuoteIds);
             });
+        } catch (QuoteAnnulmentException $exception) {
+            Notification::make()
+                ->title('No se anuló la cotización')
+                ->body($exception->getMessage().' No se guardó ningún cambio.')
+                ->warning()
+                ->persistent()
+                ->send();
+
+            return null;
         } catch (ServiceOrderFlowException $exception) {
             self::notifyApprovalBlocked($record, $quotesPendingOrder, $exception->getMessage());
 
@@ -1064,7 +1137,7 @@ final class CoordinationServiceQuoteManager
     {
         $label = ServiceOrderFlowTrace::quoteLabel($quote);
 
-        if (in_array(mb_strtoupper(trim((string) $quote->status)), [OperationQuoteGenerator::STATUS_REJECTED, OperationQuoteGenerator::STATUS_PRIVATE_CARE], true)) {
+        if (in_array(mb_strtoupper(trim((string) $quote->status)), [OperationQuoteGenerator::STATUS_REJECTED, OperationQuoteGenerator::STATUS_PRIVATE_CARE, OperationQuoteGenerator::STATUS_ANNULLED], true)) {
             return 'La cotización '.$label.' está '.$quote->status.' y no puede generar una orden. Registre una nueva cotización.';
         }
 
@@ -1178,6 +1251,17 @@ final class CoordinationServiceQuoteManager
             }
 
             $status = (string) ($entry['status'] ?? OperationQuoteGenerator::STATUS_PENDING);
+
+            if ($status === OperationQuoteGenerator::STATUS_ANNULLED) {
+                self::$annulmentOutcomes[] = CoordinationServiceQuoteAnnulment::annul(
+                    $record,
+                    $quote,
+                    (string) ($entry['annulment_reason'] ?? ''),
+                );
+
+                continue;
+            }
+
             $isCash = $status === OperationQuoteGenerator::STATUS_APPROVED
                 && (bool) ($entry['is_cash'] ?? false);
 
@@ -1265,12 +1349,20 @@ final class CoordinationServiceQuoteManager
             $body .= ' Se finalizaron '.$privateCareItemsFinalized.' ítem(s) clínico(s) por atención particular sin generar orden de servicio.';
         }
 
+        $body .= self::annulmentSummary();
+
         if (self::$issuedInvoiceNumbers !== []) {
             $body .= ' Se emitió la factura '.implode(', ', self::$issuedInvoiceNumbers).' al paciente, con su cuenta por cobrar pendiente.';
         }
 
         foreach (array_unique($contadoQuoteIds) as $contadoQuoteId) {
             ContadoQuotePaymentNotifier::dispatchForQuote((int) $contadoQuoteId);
+        }
+
+        foreach (self::$annulmentOutcomes as $outcome) {
+            if ($outcome['is_courtesy']) {
+                CourtesyFinanceNotifier::dispatchForAnnulledQuote($outcome['quote_id']);
+            }
         }
 
         Notification::make()
@@ -1280,6 +1372,25 @@ final class CoordinationServiceQuoteManager
             ->send();
 
         return $createdOrderId > 0 ? $createdOrderId : 0;
+    }
+
+    private static function annulmentSummary(): string
+    {
+        $summary = '';
+
+        foreach (self::$annulmentOutcomes as $outcome) {
+            $summary .= ' Se anuló la cotización '.ServiceOrderFlowTrace::quoteLabel($outcome['quote_id']).'.';
+
+            if ($outcome['items_reverted'] > 0) {
+                $summary .= ' '.$outcome['items_reverted'].' ítem(s) volvieron a PENDIENTE y pueden cotizarse de nuevo.';
+            }
+
+            if ($outcome['coordination_reopened']) {
+                $summary .= ' El servicio volvió a PENDIENTE para gestionarse de nuevo.';
+            }
+        }
+
+        return $summary;
     }
 
     /**

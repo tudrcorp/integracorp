@@ -111,6 +111,6 @@ class FarmadocOrdersTable
                 FarmadocOrderActions::refreshStatus(),
             ])
             ->emptyStateHeading('Aún no hay pedidos a Farmadoc')
-            ->emptyStateDescription('Se registran al enviar un pedido desde «Hacer pedido al proveedor» en la gestión de una coordinación.');
+            ->emptyStateDescription('Se registran al enviar un pedido desde el botón «Nuevo pedido» de esta pantalla.');
     }
 }

@@ -18,9 +18,6 @@ it('el formulario de gestión de ítems define paso de cotización para ítems n
         ->toContain('manageQuoteSummaryPanel')
         ->toContain('Precios unitarios por ítem')
         ->toContain('MedicationQuoteLineStock::hint')
-        ->toContain('Hacer Pedido al Proveedor')
-        ->toContain('MedicationQuoteLineStock::listNeedsSupplierOrder')
-        ->toContain('FarmadocMedicationOrder::getUrl')
         ->toContain('manage_quote_supplier_id')
         ->toContain('manage_quote_supplier_address')
         ->toContain('manage_quote_supplier_phone')
@@ -31,7 +28,10 @@ it('el formulario de gestión de ítems define paso de cotización para ítems n
         ->toContain('resolveManageQuoteSupplierAddress')
         ->toContain('resolveManageQuoteSupplierPhone')
         ->toContain('manageServiceNonCoveredItemsNotice')
-        ->toContain('ManageQuoteSupplierCreator::configureSelect');
+        ->toContain('ManageQuoteSupplierCreator::configureSelect')
+        ->not->toContain('Hacer Pedido al Proveedor')
+        ->not->toContain('reorderMedicationFromSupplier')
+        ->not->toContain('FarmadocMedicationOrder');
 });
 
 it('permite crear un proveedor nuevo desde parámetros de cotización y seleccionarlo', function (): void {
