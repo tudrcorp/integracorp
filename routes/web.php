@@ -295,6 +295,14 @@ Route::get('business/export-user-activity-csv', App\Http\Controllers\UserActivit
     ->middleware(['auth', 'throttle:20,1'])
     ->name('business.user-activity.export');
 
+/**
+ * Negocios → Diseño de cotización: vista previa del PDF con lo que el analista tiene en pantalla.
+ * URL firmada de 30 minutos; el controlador exige el permiso `disenio-de-cotizacion`.
+ */
+Route::get('business/quote-designs/preview/{token}', App\Http\Controllers\QuoteDesignPreviewController::class)
+    ->middleware(['web', 'auth', 'signed'])
+    ->name('business.quote-designs.preview');
+
 Route::get('business/export-prospect-agents-csv', App\Http\Controllers\ProspectAgentExportCsvController::class)
     ->middleware(['web', 'auth'])
     ->name('business.prospect-agents.export-csv');

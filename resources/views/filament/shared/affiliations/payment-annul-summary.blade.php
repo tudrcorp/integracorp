@@ -8,7 +8,7 @@
 <div class="space-y-3">
     @if ($blockers !== [])
         <div class="rounded-lg bg-rose-50 px-3 py-3 text-sm text-rose-900 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-200 dark:ring-rose-400/30">
-            <p class="font-semibold">Este pago no se puede eliminar</p>
+            <p class="font-semibold">Este pago no se puede anular</p>
             <ul class="mt-1.5 list-disc space-y-1 ps-5">
                 @foreach ($blockers as $blocker)
                     <li>{{ $blocker }}</li>
@@ -18,8 +18,8 @@
         </div>
     @else
         <div class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-400/30">
-            El pago desaparece del historial y deja de contar como pendiente. No toca ventas, cobranza ni comisiones: no tiene ninguna.
-            El comprobante se resguarda en un archivo privado y todo queda en la traza con su nota.
+            El pago <span class="font-semibold">se queda en el historial con estatus ANULADO</span>: deja de contar como pendiente, ya no se puede aprobar ni editar y el agente puede cargar el pago correcto.
+            No toca ventas, cobranza ni comisiones (no tiene ninguna). El comprobante se conserva y queda registrado quién, cuándo y por qué. <span class="font-semibold">No se puede deshacer.</span>
         </div>
     @endif
 
