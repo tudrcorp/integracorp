@@ -3,6 +3,7 @@
 namespace App\Filament\Operations\Resources\FarmadocOrders\Pages;
 
 use App\Filament\Operations\Resources\FarmadocOrders\Actions\FarmadocOrderActions;
+use App\Filament\Operations\Resources\FarmadocOrders\Actions\ReceiveFarmadocOrderAction;
 use App\Filament\Operations\Resources\FarmadocOrders\FarmadocOrderResource;
 use App\Support\Filament\FilamentIosButton;
 use Filament\Actions\Action;
@@ -18,6 +19,10 @@ class ViewFarmadocOrder extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            ReceiveFarmadocOrderAction::make()->after(fn () => $this->getRecord()->refresh()),
+            FarmadocOrderActions::viewReceiptNote(),
+            FarmadocOrderActions::viewDeliveryNote(),
+            FarmadocOrderActions::downloadDeliveryNote(),
             FarmadocOrderActions::refreshStatus()->after(fn () => $this->getRecord()->refresh()),
             Action::make('back')
                 ->label('Volver')

@@ -9,6 +9,7 @@ use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\Manage
 use App\Models\OperationCoordinationService;
 use App\Services\Farmadoc\FarmadocAllyClient;
 use App\Support\Farmadoc\FarmadocException;
+use App\Support\Farmadoc\FarmadocInventoryReceipt;
 use App\Support\Farmadoc\FarmadocMedicationList;
 use App\Support\Farmadoc\FarmadocOrderDraft;
 use App\Support\Farmadoc\FarmadocOrderTracker;
@@ -16,6 +17,7 @@ use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\MedicationInvoiceWizard;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Enums\FontFamily;
@@ -40,13 +42,15 @@ class FarmadocMedicationOrder extends Page implements HasTable
 {
     use InteractsWithTable;
 
-    private const CACHE_KEY = 'farmadoc.las-delicias.catalog';
+    public const CACHE_KEY = 'farmadoc.las-delicias.catalog';
 
     /**
      * Copia de respaldo del último catálogo que respondió bien: si la API de Farmadoc
      * falla, el analista sigue eligiendo con ella en lugar de quedarse sin tabla.
      */
-    private const STALE_CACHE_KEY = 'farmadoc.las-delicias.catalog.stale';
+    public const STALE_CACHE_KEY = 'farmadoc.las-delicias.catalog.stale';
+
+    private const LAST_UBICATION_SESSION_KEY = 'farmadoc.order.last-ubication';
 
     private const CACHE_MINUTES = 10;
 
@@ -75,6 +79,9 @@ class FarmadocMedicationOrder extends Page implements HasTable
 
     #[Locked]
     public ?string $patientName = null;
+
+    #[Locked]
+    public ?string $ubicationName = null;
 
     public ?string $branchName = null;
 
@@ -308,9 +315,19 @@ class FarmadocMedicationOrder extends Page implements HasTable
                 ->modalHeading('Enviar pedido a Farmadoc')
                 ->modalDescription('Farmadoc recibirá los medicamentos y las cantidades. Puede armar otro pedido enseguida.')
                 ->modalContent(fn (): HtmlString => $this->orderPreview())
+                ->fillForm(fn (): array => ['ubication_id' => $this->defaultUbicationId()])
+                ->schema([
+                    ToggleButtons::make('ubication_id')
+                        ->label('¿Para qué ubicación es el pedido?')
+                        ->options(fn (): array => FarmadocInventoryReceipt::ubicationOptions())
+                        ->helperText('Al llegar, el pedido entra al inventario de esta ubicación.')
+                        ->inline()
+                        ->required()
+                        ->validationMessages(['required' => 'Elija la ubicación que hace el pedido.']),
+                ])
                 ->modalSubmitActionLabel('Enviar pedido')
-                ->action(function (): void {
-                    $this->placeOrder();
+                ->action(function (array $data): void {
+                    $this->placeOrder(is_numeric($data['ubication_id'] ?? null) ? (int) $data['ubication_id'] : null);
                 }),
         ];
     }
@@ -418,8 +435,22 @@ class FarmadocMedicationOrder extends Page implements HasTable
             ->send();
     }
 
-    public function placeOrder(): void
+    public function placeOrder(?int $ubicationId = null): void
     {
+        $ubications = FarmadocInventoryReceipt::ubicationOptions();
+
+        if ($ubications !== [] && ($ubicationId === null || ! isset($ubications[$ubicationId]))) {
+            Notification::make()
+                ->title('No se envió el pedido')
+                ->body('Elija la ubicación (DIAGNO-MOVIL o DIAGNO-CENTER) que hace el pedido.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $this->ubicationName = $ubicationId !== null ? ($ubications[$ubicationId] ?? null) : null;
+
         try {
             $catalog = $this->medications();
             $items = FarmadocOrderDraft::items($this->orderLines, $catalog);
@@ -460,7 +491,12 @@ class FarmadocMedicationOrder extends Page implements HasTable
                 $this->coordinationReference,
                 $this->patientName,
                 Auth::user(),
+                $ubicationId,
             );
+
+            if ($ubicationId !== null) {
+                session()->put(self::LAST_UBICATION_SESSION_KEY, $ubicationId);
+            }
         } catch (Throwable $exception) {
             report($exception);
 
@@ -700,6 +736,21 @@ class FarmadocMedicationOrder extends Page implements HasTable
         ];
     }
 
+    /**
+     * La última ubicación que usó el analista, o la única si solo hay una.
+     */
+    private function defaultUbicationId(): ?int
+    {
+        $options = FarmadocInventoryReceipt::ubicationOptions();
+        $last = session()->get(self::LAST_UBICATION_SESSION_KEY);
+
+        if (is_numeric($last) && isset($options[(int) $last])) {
+            return (int) $last;
+        }
+
+        return count($options) === 1 ? (int) array_key_first($options) : null;
+    }
+
     private function textOrNull(mixed $value): ?string
     {
         if (! is_string($value)) {
@@ -718,6 +769,10 @@ class FarmadocMedicationOrder extends Page implements HasTable
 
         if (is_string($this->coordinationLabel) && $this->coordinationLabel !== '') {
             $notes .= ' '.$this->coordinationLabel;
+        }
+
+        if (is_string($this->ubicationName) && $this->ubicationName !== '') {
+            $notes .= ' Para: '.$this->ubicationName.'.';
         }
 
         if (is_string($analyst) && trim($analyst) !== '') {

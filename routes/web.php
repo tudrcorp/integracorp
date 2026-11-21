@@ -158,6 +158,16 @@ Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+Route::get('operations/farmadoc-orders/{farmadocOrder}/nota-de-entrega', App\Http\Controllers\Operations\FarmadocDeliveryNoteController::class)
+    ->middleware(['web', 'auth'])
+    ->whereNumber('farmadocOrder')
+    ->name('operations.farmadoc-orders.delivery-note');
+
+Route::get('operations/farmadoc-orders/{farmadocOrder}/nota-de-recibido', App\Http\Controllers\Operations\FarmadocReceiptNoteController::class)
+    ->middleware(['web', 'auth'])
+    ->whereNumber('farmadocOrder')
+    ->name('operations.farmadoc-orders.receipt-note');
+
 Route::get('operations/export-suppliers-csv', App\Http\Controllers\SupplierExportCsvController::class)
     ->middleware(['web', 'auth'])
     ->name('operations.suppliers.export-csv');

@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Enums\ApiPartnerAbility;
+use App\Http\Controllers\Api\V1\Partners\FarmadocOrderController;
 use App\Http\Controllers\Api\V1\Partners\NonCoveredMedicationController;
 use App\Http\Controllers\Api\V1\Partners\PartnerProfileController;
+use App\Support\ApiPartners\FarmadocOrderFeed;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -40,6 +42,20 @@ Route::prefix('api/v1/aliados')
             ->whereNumber('medication')
             ->middleware('api.partner:'.ApiPartnerAbility::NonCoveredMedicationsRead->value)
             ->name('non-covered-medications.show');
+
+        Route::get('pedidos-farmadoc', [FarmadocOrderController::class, 'index'])
+            ->middleware('api.partner:'.ApiPartnerAbility::FarmadocOrdersRead->value)
+            ->name('farmadoc-orders.index');
+
+        Route::get('pedidos-farmadoc/{orderNumber}', [FarmadocOrderController::class, 'show'])
+            ->where('orderNumber', FarmadocOrderFeed::ORDER_NUMBER_PATTERN)
+            ->middleware('api.partner:'.ApiPartnerAbility::FarmadocOrdersRead->value)
+            ->name('farmadoc-orders.show');
+
+        Route::get('pedidos-farmadoc/{orderNumber}/nota-de-recibido', [FarmadocOrderController::class, 'receiptNote'])
+            ->where('orderNumber', FarmadocOrderFeed::ORDER_NUMBER_PATTERN)
+            ->middleware('api.partner:'.ApiPartnerAbility::FarmadocOrdersRead->value)
+            ->name('farmadoc-orders.receipt-note');
 
         Route::any('{path}', [PartnerProfileController::class, 'notFound'])
             ->where('path', '.*')

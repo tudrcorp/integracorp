@@ -150,6 +150,11 @@ class OperationsPanelProvider extends PanelProvider
                 PanelsRenderHook::BODY_END,
                 fn () => view('filament.operations.hooks.non-covered-medication-alert')
             )
+            /** Aviso con sonido: Farmadoc aceptó un pedido (analistas TDG de Operaciones y superadmin). */
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => view('filament.operations.hooks.farmadoc-acceptance-alert')
+            )
             /** Dashboard de Operaciones: tokens de color, animaciones y modo presentación. */
             ->renderHook(
                 PanelsRenderHook::PAGE_START,
