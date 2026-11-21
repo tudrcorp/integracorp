@@ -10,6 +10,7 @@ use App\Models\NotificationDelivery;
 use App\Models\TelegramRecipient;
 use App\Support\InternalNotifications\InternalNotificationDispatcher;
 use App\Support\InternalNotifications\InternalNotificationFallback;
+use App\Support\NotificationCenter\OutboundTelegram;
 use App\Support\Telegram\TelegramApiException;
 use App\Support\Telegram\TelegramBotClient;
 use App\Support\Telegram\TelegramText;
@@ -120,6 +121,8 @@ class SendTelegramDeliveryJob implements ShouldQueue
         ])->save();
 
         $recipient->forceFill(['last_sent_at' => now(), 'last_error' => null, 'last_error_at' => null])->save();
+
+        OutboundTelegram::record($delivery, true);
     }
 
     private function handleApiError(NotificationDelivery $delivery, TelegramRecipient $recipient, TelegramApiException $exception, int $attempts): void

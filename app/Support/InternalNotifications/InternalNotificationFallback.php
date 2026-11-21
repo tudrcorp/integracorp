@@ -11,6 +11,7 @@ use App\Enums\TelegramDeliveryMode;
 use App\Enums\TelegramRecipientType;
 use App\Models\NotificationDelivery;
 use App\Models\TelegramRecipient;
+use App\Support\NotificationCenter\OutboundTelegram;
 use App\Support\SystemNotificationRecipients;
 use Illuminate\Support\Facades\DB;
 
@@ -35,7 +36,9 @@ final class InternalNotificationFallback
     {
         $queued = [];
 
-        DB::transaction(function () use ($deliveryId, $reason, &$queued): void {
+        $failedTelegram = null;
+
+        DB::transaction(function () use ($deliveryId, $reason, &$queued, &$failedTelegram): void {
             $delivery = NotificationDelivery::query()->with('recipient.user')->lockForUpdate()->find($deliveryId);
 
             if (! $delivery instanceof NotificationDelivery || $delivery->status !== NotificationDeliveryStatus::Pending) {
@@ -63,7 +66,15 @@ final class InternalNotificationFallback
                 'status' => $queued === [] ? NotificationDeliveryStatus::Failed : NotificationDeliveryStatus::FellBack,
                 'error' => mb_substr($reason.($queued === [] ? ' · Sin teléfono ni correo para el respaldo.' : ''), 0, 1000),
             ])->save();
+
+            if ($delivery->channel === NotificationDeliveryChannel::Telegram) {
+                $failedTelegram = $delivery;
+            }
         });
+
+        if ($failedTelegram instanceof NotificationDelivery) {
+            OutboundTelegram::record($failedTelegram, false, $reason);
+        }
 
         foreach ($queued as $child) {
             InternalNotificationDispatcher::sendDirect($child, true, $sync);

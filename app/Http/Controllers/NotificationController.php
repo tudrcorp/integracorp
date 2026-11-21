@@ -17,6 +17,7 @@ use App\Support\Birthday\BirthdayCelebrationCard;
 use App\Support\InternalNotifications\InternalMessaging;
 use App\Support\MassNotificationEmailFailureLogger;
 use App\Support\MassNotificationRecipientDelivery;
+use App\Support\NotificationCenter\OutboundWhatsApp;
 use App\Support\PublicStorageAssetUrl;
 use App\Support\RunReportMessageFormatter;
 use App\Support\SystemNotificationRecipients;
@@ -77,7 +78,7 @@ class NotificationController extends Controller
                 ],
             ]);
 
-            $response = curl_exec($curl);
+            $response = OutboundWhatsApp::exec($curl, $params);
             $err = curl_error($curl);
 
             curl_close($curl);
@@ -191,7 +192,7 @@ class NotificationController extends Controller
                 ],
             ]);
 
-            $response = curl_exec($curl);
+            $response = OutboundWhatsApp::exec($curl, $params);
             $err = curl_error($curl);
             $res = json_decode($response, true);
 
@@ -390,7 +391,7 @@ class NotificationController extends Controller
                 ],
             ]);
 
-            $response = curl_exec($curl);
+            $response = OutboundWhatsApp::exec($curl, $params);
             $err = curl_error($curl);
             $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
@@ -496,7 +497,7 @@ class NotificationController extends Controller
                 ],
             ]);
 
-            $response = curl_exec($curl);
+            $response = OutboundWhatsApp::exec($curl, $params);
             $err = curl_error($curl);
             $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
@@ -599,7 +600,7 @@ class NotificationController extends Controller
                 ],
             ]);
 
-            $response = curl_exec($curl);
+            $response = OutboundWhatsApp::exec($curl, $params);
             $err = curl_error($curl);
             $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
@@ -737,7 +738,7 @@ class NotificationController extends Controller
                 ],
             ]);
 
-            $response = curl_exec($curl);
+            $response = OutboundWhatsApp::exec($curl, $params);
             $err = curl_error($curl);
             $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
@@ -841,7 +842,7 @@ class NotificationController extends Controller
                 ],
             ]);
 
-            $response = curl_exec($curl);
+            $response = OutboundWhatsApp::exec($curl, $params);
             $err = curl_error($curl);
             $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
@@ -936,7 +937,7 @@ class NotificationController extends Controller
                         ],
                     ]);
 
-                    $response = curl_exec($curl);
+                    $response = OutboundWhatsApp::exec($curl, $params);
                     $err = curl_error($curl);
 
                     Log::info($response);
@@ -976,7 +977,7 @@ class NotificationController extends Controller
                         ],
                     ]);
 
-                    $response = curl_exec($curl);
+                    $response = OutboundWhatsApp::exec($curl, $params);
                     $err = curl_error($curl);
 
                     Log::info($response);
@@ -1090,7 +1091,7 @@ class NotificationController extends Controller
                 ],
             ]);
 
-            $response = curl_exec($curl);
+            $response = OutboundWhatsApp::exec($curl, $params);
             $err = curl_error($curl);
 
             curl_close($curl);
@@ -1478,7 +1479,7 @@ class NotificationController extends Controller
                 ],
             ]);
 
-            $response = curl_exec($curl);
+            $response = OutboundWhatsApp::exec($curl, $params);
             $err = curl_error($curl);
 
             curl_close($curl);
@@ -1689,7 +1690,7 @@ class NotificationController extends Controller
                     ],
                 ]);
 
-                $response = curl_exec($curl);
+                $response = OutboundWhatsApp::exec($curl, $params);
                 $err = curl_error($curl);
 
                 Log::info($response);
@@ -1756,7 +1757,7 @@ class NotificationController extends Controller
                     ],
                 ]);
 
-                $response = curl_exec($curl);
+                $response = OutboundWhatsApp::exec($curl, $params);
                 $err = curl_error($curl);
 
                 curl_close($curl);
@@ -1875,7 +1876,7 @@ class NotificationController extends Controller
                 ]);
             }
 
-            $response = curl_exec($curl);
+            $response = OutboundWhatsApp::exec($curl, $params);
             $err = curl_error($curl);
             $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
@@ -2011,7 +2012,7 @@ class NotificationController extends Controller
                 ]);
             }
 
-            $response = curl_exec($curl);
+            $response = OutboundWhatsApp::exec($curl, $params);
             $err = curl_error($curl);
 
             Log::info($response);
@@ -2119,7 +2120,7 @@ class NotificationController extends Controller
                 ],
             ]);
 
-            $response = curl_exec($curl);
+            $response = OutboundWhatsApp::exec($curl, $params);
             $err = curl_error($curl);
 
             curl_close($curl);
@@ -2252,7 +2253,7 @@ TEXT;
                 ],
             ]);
 
-            $response = curl_exec($curl);
+            $response = OutboundWhatsApp::exec($curl, $params);
             $err = curl_error($curl);
             $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
@@ -2390,7 +2391,7 @@ TEXT;
                 ],
             ]);
 
-            $response = curl_exec($curl);
+            $response = OutboundWhatsApp::exec($curl, $params);
             $err = curl_error($curl);
             $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
@@ -2571,7 +2572,7 @@ TEXT;
                 ],
             ]);
 
-            $response = curl_exec($curl);
+            $response = OutboundWhatsApp::exec($curl, $params);
             $err = curl_error($curl);
             $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
@@ -2672,7 +2673,7 @@ TEXT;
                 ],
             ]);
 
-            $response = curl_exec($curl);
+            $response = OutboundWhatsApp::exec($curl, $params);
             $err = curl_error($curl);
             $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 

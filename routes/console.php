@@ -302,6 +302,15 @@ Schedule::command('model:prune', ['--model' => [\App\Models\TelemedicinePanelEve
     ->withoutOverlapping(30);
 
 /**
+ * Centro de notificaciones → Bitácora: borra los mensajes de más de 90 días
+ * (OutboundMessage::RETENTION_DAYS) para que la pantalla siga siendo ligera.
+ */
+Schedule::command('model:prune', ['--model' => [\App\Models\OutboundMessage::class]])
+    ->dailyAt('3:40')
+    ->name('outbound-messages-prune')
+    ->withoutOverlapping(30);
+
+/**
  * Claves OTP consultables (Negocios → CONFIGURACIÓN → Claves OTP): cada hora borra
  * las que tienen más de 24 horas (SystemOtpCode::RETENTION_HOURS). La pantalla ya
  * oculta las vencidas aunque esta limpieza se atrase.

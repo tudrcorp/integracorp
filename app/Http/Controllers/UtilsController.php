@@ -21,6 +21,7 @@ use App\Models\State;
 use App\Models\TelemedicineCase;
 use App\Support\CorporateQuotePdfGenerator;
 use App\Support\IndividualQuotePdfGenerator;
+use App\Support\NotificationCenter\OutboundWhatsApp;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -185,6 +186,10 @@ class UtilsController extends Controller
      */
     public static function notificacionToAdmin($data)
     {
+        /** Un WhatsApp bloqueado a propósito en el Centro de notificaciones no es una falla: no se avisa. */
+        if (OutboundWhatsApp::blockedRecently()) {
+            return;
+        }
 
         $accion = $data['action'];
         $objeto = $data['objeto'];
@@ -236,7 +241,7 @@ class UtilsController extends Controller
                 ],
             ]);
 
-            $response = curl_exec($curl);
+            $response = OutboundWhatsApp::exec($curl, $params);
             $err = curl_error($curl);
 
             curl_close($curl);
@@ -1028,7 +1033,7 @@ class UtilsController extends Controller
                         ],
                     ]);
 
-                    $response = curl_exec($curl);
+                    $response = OutboundWhatsApp::exec($curl, $params);
                     $err = curl_error($curl);
 
                     Log::info($response);
@@ -1066,7 +1071,7 @@ class UtilsController extends Controller
                         ],
                     ]);
 
-                    $response = curl_exec($curl);
+                    $response = OutboundWhatsApp::exec($curl, $params);
                     $err = curl_error($curl);
 
                     Log::info($response);
@@ -1368,7 +1373,7 @@ class UtilsController extends Controller
                     ],
                 ]);
 
-                $response = curl_exec($curl);
+                $response = OutboundWhatsApp::exec($curl, $params);
                 $err = curl_error($curl);
                 Log::info('INTEGRACORP: '.$response);
 

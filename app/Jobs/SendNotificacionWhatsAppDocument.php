@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Support\NotificationCenter\OutboundOrigin;
+use App\Support\NotificationCenter\OutboundWhatsApp;
 use App\Support\SecurityAudit;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -34,10 +36,22 @@ class SendNotificacionWhatsAppDocument implements ShouldQueue
         public string $documentUrl,
         public string $filename,
         public array $auditContext = [],
-    ) {}
+    ) {
+        /** El Centro de notificaciones reconoce el tipo por quien despacha el job. */
+        $this->auditContext['origin'] ??= OutboundOrigin::capture();
+    }
 
     public function handle(): void
     {
+        $decision = OutboundWhatsApp::decide($this->phone, $this->auditContext);
+        $logParams = ['to' => $this->phone, 'caption' => $this->caption, 'document' => $this->documentUrl, 'filename' => $this->filename];
+
+        if ($decision->blocked()) {
+            OutboundWhatsApp::recordBlocked($decision, $logParams);
+
+            return;
+        }
+
         $curl = curl_init();
         $response = null;
         $httpCode = null;
@@ -75,6 +89,8 @@ class SendNotificacionWhatsAppDocument implements ShouldQueue
             if ($error || $httpCode >= 400) {
                 throw new \Exception("CURL Error ({$httpCode}): ".($error ?: $response));
             }
+
+            OutboundWhatsApp::record($decision, true, $logParams);
 
             Log::info('WhatsApp documento enviado correctamente', [
                 'to' => $this->phone,
@@ -125,6 +141,8 @@ class SendNotificacionWhatsAppDocument implements ShouldQueue
 
     public function failed(Throwable $exception): void
     {
+        OutboundWhatsApp::record(OutboundWhatsApp::decide($this->phone, $this->auditContext), false, ['to' => $this->phone, 'caption' => $this->caption, 'document' => $this->documentUrl, 'filename' => $this->filename], $exception->getMessage());
+
         Log::critical('WhatsApp documento Job falló definitivamente tras varios reintentos', [
             'to' => $this->phone,
             'error' => $exception->getMessage(),

@@ -7,10 +7,14 @@ namespace App\Filament\Business\Pages;
 use App\Enums\SystemNotificationKey;
 use App\Enums\TelegramDeliveryMode;
 use App\Filament\Business\Pages\Schemas\SystemNotificationRecipientSettingsForm;
+use App\Models\NotificationCatalogEntry;
 use App\Models\SystemNotificationRecipientSetting;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\InternalNotifications\InternalNotification;
 use App\Support\InternalNotifications\InternalNotificationDispatcher;
+use App\Support\NotificationCenter\InternalDirectory;
+use App\Support\NotificationCenter\NotificationCatalog;
+use App\Support\NotificationCenter\NotificationCenterAccess;
 use App\Support\SecurityAudit;
 use App\Support\SystemNotificationRecipients;
 use BackedEnum;
@@ -26,6 +30,8 @@ use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Throwable;
 use UnitEnum;
 
@@ -46,19 +52,63 @@ class ManageCompanyAssociateNotifications extends Page
     public string $activeNotificationKey = 'company_associate_registration';
 
     /**
+     * Pestaña visible: catalog (todas las notificaciones), log (bitácora), channels
+     * (interruptores generales) o internal (destinatarios de los avisos internos).
+     */
+    #[Url(as: 'vista', except: 'catalog')]
+    public string $section = 'catalog';
+
+    /** Tipo con el que se abre filtrada la bitácora (desde «Ver envíos» del catálogo). */
+    public ?string $logCatalogKey = null;
+
+    /**
      * @var array<string, mixed>|null
      */
     public ?array $data = [];
 
     public function mount(): void
     {
+        if (! in_array($this->section, self::SECTIONS, true)) {
+            $this->section = 'catalog';
+        }
+
+        /** La primera visita tras la migración carga el catálogo de tipos (aditivo, una vez). */
+        NotificationCatalog::snapshot();
+
         $this->fillForm();
+    }
+
+    public const SECTIONS = ['catalog', 'log', 'channels', 'internal'];
+
+    public function showSection(string $section): void
+    {
+        if (in_array($section, self::SECTIONS, true)) {
+            $this->section = $section;
+        }
+
+        if ($section !== 'log') {
+            $this->logCatalogKey = null;
+        }
+    }
+
+    #[On('notification-center-open-internal')]
+    public function openInternalNotice(string $key): void
+    {
+        $this->section = 'internal';
+        $this->selectNotificationKey($key);
+    }
+
+    #[On('notification-center-open-log')]
+    public function openLog(?string $catalogKey = null): void
+    {
+        $this->logCatalogKey = $catalogKey;
+        $this->section = 'log';
     }
 
     public function getSubheading(): string|Htmlable|null
     {
         return new HtmlString(
-            '<span class="text-sm text-slate-500 dark:text-slate-400">Gestione por tipo de alerta los destinatarios y active o pause cada tarea programada desde aquí.</span>'
+            '<span class="text-sm text-slate-500 dark:text-slate-400">Todo lo que el sistema envía por WhatsApp, correo y Telegram, a quién y cómo: actívelo, páuselo o cámbielo de canal desde aquí.</span>'
         );
     }
 
@@ -256,6 +306,8 @@ class ManageCompanyAssociateNotifications extends Page
 
     public function save(): void
     {
+        abort_unless(self::userCanAccessPage(), 403);
+
         $data = $this->form->getState();
         $notificationKey = $this->getActiveNotificationKeyEnum();
         $isActive = (bool) ($data['is_active'] ?? true);
@@ -303,6 +355,11 @@ class ManageCompanyAssociateNotifications extends Page
             'telegram_people_count' => count($telegram['telegram_recipient_ids'] ?? []),
             'updated_by' => Auth::user()?->name,
         ]);
+
+        /** El catálogo del Centro refleja el mismo estado, y el directorio interno ve los teléfonos nuevos. */
+        NotificationCatalogEntry::query()->where('key', 'internal:'.$notificationKey->value)->update(['is_active' => $isActive, 'updated_by' => Auth::user()?->name]);
+        NotificationCatalog::flush();
+        InternalDirectory::flush();
 
         unset($this->settingsRecord, $this->keyCatalog);
 
@@ -458,8 +515,6 @@ class ManageCompanyAssociateNotifications extends Page
 
     private static function userCanAccessPage(): bool
     {
-        $departments = (array) (Auth::user()?->departament ?? []);
-
-        return in_array('SUPERADMIN', $departments, true);
+        return NotificationCenterAccess::canAccess();
     }
 }

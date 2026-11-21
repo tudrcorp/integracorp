@@ -50,6 +50,7 @@ use App\Support\Filesystem\WindowsSafeFilesystem;
 use App\Support\LivePresence\LivePresenceRecorder;
 use App\Support\LivePresence\QueueActivityRecorder;
 use App\Support\LivePresence\SecurityAuthListener;
+use App\Support\NotificationCenter\OutboundMailListener;
 use App\Support\Operations\CoordinationServiceTabCounts;
 use App\Support\Telemedicine\PanelLog\TelemedicinePanelLivewireMonitor;
 use App\Support\Telemedicine\PanelLog\TelemedicinePanelLog;
@@ -72,6 +73,8 @@ use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\Validated;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Mail\Events\MessageSending;
+use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
@@ -180,6 +183,10 @@ class AppServiceProvider extends ServiceProvider
 
         Event::listen(Login::class, [UserSessionAuditTracker::class, 'onLogin']);
         Event::listen(Logout::class, [UserSessionAuditTracker::class, 'onLogout']);
+
+        /** Centro de notificaciones: cada correo pasa por el guardián (puede detenerlo) y queda en la bitácora. */
+        Event::listen(MessageSending::class, [OutboundMailListener::class, 'onSending']);
+        Event::listen(MessageSent::class, [OutboundMailListener::class, 'onSent']);
 
         Event::listen(ImportStarted::class, [LogFilamentImportActivity::class, 'handleStarted']);
         Event::listen(ImportStarted::class, [StampPlanGeneratorPopulationImport::class, 'handle']);

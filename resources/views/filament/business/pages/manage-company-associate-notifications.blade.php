@@ -443,7 +443,56 @@
         </style>
     @endpush
 
-    <div class="can-settings-page" wire:key="notification-center-{{ $activeKey->value }}">
+    @php
+        $sections = [
+            'catalog' => ['label' => 'Notificaciones', 'icon' => 'heroicon-m-squares-2x2', 'hint' => 'Todo lo que envía el sistema'],
+            'log' => ['label' => 'Bitácora', 'icon' => 'heroicon-m-queue-list', 'hint' => 'Qué salió, a quién y cómo'],
+            'channels' => ['label' => 'Canales', 'icon' => 'heroicon-m-signal', 'hint' => 'WhatsApp, correo y Telegram'],
+            'internal' => ['label' => 'Avisos internos', 'icon' => 'heroicon-m-users', 'hint' => 'Destinatarios del personal'],
+        ];
+    @endphp
+
+    <div class="can-settings-page" wire:key="notification-center-{{ $section }}-{{ $activeKey->value }}">
+        <style>
+            .can-sections { display: flex; flex-wrap: wrap; gap: .4rem; padding: .3rem; margin-bottom: 1.1rem; border: 1px solid var(--can-line); border-radius: 1rem; background: var(--can-surface); }
+            .can-section-tab { display: inline-flex; align-items: center; gap: .55rem; padding: .5rem .85rem; border-radius: .75rem; border: 0; background: transparent; color: var(--can-muted); cursor: pointer; text-align: left; transition: background 120ms ease, color 120ms ease; }
+            .can-section-tab:hover { color: var(--can-text); background: var(--can-surface-2); }
+            .can-section-tab.is-on { background: var(--can-accent-soft); color: var(--can-accent); }
+            .can-section-tab b { display: block; font-size: .85rem; font-weight: 700; }
+            .can-section-tab small { display: block; font-size: .7rem; opacity: .85; }
+            @media (max-width: 640px) { .can-section-tab small { display: none; } }
+        </style>
+
+        <nav class="can-sections" role="tablist" aria-label="Secciones del Centro de notificaciones">
+            @foreach ($sections as $id => $tab)
+                <button
+                    type="button"
+                    role="tab"
+                    class="can-section-tab {{ $section === $id ? 'is-on' : '' }}"
+                    aria-selected="{{ $section === $id ? 'true' : 'false' }}"
+                    wire:click="showSection('{{ $id }}')"
+                    wire:loading.attr="disabled"
+                    wire:target="showSection"
+                >
+                    <x-filament::icon :icon="$tab['icon']" class="h-5 w-5" />
+                    <span><b>{{ $tab['label'] }}</b><small>{{ $tab['hint'] }}</small></span>
+                </button>
+            @endforeach
+        </nav>
+
+        @if ($section !== 'internal' && ! \App\Support\NotificationCenter\NotificationCatalog::tablesExist())
+            <div class="can-empty-hint">
+                Falta preparar la base de datos del Centro de notificaciones. Corra
+                <code>php artisan migrate --path=database/migrations/2026_11_21_120000_create_notification_center_tables.php</code>
+                y vuelva a abrir esta página. Mientras tanto, los mensajes salen como siempre y «Avisos internos» funciona normal.
+            </div>
+        @elseif ($section === 'catalog')
+            @livewire(\App\Livewire\NotificationCenter\NotificationCatalogTable::class, [], key('nc-catalog'))
+        @elseif ($section === 'log')
+            @livewire(\App\Livewire\NotificationCenter\OutboundMessagesTable::class, ['catalogKey' => $logCatalogKey], key('nc-log-'.($logCatalogKey ?? 'all')))
+        @elseif ($section === 'channels')
+            @livewire(\App\Livewire\NotificationCenter\NotificationChannelsPanel::class, [], key('nc-channels'))
+        @else
         <div class="can-layout">
             {{-- Lista de avisos --}}
             <aside
@@ -635,6 +684,7 @@
                 {{ $this->content }}
             </div>
         </div>
+        @endif
     </div>
 
     <x-filament-actions::modals />
