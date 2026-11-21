@@ -27,6 +27,7 @@ class InternalNotificationMail extends Mailable implements ShouldQueue
         public bool $isFallback = true,
         public ?string $attachmentPath = null,
         public ?string $attachmentName = null,
+        public ?string $notificationKey = null,
     ) {}
 
     public function envelope(): Envelope

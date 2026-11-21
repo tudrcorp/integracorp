@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Support\NotificationCenter\OutboundWhatsApp;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -164,6 +165,13 @@ final class MassNotificationWhatsAppSender
                 'Archivo multimedia vacío para el tipo: '.$type,
                 $phone,
             );
+        }
+
+        /** Campañas masivas: el Centro de notificaciones puede pausarlas; no van a su bitácora. */
+        $decision = OutboundWhatsApp::decide($phone, ['catalog' => 'bulk.mass_campaigns']);
+
+        if ($decision->blocked()) {
+            return MassNotificationWhatsAppSendResult::fail((string) $decision->blockedReason, $phone);
         }
 
         $curl = curl_init();

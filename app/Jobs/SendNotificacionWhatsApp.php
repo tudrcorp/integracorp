@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Support\NotificationCenter\OutboundOrigin;
+use App\Support\NotificationCenter\OutboundWhatsApp;
 use App\Support\SecurityAudit;
 use App\Support\WhatsAppBrandImage;
 use App\Support\WhatsAppMessageSplitter;
@@ -45,7 +47,10 @@ class SendNotificacionWhatsApp implements ShouldQueue
         public mixed $document = null,
         public array $auditContext = [],
         public ?string $imageUrl = null,
-    ) {}
+    ) {
+        /** El Centro de notificaciones reconoce el tipo por quien despacha el job. */
+        $this->auditContext['origin'] ??= OutboundOrigin::capture();
+    }
 
     /**
      * Ejecuta la lógica del Job.
@@ -62,6 +67,15 @@ class SendNotificacionWhatsApp implements ShouldQueue
          * largos se parten (pie + mensajes de texto). En un reintento no se
          * reenvían las partes que ya salieron.
          */
+        $decision = OutboundWhatsApp::decide($this->phone, $this->auditContext);
+        $logParams = ['to' => $this->phone, 'body' => (string) $this->body, 'image' => $image];
+
+        if ($decision->blocked()) {
+            OutboundWhatsApp::recordBlocked($decision, $logParams);
+
+            return;
+        }
+
         $parts = WhatsAppMessageSplitter::split((string) $this->body);
         $steps = [
             [config('parameters.CURLOPT_URL_IMAGE'), ['image' => $image, 'caption' => $parts['caption']]],
@@ -99,6 +113,8 @@ class SendNotificacionWhatsApp implements ShouldQueue
 
                 $this->markSent($progressKey, $index + 1);
             }
+
+            OutboundWhatsApp::record($decision, true, $logParams);
 
             Log::info('WhatsApp enviado correctamente', [
                 'to' => $this->phone,
@@ -218,6 +234,8 @@ class SendNotificacionWhatsApp implements ShouldQueue
      */
     public function failed(Throwable $exception): void
     {
+        OutboundWhatsApp::record(OutboundWhatsApp::decide($this->phone, $this->auditContext), false, ['to' => $this->phone, 'body' => (string) $this->body], $exception->getMessage());
+
         Log::critical('WhatsApp Job falló definitivamente tras varios reintentos', [
             'to' => $this->phone,
             'error' => $exception->getMessage(),

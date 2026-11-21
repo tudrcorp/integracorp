@@ -7,6 +7,7 @@ namespace App\Support\Companies;
 use App\Mail\CompanyPublicRegistrationLinkEmail;
 use App\Models\Company;
 use App\Services\HelpdeskTicketAssigneeWhatsAppService;
+use App\Support\NotificationCenter\OutboundWhatsApp;
 use App\Support\SecurityAudit;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -111,7 +112,7 @@ final class CompanyPublicRegistrationLinkSender
             ],
         ]);
 
-        $response = curl_exec($curl);
+        $response = OutboundWhatsApp::exec($curl, $params);
         $error = curl_error($curl);
         $httpCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
 

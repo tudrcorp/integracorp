@@ -17,6 +17,7 @@ use App\Support\Birthday\BirthdayRecipientQuery;
 use App\Support\BirthdayNotificationAudience;
 use App\Support\BirthdayNotificationRunReport;
 use App\Support\MassNotificationEmailSubject;
+use App\Support\NotificationCenter\OutboundWhatsApp;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -121,7 +122,7 @@ class NotificationMasiveService
                         ],
                     ]);
 
-                    $response = curl_exec($curl);
+                    $response = OutboundWhatsApp::exec($curl, $params);
                     $err = curl_error($curl);
 
                     Log::info($response);
@@ -159,7 +160,7 @@ class NotificationMasiveService
                         ],
                     ]);
 
-                    $response = curl_exec($curl);
+                    $response = OutboundWhatsApp::exec($curl, $params);
                     $err = curl_error($curl);
 
                     Log::info($response);
@@ -1948,7 +1949,7 @@ class NotificationMasiveService
                         ],
                     ]);
 
-                    $response = curl_exec($curl);
+                    $response = OutboundWhatsApp::exec($curl, $params);
                     $err = curl_error($curl);
 
                     Log::info($response);
@@ -1986,7 +1987,7 @@ class NotificationMasiveService
                         ],
                     ]);
 
-                    $response = curl_exec($curl);
+                    $response = OutboundWhatsApp::exec($curl, $params);
                     $err = curl_error($curl);
 
                     Log::info($response);

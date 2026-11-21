@@ -249,6 +249,7 @@ final class DepartmentNavigationPermissionRegistry
         AgendaCorporativa::class => ['agenda-corporativa'],
         CalendariosTdg::class => ['calendarios-tdg'],
         \App\Filament\Business\Pages\UserActivityMonitor::class => ['actividad-usuarios'],
+        \App\Filament\Business\Pages\ManageCompanyAssociateNotifications::class => ['centro-notificaciones'],
         GuardiasOperaciones::class => ['guardias-operaciones'],
         GuiaChatFeedbackResource::class => ['guia-chat'],
         ConfigCostoBenefitResource::class => ['porcentajes-costos'],

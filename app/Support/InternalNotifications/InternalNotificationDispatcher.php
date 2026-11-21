@@ -6,6 +6,7 @@ namespace App\Support\InternalNotifications;
 
 use App\Enums\NotificationDeliveryChannel;
 use App\Enums\NotificationDeliveryStatus;
+use App\Enums\OutboundChannel;
 use App\Enums\SystemNotificationKey;
 use App\Enums\TelegramDeliveryMode;
 use App\Enums\TelegramRecipientStatus;
@@ -17,6 +18,7 @@ use App\Models\NotificationDelivery;
 use App\Models\SystemNotificationRecipientSetting;
 use App\Models\TelegramRecipient;
 use App\Models\User;
+use App\Support\NotificationCenter\NotificationCatalog;
 use App\Support\SystemNotificationRecipients;
 use App\Support\Telegram\TelegramBotClient;
 use App\Support\Telegram\TelegramText;
@@ -174,7 +176,7 @@ final class InternalNotificationDispatcher
                     SendNotificacionWhatsApp::dispatch(null, (string) $delivery->body, (string) $delivery->target, null, $context)->onQueue($queue)->afterCommit();
                 }
             } elseif ($delivery->channel === NotificationDeliveryChannel::Mail) {
-                $mail = new InternalNotificationMail((string) $delivery->title, TelegramText::plain((string) $delivery->body), $isFallback, $delivery->attachment_path, $delivery->attachment_name);
+                $mail = new InternalNotificationMail((string) $delivery->title, TelegramText::plain((string) $delivery->body), $isFallback, $delivery->attachment_path, $delivery->attachment_name, (string) $delivery->notification_key);
 
                 if ($sync) {
                     Mail::to((string) $delivery->target)->send($mail);
@@ -229,7 +231,10 @@ final class InternalNotificationDispatcher
 
     public static function telegramAvailable(): bool
     {
-        return (bool) config('telegram.enabled', true) && TelegramBotClient::make()->isConfigured();
+        /** El interruptor general de Telegram (Centro de notificaciones → Canales) manda los avisos a su respaldo. */
+        return (bool) config('telegram.enabled', true)
+            && NotificationCatalog::channelEnabled(OutboundChannel::Telegram)
+            && TelegramBotClient::make()->isConfigured();
     }
 
     private static function effectiveMode(InternalNotification $notification, SystemNotificationRecipientSetting $setting): TelegramDeliveryMode
