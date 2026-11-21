@@ -27,9 +27,9 @@ final class OperationInventoryProductStockAdjuster
      * @param  Collection<int, OperationInventoryProduct>  $products
      * @return array{updated: int, quantity: int, ubication: string}
      */
-    public function increase(Collection $products, int $ubicationId, int $quantity): array
+    public function increase(Collection $products, int $ubicationId, int $quantity, ?string $entryType = null): array
     {
-        return $this->adjust($products, $ubicationId, $quantity, increase: true);
+        return $this->adjust($products, $ubicationId, $quantity, increase: true, entryType: $entryType);
     }
 
     /**
@@ -57,6 +57,7 @@ final class OperationInventoryProductStockAdjuster
         int $quantity,
         bool $increase,
         ?string $note = null,
+        ?string $entryType = null,
     ): array {
         $quantity = max(1, $quantity);
 
@@ -82,6 +83,7 @@ final class OperationInventoryProductStockAdjuster
             $quantity,
             $increase,
             $note,
+            $entryType,
             $userName,
             $typeId,
             &$updated,
@@ -117,7 +119,7 @@ final class OperationInventoryProductStockAdjuster
                         'operation_inventory_ubication_id' => $ubication->id,
                         'operation_inventory_type_id' => $typeId,
                         'quantity' => $quantity,
-                        'type_entry' => self::TYPE_REPOSITION,
+                        'type_entry' => $entryType !== null && trim($entryType) !== '' ? mb_substr(trim($entryType), 0, 100) : self::TYPE_REPOSITION,
                         'created_by' => $userName,
                     ]);
                 } else {

@@ -12,10 +12,13 @@ enum ApiPartnerAbility: string
 {
     case NonCoveredMedicationsRead = 'medications.non_covered.read';
 
+    case FarmadocOrdersRead = 'farmadoc.orders.read';
+
     public function label(): string
     {
         return match ($this) {
             self::NonCoveredMedicationsRead => 'Consultar medicamentos no cubiertos en gestión',
+            self::FarmadocOrdersRead => 'Consultar los pedidos a Farmadoc: recepción en inventario y nota de recibido (solo Farmadoc)',
         };
     }
 

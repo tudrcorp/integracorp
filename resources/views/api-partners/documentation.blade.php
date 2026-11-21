@@ -116,6 +116,7 @@
             <a href="#respuesta">Respuesta</a>
             <a href="#inventario">Estado de inventario</a>
             <a href="#sincronizacion">Sincronización</a>
+            <a href="#pedidos-farmadoc">Pedidos a Farmadoc</a>
             <a href="#errores">Errores</a>
             <a href="#limites">Límites y seguridad</a>
         </nav>
@@ -258,6 +259,47 @@ Accept: application/json</code></pre>
                 <p class="note">El estado de inventario cambia sin que cambie <code>actualizado_en</code>. Si lo necesitan al día, consulten el medicamento puntual con <code>/medicamentos-no-cubiertos/{id}</code> antes de actuar.</p>
             </section>
 
+            <section id="pedidos-farmadoc">
+                <h2>Pedidos a Farmadoc: recepción en inventario</h2>
+                <p>Solo para Farmadoc (permiso <code>{{ \App\Enums\ApiPartnerAbility::FarmadocOrdersRead->value }}</code>). Cuando un pedido que Farmadoc envió entra al inventario de IntegraCorp, su estatus pasa a <code>{{ \App\Models\FarmadocOrder::STATUS_RECEIVED }}</code> y queda disponible la <strong>nota de recibido y aprobado</strong> en PDF.</p>
+                <div class="endpoint"><span class="verb">GET</span><span class="path">/pedidos-farmadoc</span><span class="desc">Listado paginado. Filtros: <code>estatus</code> (separados por coma), <code>actualizado_desde</code> (ISO 8601), <code>por_pagina</code> (máx. {{ \App\Support\ApiPartners\FarmadocOrderFeed::MAX_PER_PAGE }}), <code>pagina</code>.</span></div>
+                <div class="endpoint"><span class="verb">GET</span><span class="path">/pedidos-farmadoc/{numero}</span><span class="desc">Un pedido por su número (el mismo <code>order_number</code> que IntegraCorp les envió, por ejemplo <code>IC-3088-20261120084525-2411</code>).</span></div>
+                <div class="endpoint"><span class="verb">GET</span><span class="path">/pedidos-farmadoc/{numero}/nota-de-recibido</span><span class="desc">PDF de la nota de recibido y aprobado. 404 <code>sin_nota_recibido</code> si el pedido todavía no entró al inventario.</span></div>
+                <div class="codeblock">
+                    <button class="copy" type="button" data-copy="farmadoc-sample">Copiar</button>
+                    <pre id="farmadoc-sample"><code>{
+  "data": {
+    "numero": "IC-3088-20261120084525-2411",
+    "pedido_farmadoc_id": 8,
+    "orden_servicio": "ORD-002",
+    "estatus": "{{ \App\Models\FarmadocOrder::STATUS_RECEIVED }}",
+    "estatus_etiqueta": "Registrado en inventario",
+    "nota_entrega": "NEP-0000001",
+    "aceptado_en": "2026-11-20T18:21:15-04:00",
+    "recepcion": {
+      "nota_recibido": "NRA-000001",
+      "nota_recibido_url": "{{ $baseUrl }}/pedidos-farmadoc/IC-3088-20261120084525-2411/nota-de-recibido",
+      "registrado_en": "2026-11-21T10:05:00-04:00",
+      "recibido_por": "Analista de Operaciones",
+      "ubicacion": "DIAGNO-MOVIL - MENE GRANDE",
+      "completo": false,
+      "observaciones": "Faltó una unidad de LOREX.",
+      "medicamentos": [
+        { "nombre": "LOREX 1MG/ML JBE 60ML", "codigo_barras": "7592803000750", "sku": "CSV-7592803000750", "cantidad_pedida": 2, "cantidad_recibida": 1 }
+      ]
+    },
+    "enviado_en": "2026-11-20T08:45:25-04:00",
+    "actualizado_en": "2026-11-21T10:05:00-04:00"
+  }
+}</code></pre>
+                </div>
+                <ul>
+                    <li><code>recepcion</code> viene en <code>null</code> mientras el pedido no haya entrado al inventario.</li>
+                    <li>Para enterarse de las recepciones nuevas, consulten <code>/pedidos-farmadoc?estatus={{ \App\Models\FarmadocOrder::STATUS_RECEIVED }}&amp;actualizado_desde=…</code> con la hora de su última consulta.</li>
+                    <li>No incluye datos del paciente ni montos.</li>
+                </ul>
+            </section>
+
             <section id="errores">
                 <h2>Errores</h2>
                 <p>Los errores llegan en JSON con un código estable y un mensaje legible: <code>{"error": "no_autenticado", "mensaje": "…"}</code>. Los de validación (422) traen <code>message</code> y <code>errors</code> por campo.</p>
@@ -269,7 +311,7 @@ Accept: application/json</code></pre>
                             <tr><td class="num">403</td><td><code>https_requerido</code></td><td>Usen HTTPS.</td></tr>
                             <tr><td class="num">403</td><td><code>acceso_inactivo</code> / <code>acceso_vencido</code></td><td>El acceso fue desactivado o venció. Contacten a TDG.</td></tr>
                             <tr><td class="num">403</td><td><code>sin_permiso</code></td><td>El aliado no tiene habilitado este recurso.</td></tr>
-                            <tr><td class="num">404</td><td><code>no_encontrado</code> / <code>ruta_no_encontrada</code></td><td>El medicamento o la ruta no existen.</td></tr>
+                            <tr><td class="num">404</td><td><code>no_encontrado</code> / <code>ruta_no_encontrada</code></td><td>El medicamento, el pedido o la ruta no existen.</td></tr>
                             <tr><td class="num">422</td><td>validación</td><td>Algún filtro tiene un valor no válido. El detalle viene en <code>errors</code>.</td></tr>
                             <tr><td class="num">429</td><td><code>limite_excedido</code> / <code>demasiados_intentos</code></td><td>Esperen los segundos que indica <code>Retry-After</code>.</td></tr>
                             <tr><td class="num">503</td><td><code>servicio_no_disponible</code></td><td>Reintenten más tarde.</td></tr>

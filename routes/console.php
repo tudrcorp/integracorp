@@ -231,11 +231,11 @@ Schedule::job(new SendOperationInventoryLowStockAlert, 'system')
     ->when($operationInventoryLowStockIsActive);
 
 /**
- * Pedidos a Farmadoc (Operaciones → Inventario Diagnomóvil): cada 30 minutos consulta
- * en el API de Farmadoc el estatus de los pedidos pendientes o en proceso.
+ * Pedidos a Farmadoc (Operaciones → Inventario Diagnomóvil): cada 5 minutos consulta en el
+ * API de Farmadoc el estatus de los pedidos abiertos (solo esos), para avisar pronto de las aceptaciones.
  */
 Schedule::job(new RefreshFarmadocOrderStatuses, 'system')
-    ->everyThirtyMinutes()
+    ->everyFiveMinutes()
     ->when(static fn (): bool => filled(config('services.farmadoc.token')));
 
 /**

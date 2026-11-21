@@ -71,7 +71,7 @@ class FarmadocOrderResource extends Resource
 
     public static function getNavigationBadgeTooltip(): ?string
     {
-        return 'Pendientes o en proceso';
+        return 'Pedidos que aún no se envían';
     }
 
     public static function canCreate(): bool

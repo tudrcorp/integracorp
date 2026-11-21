@@ -17,7 +17,7 @@ final class FarmadocOrderDraft
     /**
      * @param  list<array{product_id?: mixed, quantity?: mixed}>  $lines
      * @param  list<array<string, mixed>>  $catalog
-     * @return list<array{product_id: int, quantity: int, unit_price: float, product_name_snapshot: string, sku_snapshot: string|null}>
+     * @return list<array{product_id: int, quantity: int, unit_price: float, product_name_snapshot: string, sku_snapshot: string|null, barcode_snapshot: string|null, active_ingredient_snapshot: string|null, laboratory_snapshot: string|null, concentration_snapshot: string|null}>
      */
     public static function items(array $lines, array $catalog): array
     {
@@ -69,6 +69,7 @@ final class FarmadocOrderDraft
         foreach ($merged as $productId => $quantity) {
             $medication = $byProduct[$productId];
             $sku = $medication['sku'] ?? null;
+            $barcode = $medication['barcode'] ?? null;
 
             $items[] = [
                 'product_id' => $productId,
@@ -76,9 +77,24 @@ final class FarmadocOrderDraft
                 'unit_price' => 0.0,
                 'product_name_snapshot' => (string) $medication['name'],
                 'sku_snapshot' => is_string($sku) && $sku !== '' ? $sku : null,
+                'barcode_snapshot' => is_string($barcode) && trim($barcode) !== '' ? trim($barcode) : null,
+                'active_ingredient_snapshot' => self::text($medication['active_ingredient'] ?? null),
+                'laboratory_snapshot' => self::text($medication['brand'] ?? null),
+                'concentration_snapshot' => self::text($medication['concentration'] ?? null),
             ];
         }
 
         return $items;
+    }
+
+    private static function text(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        return $value === '' ? null : $value;
     }
 }

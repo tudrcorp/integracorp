@@ -5,6 +5,7 @@ namespace App\Filament\Operations\Resources\FarmadocOrders\Tables;
 use App\Filament\Operations\Resources\FarmadocOrders\Actions\FarmadocOrderActions;
 use App\Filament\Operations\Resources\OperationCoordinationServices\Pages\ManageCoordinationServiceItems;
 use App\Models\FarmadocOrder;
+use App\Support\Farmadoc\FarmadocInventoryReceipt;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Support\Enums\FontWeight;
@@ -21,7 +22,8 @@ class FarmadocOrdersTable
     {
         return $table
             ->heading('Pedidos a Farmadoc')
-            ->description('Pedidos de medicamentos enviados por los analistas. El estatus se consulta en Farmadoc cada 30 minutos.')
+            ->description('Pedidos de medicamentos enviados por los analistas. El estatus se consulta en Farmadoc cada 5 minutos.')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('ubication:id,name'))
             ->defaultSort('created_at', 'desc')
             ->poll('60s')
             ->searchPlaceholder('Buscar por pedido, orden de servicio, coordinación, paciente o analista')
@@ -45,12 +47,18 @@ class FarmadocOrdersTable
                 TextColumn::make('coordination_reference')
                     ->label('Coordinación')
                     ->description(fn (FarmadocOrder $record): ?string => $record->patient_name)
-                    ->placeholder('Sin coordinación')
+                    ->placeholder(FarmadocOrder::DEFAULT_ORIGIN_LABEL)
                     ->url(fn (FarmadocOrder $record): ?string => $record->operation_coordination_service_id !== null
                         ? ManageCoordinationServiceItems::getUrl(['record' => $record->operation_coordination_service_id])
                         : null)
                     ->searchable(['coordination_reference', 'patient_name'])
                     ->wrap(),
+                TextColumn::make('ubication.name')
+                    ->label('Para')
+                    ->placeholder('—')
+                    ->badge()
+                    ->color('info')
+                    ->toggleable(),
                 TextColumn::make('items_count')
                     ->label('Medicamentos')
                     ->description(fn (FarmadocOrder $record): string => $record->units_count.' '.($record->units_count === 1 ? 'unidad' : 'unidades'))
@@ -66,6 +74,9 @@ class FarmadocOrdersTable
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => FarmadocOrder::statusLabel($state))
                     ->color(fn (?string $state): string => FarmadocOrder::statusColor($state))
+                    ->description(fn (FarmadocOrder $record): ?string => filled($record->delivery_note_number)
+                        ? 'Nota '.$record->delivery_note_number
+                        : null)
                     ->sortable(),
                 TextColumn::make('status_checked_at')
                     ->label('Consultado')
@@ -79,6 +90,10 @@ class FarmadocOrdersTable
                 SelectFilter::make('status')
                     ->label('Estatus')
                     ->options(FarmadocOrder::statusOptions()),
+                SelectFilter::make('operation_inventory_ubication_id')
+                    ->label('Ubicación')
+                    ->options(fn (): array => FarmadocInventoryReceipt::ubicationOptions())
+                    ->visible(fn (): bool => FarmadocOrder::hasColumn('operation_inventory_ubication_id')),
                 Filter::make('mine')
                     ->label('Solo mis pedidos')
                     ->toggle()
@@ -108,6 +123,9 @@ class FarmadocOrdersTable
             ])
             ->recordActions([
                 ViewAction::make()->label('Ver'),
+                FarmadocOrderActions::viewReceiptNote()->iconButton(),
+                FarmadocOrderActions::viewDeliveryNote(),
+                FarmadocOrderActions::downloadDeliveryNote()->iconButton(),
                 FarmadocOrderActions::refreshStatus(),
             ])
             ->emptyStateHeading('Aún no hay pedidos a Farmadoc')
