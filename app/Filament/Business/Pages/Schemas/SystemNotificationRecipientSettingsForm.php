@@ -11,13 +11,12 @@ use App\Models\TelegramRecipient;
 use App\Support\InternalNotifications\InternalContactResolver;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Tabs;
-use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -27,61 +26,42 @@ final class SystemNotificationRecipientSettingsForm
 {
     private const PANEL_CLASS = 'can-panel';
 
-    private const INNER_CLASS = 'can-panel-body';
-
     public static function configure(Schema $schema): Schema
     {
         return $schema
             ->components([
-                Tabs::make('notification_settings_tabs')
-                    ->extraAttributes(['class' => 'can-settings-shell can-tabs-shell'])
+                self::activationSection(),
+                Grid::make()
+                    ->columns(['default' => 1, '2xl' => 2])
+                    ->extraAttributes(['class' => 'can-recipients-grid'])
                     ->columnSpanFull()
-                    ->tabs([
-                        Tab::make('Destinatarios')
-                            ->icon(Heroicon::OutlinedUserGroup)
-                            ->badge(fn (mixed $livewire): ?string => self::recipientsBadge($livewire))
-                            ->visible(fn (mixed $livewire): bool => self::activeKeyUsesEmails($livewire) || self::activeKeyUsesPhones($livewire))
-                            ->schema([
-                                Grid::make()
-                                    ->columns(['default' => 1, 'xl' => 2])
-                                    ->schema([
-                                        self::emailSection(),
-                                        self::phoneSection(),
-                                    ]),
-                            ]),
-                        Tab::make('Telegram')
-                            ->icon(Heroicon::OutlinedPaperAirplane)
-                            ->badge(fn (Get $get): ?string => self::telegramBadge($get))
-                            ->badgeColor(fn (Get $get): string => (TelegramDeliveryMode::tryFrom((string) $get('telegram_mode')) ?? TelegramDeliveryMode::Off) === TelegramDeliveryMode::Off ? 'gray' : 'info')
-                            ->visible(fn (mixed $livewire): bool => self::activeKeySupportsTelegram($livewire))
-                            ->schema([self::telegramSection()]),
-                        Tab::make('Estado')
-                            ->icon(Heroicon::OutlinedPower)
-                            ->badge(fn (Get $get): string => (bool) $get('is_active') ? 'Activa' : 'Pausada')
-                            ->badgeColor(fn (Get $get): string => (bool) $get('is_active') ? 'success' : 'danger')
-                            ->schema([self::activationSection()]),
+                    ->visible(fn (mixed $livewire): bool => self::activeKeyUsesEmails($livewire) || self::activeKeyUsesPhones($livewire))
+                    ->schema([
+                        self::emailSection(),
+                        self::phoneSection(),
                     ]),
+                self::telegramSection(),
             ]);
     }
 
+    /**
+     * Estado arriba y a la vista: es lo primero que se busca al abrir un aviso.
+     * Sin ->live(): la cabecera lee el interruptor en el navegador y se guarda con el resto.
+     */
     private static function activationSection(): Section
     {
         return Section::make('Estado de la tarea')
-            ->description('Active o pause esta notificación / tarea programada sin eliminar los destinatarios configurados.')
+            ->description('Pause el envío sin perder los destinatarios. Se aplica al guardar.')
             ->icon(Heroicon::OutlinedPower)
+            ->compact()
+            ->columnSpanFull()
             ->extraAttributes(['class' => self::PANEL_CLASS.' can-settings-panel--status'])
             ->schema([
-                Grid::make(1)
-                    ->extraAttributes(['class' => self::INNER_CLASS])
-                    ->schema([
-                        Toggle::make('is_active')
-                            ->label('Tarea activa')
-                            ->helperText('Desactive para pausar la ejecución o el envío asociado a este tipo de notificación.')
-                            ->inline(false)
-                            ->onColor('success')
-                            ->offColor('danger')
-                            ->live(),
-                    ]),
+                Toggle::make('is_active')
+                    ->label('Tarea activa')
+                    ->helperText('Apagado: no se ejecuta ni se envía nada de este aviso hasta que lo vuelva a encender.')
+                    ->onColor('success')
+                    ->offColor('danger'),
             ]);
     }
 
@@ -90,55 +70,48 @@ final class SystemNotificationRecipientSettingsForm
         return Section::make('Correos electrónicos')
             ->description('Destinatarios por email para esta notificación o su copia de control interno.')
             ->icon(Heroicon::OutlinedEnvelope)
+            ->compact()
             ->extraAttributes(['class' => self::PANEL_CLASS.' can-settings-panel--email'])
             ->visible(fn (mixed $livewire): bool => self::activeKeyUsesEmails($livewire))
             ->schema([
-                Grid::make(1)
-                    ->extraAttributes(['class' => self::INNER_CLASS])
+                Repeater::make('notification_emails')
+                    ->label('Destinatarios por correo')
+                    ->hiddenLabel()
+                    ->addActionLabel('Agregar correo')
+                    ->defaultItems(0)
+                    ->reorderable(false)
+                    ->compact()
+                    ->table(fn (mixed $livewire): array => self::activeKeyUsesCopyModes($livewire)
+                        ? [
+                            TableColumn::make('Correo electrónico')->markAsRequired(),
+                            TableColumn::make('Tipo de copia')->width('11rem'),
+                        ]
+                        : [TableColumn::make('Correo electrónico')->markAsRequired()])
                     ->schema([
-                        Repeater::make('notification_emails')
-                            ->label('Destinatarios por correo')
-                            ->hiddenLabel()
-                            ->addActionLabel('Agregar correo')
-                            ->defaultItems(0)
-                            ->reorderable(false)
-                            ->collapsible()
-                            ->cloneable()
-                            ->live()
-                            ->itemLabel(fn (array $state, mixed $livewire): string => filled($state['email'] ?? null)
-                                ? (string) $state['email'].(self::activeKeyUsesCopyModes($livewire)
-                                    ? (($state['copy_mode'] ?? null) === SystemNotificationRecipientSetting::EMAIL_MODE_BCC ? ' · CCO' : ' · CC')
-                                    : '')
-                                : 'Nuevo correo')
-                            ->columns(fn (mixed $livewire): int => self::activeKeyUsesCopyModes($livewire) ? 3 : 1)
-                            ->schema([
-                                TextInput::make('email')
-                                    ->label('Correo electrónico')
-                                    ->email()
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->prefixIcon(Heroicon::OutlinedAtSymbol)
-                                    ->placeholder('analista@empresa.com')
-                                    ->autocomplete('off')
-                                    ->columnSpan(fn (mixed $livewire): int => self::activeKeyUsesCopyModes($livewire) ? 2 : 1),
-                                Select::make('copy_mode')
-                                    ->label('Tipo de copia')
-                                    ->options([
-                                        SystemNotificationRecipientSetting::EMAIL_MODE_CC => 'CC · copia visible',
-                                        SystemNotificationRecipientSetting::EMAIL_MODE_BCC => 'CCO · copia oculta',
-                                    ])
-                                    ->default(SystemNotificationRecipientSetting::EMAIL_MODE_CC)
-                                    ->required(fn (mixed $livewire): bool => self::activeKeyUsesCopyModes($livewire))
-                                    ->selectablePlaceholder(false)
-                                    ->native(false)
-                                    ->helperText('CC: el destinatario ve este correo. CCO: nadie más lo ve.')
-                                    ->visible(fn (mixed $livewire): bool => self::activeKeyUsesCopyModes($livewire)),
+                        TextInput::make('email')
+                            ->label('Correo electrónico')
+                            ->email()
+                            ->required()
+                            ->maxLength(255)
+                            ->prefixIcon(Heroicon::OutlinedAtSymbol)
+                            ->placeholder('analista@empresa.com')
+                            ->autocomplete('off'),
+                        Select::make('copy_mode')
+                            ->label('Tipo de copia')
+                            ->options([
+                                SystemNotificationRecipientSetting::EMAIL_MODE_CC => 'CC · copia visible',
+                                SystemNotificationRecipientSetting::EMAIL_MODE_BCC => 'CCO · copia oculta',
                             ])
-                            ->helperText(fn (mixed $livewire): string => self::activeKeyUsesCopyModes($livewire)
-                                ? 'Cada correo testigo recibe el mismo correo que el afiliado o el agente. Elija si va en copia visible (CC) u oculta (CCO). Se eliminan duplicados al guardar.'
-                                : 'Puede agregar tantos correos como necesite. Se eliminan duplicados al guardar.')
-                            ->columnSpanFull(),
-                    ]),
+                            ->default(SystemNotificationRecipientSetting::EMAIL_MODE_CC)
+                            ->required(fn (mixed $livewire): bool => self::activeKeyUsesCopyModes($livewire))
+                            ->selectablePlaceholder(false)
+                            ->native()
+                            ->visible(fn (mixed $livewire): bool => self::activeKeyUsesCopyModes($livewire)),
+                    ])
+                    ->helperText(fn (mixed $livewire): string => self::activeKeyUsesCopyModes($livewire)
+                        ? 'Cada correo testigo recibe el mismo correo que el afiliado o el agente. CC: el destinatario ve este correo · CCO: nadie más lo ve. Los duplicados se eliminan al guardar.'
+                        : 'Agregue tantos correos como necesite. Los duplicados se eliminan al guardar.')
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -171,38 +144,32 @@ final class SystemNotificationRecipientSettingsForm
         return Section::make('Teléfonos WhatsApp')
             ->description('Números móviles para esta notificación o su copia de control interno.')
             ->icon(Heroicon::OutlinedDevicePhoneMobile)
+            ->compact()
             ->extraAttributes(['class' => self::PANEL_CLASS.' can-settings-panel--phone'])
             ->visible(fn (mixed $livewire): bool => self::activeKeyUsesPhones($livewire))
             ->schema([
-                Grid::make(1)
-                    ->extraAttributes(['class' => self::INNER_CLASS])
+                Repeater::make('notification_phones')
+                    ->label('Destinatarios por WhatsApp')
+                    ->hiddenLabel()
+                    ->addActionLabel('Agregar teléfono')
+                    ->defaultItems(0)
+                    ->reorderable(false)
+                    ->compact()
+                    ->table([
+                        TableColumn::make('Teléfono móvil')->markAsRequired(),
+                    ])
                     ->schema([
-                        Repeater::make('notification_phones')
-                            ->label('Destinatarios por WhatsApp')
-                            ->hiddenLabel()
-                            ->addActionLabel('Agregar teléfono')
-                            ->defaultItems(0)
-                            ->reorderable(false)
-                            ->collapsible()
-                            ->cloneable()
-                            ->live()
-                            ->itemLabel(fn (array $state): string => filled($state['phone'] ?? null)
-                                ? (string) $state['phone']
-                                : 'Nuevo teléfono')
-                            ->schema([
-                                TextInput::make('phone')
-                                    ->label('Teléfono móvil')
-                                    ->tel()
-                                    ->required()
-                                    ->maxLength(30)
-                                    ->prefixIcon(Heroicon::OutlinedPhone)
-                                    ->placeholder('04141234567')
-                                    ->helperText('Formato nacional sin espacios. Ej: 04127015390')
-                                    ->autocomplete('off'),
-                            ])
-                            ->helperText('El mensaje se envía de forma asíncrona con la imagen corporativa de INTEGRACORP.')
-                            ->columnSpanFull(),
-                    ]),
+                        TextInput::make('phone')
+                            ->label('Teléfono móvil')
+                            ->tel()
+                            ->required()
+                            ->maxLength(30)
+                            ->prefixIcon(Heroicon::OutlinedPhone)
+                            ->placeholder('04141234567')
+                            ->autocomplete('off'),
+                    ])
+                    ->helperText('Formato nacional sin espacios (ej.: 04127015390). El mensaje sale en segundo plano con la imagen corporativa de INTEGRACORP.')
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -213,14 +180,15 @@ final class SystemNotificationRecipientSettingsForm
     private static function telegramSection(): Section
     {
         return Section::make('Telegram')
-            ->description('A quién llega este aviso por Telegram. Telegram reemplaza al WhatsApp: los teléfonos de arriba que pertenecen a personas con Telegram vinculado lo reciben allí, y el resto sigue por WhatsApp. Los correos no cambian: siguen llegando igual. Los archivos adjuntos (respaldos, Excel) siguen saliendo por WhatsApp.')
+            ->description('Telegram reemplaza al WhatsApp: los teléfonos de arriba con Telegram vinculado lo reciben allí y el resto sigue por WhatsApp. Los correos y los adjuntos (respaldos, Excel) no cambian.')
             ->icon(Heroicon::OutlinedPaperAirplane)
+            ->compact()
             ->extraAttributes(['class' => self::PANEL_CLASS.' can-settings-panel--telegram'])
             ->visible(fn (mixed $livewire): bool => self::activeKeySupportsTelegram($livewire))
             ->columnSpanFull()
             ->schema([
                 Grid::make(['default' => 1, 'lg' => 2])
-                    ->extraAttributes(['class' => self::INNER_CLASS])
+                    ->extraAttributes(['class' => 'can-telegram-grid'])
                     ->schema([
                         Select::make('telegram_mode')
                             ->label('Enviar por Telegram a')
@@ -376,27 +344,6 @@ final class SystemNotificationRecipientSettingsForm
         }
 
         return new HtmlString('<span class="text-sm text-slate-500 dark:text-slate-400">Si Telegram falla, el aviso no se pierde: sale por WhatsApp (o por correo si no hay teléfono). Cada envío queda en la bitácora de CONFIGURACIÓN → Telegram.</span>');
-    }
-
-    private static function recipientsBadge(mixed $livewire): ?string
-    {
-        if (! is_object($livewire) || ! property_exists($livewire, 'data')) {
-            return null;
-        }
-
-        $count = count((array) ($livewire->data['notification_emails'] ?? [])) + count((array) ($livewire->data['notification_phones'] ?? []));
-
-        return $count > 0 ? (string) $count : null;
-    }
-
-    private static function telegramBadge(Get $get): ?string
-    {
-        return match (TelegramDeliveryMode::tryFrom((string) $get('telegram_mode')) ?? TelegramDeliveryMode::Off) {
-            TelegramDeliveryMode::Person => 'Persona',
-            TelegramDeliveryMode::Group => 'Grupo',
-            TelegramDeliveryMode::Both => 'Ambos',
-            TelegramDeliveryMode::Off => 'Apagado',
-        };
     }
 
     private static function activeKeyUsesPhones(mixed $livewire): bool

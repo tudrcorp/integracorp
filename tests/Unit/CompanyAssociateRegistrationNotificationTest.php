@@ -43,8 +43,9 @@ it('expone pagina de configuracion de notificaciones en el panel business', func
         ->toContain('notification_emails')
         ->toContain('notification_phones')
         ->toContain("Toggle::make('is_active')")
-        ->toContain('collapsible')
-        ->toContain('itemLabel');
+        ->toContain('->table(')
+        ->toContain('TableColumn::make')
+        ->not->toContain("Tabs::make('notification_settings_tabs')");
 
     expect($view)
         ->toContain('$this->content')

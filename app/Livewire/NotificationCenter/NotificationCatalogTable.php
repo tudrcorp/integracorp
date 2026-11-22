@@ -66,9 +66,14 @@ class NotificationCatalogTable extends Component implements HasActions, HasSchem
             ->defaultSort('name')
             ->searchable()
             ->searchPlaceholder('Buscar notificación…')
+            ->searchDebounce('350ms')
+            ->deferFilters(false)
+            ->persistFiltersInSession()
+            ->persistSearchInSession()
             ->paginated([25, 50, 100])
-            ->defaultPaginationPageOption(100)
+            ->defaultPaginationPageOption(25)
             ->striped()
+            ->emptyStateIcon('heroicon-o-bell-slash')
             ->emptyStateHeading('Sin notificaciones')
             ->emptyStateDescription('El catálogo se carga solo en la primera visita. Si sigue vacío, corra php artisan notifications:catalog-seed.')
             ->columns([
@@ -202,6 +207,8 @@ class NotificationCatalogTable extends Component implements HasActions, HasSchem
                                 $action->halt();
                             }
 
+                            $this->dispatch('notification-center-changed');
+
                             Notification::make()->title('Notificación actualizada')->success()->send();
                         }),
                     Action::make('pauseCritical')
@@ -268,6 +275,9 @@ class NotificationCatalogTable extends Component implements HasActions, HasSchem
 
             return ! $state;
         }
+
+        /** La página recalcula las insignias de sus pestañas. */
+        $this->dispatch('notification-center-changed');
 
         $label = match ($flag) {
             'whatsapp_enabled' => 'WhatsApp',

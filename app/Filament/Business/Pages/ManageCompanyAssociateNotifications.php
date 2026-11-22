@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Filament\Business\Pages;
 
+use App\Enums\OutboundMessageStatus;
 use App\Enums\SystemNotificationKey;
 use App\Enums\TelegramDeliveryMode;
 use App\Filament\Business\Pages\Schemas\SystemNotificationRecipientSettingsForm;
 use App\Models\NotificationCatalogEntry;
+use App\Models\NotificationChannelSetting;
+use App\Models\OutboundMessage;
 use App\Models\SystemNotificationRecipientSetting;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\InternalNotifications\InternalNotification;
@@ -28,6 +31,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\HtmlString;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -80,6 +84,8 @@ class ManageCompanyAssociateNotifications extends Page
 
     public const SECTIONS = ['catalog', 'log', 'channels', 'internal'];
 
+    private const OVERVIEW_CACHE_KEY = 'notification-center:overview';
+
     public function showSection(string $section): void
     {
         if (in_array($section, self::SECTIONS, true)) {
@@ -96,6 +102,14 @@ class ManageCompanyAssociateNotifications extends Page
     {
         $this->section = 'internal';
         $this->selectNotificationKey($key);
+    }
+
+    /** Un hijo (catálogo o canales) cambió algo: se recalculan las insignias de las pestañas. */
+    #[On('notification-center-changed')]
+    public function refreshOverview(): void
+    {
+        Cache::forget(self::OVERVIEW_CACHE_KEY);
+        unset($this->overview);
     }
 
     #[On('notification-center-open-log')]
@@ -201,6 +215,45 @@ class ManageCompanyAssociateNotifications extends Page
         return ['areas' => array_filter($areas, fn (array $area): bool => $area['items'] !== []), 'counts' => $counts];
     }
 
+    /**
+     * Insignias de las pestañas: tres consultas pequeñas sobre índices, compartidas 30 s
+     * entre analistas para que cambiar de pestaña no cueste nada.
+     *
+     * @return array{catalog_total: int, catalog_off: int, failed_today: int, channels_off: int}
+     */
+    #[Computed]
+    public function overview(): array
+    {
+        $empty = ['catalog_total' => 0, 'catalog_off' => 0, 'failed_today' => 0, 'channels_off' => 0];
+
+        if (! NotificationCatalog::tablesExist()) {
+            return $empty;
+        }
+
+        try {
+            return Cache::remember(self::OVERVIEW_CACHE_KEY, 30, function (): array {
+                $catalog = NotificationCatalogEntry::query()
+                    ->toBase()
+                    ->selectRaw('count(*) as total, sum(case when is_active = 0 or whatsapp_enabled = 0 or mail_enabled = 0 then 1 else 0 end) as off_count')
+                    ->first();
+
+                return [
+                    'catalog_total' => (int) ($catalog->total ?? 0),
+                    'catalog_off' => (int) ($catalog->off_count ?? 0),
+                    'failed_today' => OutboundMessage::query()
+                        ->where('status', OutboundMessageStatus::Failed->value)
+                        ->where('created_at', '>=', now()->startOfDay())
+                        ->count(),
+                    'channels_off' => NotificationChannelSetting::query()->where('is_enabled', false)->count(),
+                ];
+            });
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return $empty;
+        }
+    }
+
     public function selectNotificationKey(string $key): void
     {
         $notificationKey = SystemNotificationKey::tryFrom($key);
@@ -232,6 +285,9 @@ class ManageCompanyAssociateNotifications extends Page
             'telegram_group_ids' => $settings->telegramGroupIds(),
             'telegram_recipient_ids' => $settings->telegramRecipientIds(),
         ]);
+
+        /** El navegador toma una nueva foto del formulario para avisar de cambios sin guardar. */
+        $this->dispatch('can-form-synced');
     }
 
     public function form(Schema $schema): Schema
@@ -361,7 +417,8 @@ class ManageCompanyAssociateNotifications extends Page
         NotificationCatalog::flush();
         InternalDirectory::flush();
 
-        unset($this->settingsRecord, $this->keyCatalog);
+        Cache::forget(self::OVERVIEW_CACHE_KEY);
+        unset($this->settingsRecord, $this->keyCatalog, $this->overview);
 
         $this->fillForm();
 

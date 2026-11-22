@@ -137,6 +137,9 @@ class NotificationChannelsPanel extends Component implements HasActions, HasSche
 
                 unset($this->channels);
 
+                /** La página recalcula la insignia «Canales». */
+                $this->dispatch('notification-center-changed');
+
                 Notification::make()
                     ->title($channel->label().($enable ? ' encendido' : ' apagado').' en todo el sistema')
                     ->body($enable ? 'Los mensajes vuelven a salir.' : 'Los workers lo aplican en menos de 30 segundos.')
