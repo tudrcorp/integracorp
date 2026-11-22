@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Telegram;
 
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
@@ -29,6 +30,7 @@ final class TelegramBotClient
         private readonly ?string $token = null,
         private readonly ?string $baseUrl = null,
         private readonly ?int $timeoutSeconds = null,
+        private readonly bool $forceIpv4 = false,
     ) {}
 
     public static function make(): self
@@ -37,7 +39,18 @@ final class TelegramBotClient
             (string) config('telegram.bot_token', ''),
             (string) config('telegram.api_base_url', 'https://api.telegram.org'),
             (int) config('telegram.timeout_seconds', 10),
+            (bool) config('telegram.force_ipv4', true),
         );
+    }
+
+    /**
+     * Opciones de Guzzle comunes a todas las llamadas.
+     *
+     * @return array<string, mixed>
+     */
+    public function transportOptions(): array
+    {
+        return $this->forceIpv4 ? ['force_ip_resolve' => 'v4'] : [];
     }
 
     public function isConfigured(): bool
@@ -163,8 +176,7 @@ final class TelegramBotClient
         $handle = fopen($absolutePath, 'rb');
 
         try {
-            $response = Http::acceptJson()
-                ->connectTimeout(5)
+            $response = $this->pendingRequest()
                 ->timeout(max(30, (int) ($this->timeoutSeconds ?? 10) * 3))
                 ->attach($field, $handle, $filename)
                 ->post($url, array_filter([
@@ -209,9 +221,8 @@ final class TelegramBotClient
         $url = rtrim((string) ($this->baseUrl ?: 'https://api.telegram.org'), '/').'/bot'.$this->token.'/'.$method;
 
         try {
-            $response = Http::acceptJson()
+            $response = $this->pendingRequest()
                 ->asJson()
-                ->connectTimeout(5)
                 ->timeout(max(1, $timeout ?? $this->timeoutSeconds ?? 10))
                 ->post($url, $parameters);
         } catch (ConnectionException $exception) {
@@ -233,6 +244,13 @@ final class TelegramBotClient
         $result = $payload['result'] ?? null;
 
         return is_array($result) || is_bool($result) ? $result : [];
+    }
+
+    private function pendingRequest(): PendingRequest
+    {
+        return Http::acceptJson()
+            ->connectTimeout(5)
+            ->withOptions($this->transportOptions());
     }
 
     private function redact(string $text): string

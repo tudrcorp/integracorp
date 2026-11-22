@@ -11,6 +11,8 @@ use Throwable;
  * Salud del bot: responde (getMe) y el webhook no acumula errores ni mensajes
  * pendientes (getWebhookInfo). El resultado se guarda unos segundos en caché
  * para que el vigilante y la pantalla no golpeen a Telegram en cada carga.
+ * Un corte transitorio se reintenta una vez antes de darlo por caído, para que
+ * unos segundos sin red no disparen la alerta crítica.
  */
 final class TelegramHealth
 {
@@ -77,11 +79,23 @@ final class TelegramHealth
             return $base;
         }
 
-        try {
-            $me = $client->getMe();
-            $webhook = $client->getWebhookInfo();
-        } catch (TelegramApiException $exception) {
-            return [...$base, 'error' => $exception->getMessage(), 'error_kind' => $exception->kind];
+        $attempt = 0;
+
+        while (true) {
+            $attempt++;
+
+            try {
+                $me = $client->getMe();
+                $webhook = $client->getWebhookInfo();
+
+                break;
+            } catch (TelegramApiException $exception) {
+                if ($attempt >= 2 || $exception->kind !== TelegramApiException::KIND_TRANSIENT) {
+                    return [...$base, 'error' => $exception->getMessage(), 'error_kind' => $exception->kind];
+                }
+
+                usleep(max(0, (int) config('telegram.health_retry_delay_ms', 1500)) * 1000);
+            }
         }
 
         $lastErrorAt = isset($webhook['last_error_date']) ? (int) $webhook['last_error_date'] : null;

@@ -26,6 +26,13 @@ return [
     /** Segundos de espera por respuesta de Telegram antes de tratar el envío como fallo transitorio. */
     'timeout_seconds' => (int) env('TELEGRAM_TIMEOUT_SECONDS', 10),
 
+    /**
+     * Conectar a Telegram solo por IPv4. Hay servidores con IPv6 a medias: a ratos
+     * el intento por IPv6 se queda colgado, se agotan los 5 s de conexión y el
+     * aviso se pierde o salta una alerta falsa de «Telegram no responde».
+     */
+    'force_ipv4' => (bool) env('TELEGRAM_FORCE_IPV4', true),
+
     /** Cola propia: los avisos no esperan detrás de respaldos, exportaciones ni PDFs. */
     'queue' => env('TELEGRAM_QUEUE', 'notifications'),
 
@@ -43,4 +50,7 @@ return [
 
     /** Segundos que se guarda en caché el último chequeo de salud del bot. */
     'health_cache_seconds' => 90,
+
+    /** Pausa (ms) antes de repetir un chequeo de salud que falló por un corte transitorio. */
+    'health_retry_delay_ms' => 1500,
 ];
