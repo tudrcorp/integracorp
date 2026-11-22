@@ -131,6 +131,7 @@ class OutboundMessagesTable extends Component implements HasActions, HasSchemas,
             ->defaultSort('id', 'desc')
             ->searchable()
             ->searchPlaceholder('Nombre, teléfono, correo o asunto…')
+            ->searchDebounce('350ms')
             ->paginated([25, 50, 100])
             ->defaultPaginationPageOption(25)
             ->emptyStateHeading('Sin mensajes en este rango')
