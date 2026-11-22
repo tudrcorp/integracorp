@@ -55,6 +55,8 @@ beforeEach(function (): void {
         'telegram.max_attempts' => 3,
         'telegram.backoff_seconds' => [10, 30, 90],
         'telegram.health_cache_seconds' => 90,
+        'telegram.health_retry_delay_ms' => 0,
+        'telegram.force_ipv4' => true,
     ]);
 
     Queue::fake();
@@ -539,6 +541,50 @@ it('alerta cuando el bot no responde y no alerta si Telegram está apagado', fun
     config(['telegram.enabled' => false]);
 
     expect(SystemHealthWatcher::telegramProblems(['ok' => false]))->toBe([]);
+});
+
+it('conecta a Telegram solo por IPv4 salvo que se desactive', function (): void {
+    expect(App\Support\Telegram\TelegramBotClient::make()->transportOptions())->toBe(['force_ip_resolve' => 'v4']);
+
+    config(['telegram.force_ipv4' => false]);
+
+    expect(App\Support\Telegram\TelegramBotClient::make()->transportOptions())->toBe([]);
+});
+
+it('un corte de red momentáneo se reintenta y no deja el bot como caído', function (): void {
+    Http::fake(['api.telegram.org/*' => Http::sequence()
+        ->pushFailedConnection('cURL error 28: Failed to connect to api.telegram.org port 443 after 5000 ms')
+        ->push(['ok' => true, 'result' => ['username' => 'integracorp_test_bot']])
+        ->push(['ok' => true, 'result' => ['url' => 'https://example.test/telegram/webhook', 'pending_update_count' => 0]]),
+    ]);
+
+    $health = App\Support\Telegram\TelegramHealth::probe(App\Support\Telegram\TelegramBotClient::make());
+
+    expect($health['ok'])->toBeTrue()
+        ->and($health['bot_username'])->toBe('integracorp_test_bot')
+        ->and(SystemHealthWatcher::telegramProblems($health))->not->toContain(fn ($event) => $event['type'] === 'telegram_down');
+    Http::assertSentCount(3);
+});
+
+it('si el corte sigue en el reintento sí alerta, sin exponer el token', function (): void {
+    Http::fake(fn () => throw new Illuminate\Http\Client\ConnectionException('cURL error 28 for https://api.telegram.org/bot123456:TEST-TOKEN/getMe'));
+
+    $health = App\Support\Telegram\TelegramHealth::probe(App\Support\Telegram\TelegramBotClient::make());
+
+    expect($health['ok'])->toBeFalse()
+        ->and($health['error_kind'])->toBe(TelegramApiException::KIND_TRANSIENT)
+        ->and($health['error'])->not->toContain('TEST-TOKEN')
+        ->and(collect(SystemHealthWatcher::telegramProblems($health))->pluck('type')->all())->toContain('telegram_down');
+});
+
+it('un token inválido no se reintenta: se informa al primer intento', function (): void {
+    Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'error_code' => 401, 'description' => 'Unauthorized'], 401)]);
+
+    $health = App\Support\Telegram\TelegramHealth::probe(App\Support\Telegram\TelegramBotClient::make());
+
+    expect($health['ok'])->toBeFalse()
+        ->and($health['error_kind'])->toBe(TelegramApiException::KIND_UNAUTHORIZED);
+    Http::assertSentCount(1);
 });
 
 it('alerta cuando hay avisos internos atascados', function (): void {
