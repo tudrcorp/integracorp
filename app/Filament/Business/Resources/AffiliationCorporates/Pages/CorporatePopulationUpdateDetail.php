@@ -24,6 +24,7 @@ use App\Support\AffiliationCorporates\Population\PopulationItemExplainer;
 use App\Support\AffiliationCorporates\Population\PopulationUpdateAnalyzer;
 use App\Support\AffiliationCorporates\Population\PopulationUpdateApplier;
 use App\Support\AffiliationCorporates\Population\PopulationUpdateRollback;
+use App\Support\AffiliationCorporates\Population\PopulationUpdateStuckRelease;
 use App\Support\AffiliationCorporates\Population\PopulationUpdateUrls;
 use App\Support\Otp\SelfAuthorizedOtp;
 use App\Support\SecurityAudit;
@@ -271,6 +272,7 @@ class CorporatePopulationUpdateDetail extends Page implements HasTable
                 ->url(fn (): ?string => PopulationUpdateUrls::index((int) $this->owner()->getKey())),
             $this->approveAction(),
             $this->rollbackAction(),
+            $this->releaseStuckAction(),
             ActionGroup::make([
                 Action::make('downloadFile')
                     ->label('Descargar archivo original')
@@ -336,6 +338,70 @@ class CorporatePopulationUpdateDetail extends Page implements HasTable
             ->extraModalFooterActions(fn (): array => [$this->resendAction(CorporatePopulationOtpChallenge::PURPOSE_APPLY)])
             ->action(function (array $data, Action $action): void {
                 $this->handleApprove($data, $action);
+            });
+    }
+
+    /**
+     * Libera una carga que quedó en «Aplicando» o «Revirtiendo» porque su trabajo en cola
+     * nunca terminó. Solo superadmin y solo si no cambió ningún afiliado.
+     */
+    protected function releaseStuckAction(): Action
+    {
+        return Action::make('releaseStuck')
+            ->label('Liberar carga trabada')
+            ->icon(Heroicon::OutlinedLockOpen)
+            ->color('danger')
+            ->visible(fn (): bool => PopulationUpdateStuckRelease::isStuckStatus($this->populationUpdate())
+                && PopulationUpdateStuckRelease::canRelease(Auth::user()))
+            ->modalIcon(Heroicon::OutlinedLockOpen)
+            ->modalIconColor('danger')
+            ->modalHeading('Liberar carga trabada')
+            ->modalDescription(function (): string {
+                $update = $this->populationUpdate();
+                $target = $update->status === CorporatePopulationUpdate::STATUS_APPLYING ? '«Analizada»' : '«Aplicada»';
+
+                return 'La carga lleva '.PopulationUpdateStuckRelease::busySinceMinutes($update).' min en «'.$update->statusLabel().'». '
+                    .'Úselo solo si el proceso no terminó (por ejemplo, el trabajo en cola se perdió). '
+                    .'La carga vuelve a '.$target.' sin tocar ningún afiliado ni totales, y la afiliación queda libre para otra actualización.';
+            })
+            ->modalContent(fn (): ?HtmlString => ($blocker = PopulationUpdateStuckRelease::blockingReason($this->populationUpdate())) !== null
+                ? new HtmlString('<p class="rounded-xl bg-warning-50 px-4 py-3 text-sm text-warning-800 dark:bg-warning-500/10 dark:text-warning-300">'.e($blocker).'</p>')
+                : null)
+            ->schema([
+                Textarea::make('reason')
+                    ->label('Razón')
+                    ->helperText('Qué pasó. Queda en la carga y en la auditoría.')
+                    ->required()
+                    ->minLength(PopulationUpdateStuckRelease::REASON_MIN_LENGTH)
+                    ->maxLength(1000)
+                    ->rows(3)
+                    ->validationMessages([
+                        'required' => 'Indique la razón.',
+                        'min' => 'La razón debe tener al menos :min caracteres.',
+                    ]),
+            ])
+            ->modalSubmitActionLabel('Liberar carga')
+            ->action(function (array $data, Action $action): void {
+                $user = Auth::user();
+
+                abort_unless(static::canAccess() && $user instanceof User && PopulationUpdateStuckRelease::canRelease($user), 403);
+
+                try {
+                    $released = PopulationUpdateStuckRelease::release($this->populationUpdate(), $user, (string) ($data['reason'] ?? ''));
+                } catch (RuntimeException $exception) {
+                    Notification::make()->title('No se liberó la carga')->body($exception->getMessage())->warning()->persistent()->send();
+                    $action->halt();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title('Carga liberada')
+                    ->body($released->status === CorporatePopulationUpdate::STATUS_ANALYZED
+                        ? 'Volvió a «Analizada» sin cambios en los afiliados. Puede eliminarla, volver a analizarla o aprobarla de nuevo.'
+                        : 'Volvió a «Aplicada» sin cambios en los afiliados. Puede intentar revertirla de nuevo.')
+                    ->success()
+                    ->send();
             });
     }
 

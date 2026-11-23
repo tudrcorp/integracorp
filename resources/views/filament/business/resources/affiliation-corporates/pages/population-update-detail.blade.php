@@ -62,6 +62,18 @@
             </span>
         </div>
 
+        @php
+            $stuckMinutes = \App\Support\AffiliationCorporates\Population\PopulationUpdateStuckRelease::isStuckStatus($update)
+                ? \App\Support\AffiliationCorporates\Population\PopulationUpdateStuckRelease::busySinceMinutes($update)
+                : 0;
+        @endphp
+        @if ($stuckMinutes >= \App\Support\AffiliationCorporates\Population\PopulationUpdateStuckRelease::STALE_MINUTES)
+            <div class="rounded-xl px-4 py-3 text-sm ring-1 ring-inset {{ $tone['warning'] }}">
+                Lleva {{ $stuckMinutes >= 120 ? intdiv($stuckMinutes, 60).' horas' : $stuckMinutes.' min' }} en «{{ $update->statusLabel() }}»: lo normal son pocos segundos, así que el proceso probablemente no terminó.
+                Mientras tanto la afiliación no admite otra actualización. Un superadmin puede usar «Liberar carga trabada»: la carga vuelve atrás sin tocar ningún afiliado.
+            </div>
+        @endif
+
         @if (\Illuminate\Support\Facades\Cache::has(\App\Jobs\SyncCorporatePopulationItemsJob::busyKey((int) $update->getKey())))
             <div wire:poll.5s class="rounded-xl px-4 py-3 text-sm ring-1 ring-inset {{ $tone['info'] }}">
                 Sincronizando fichas con el archivo en segundo plano… Le llegará un aviso al terminar. Mientras tanto la carga no se puede aprobar.
