@@ -4,16 +4,25 @@ declare(strict_types=1);
 
 namespace App\Support\Operations;
 
+use App\Enums\StatusCuentaPorPagar;
+use App\Models\OperationAccountsPayable;
+use App\Models\OperationCashPayment;
 use App\Models\OperationServiceOrder;
+use App\Models\User;
+use App\Support\Operations\CashPayments\CashPaymentService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 /**
  * Una factura de proveedor puede cubrir varias órdenes, siempre que todas
  * pertenezcan al mismo proveedor. Cada orden conserva su propio monto (prorrateo
  * del total de la factura) y su cuenta por pagar, para no duplicar el compromiso.
+ *
+ * Si la factura se pagó de contado, el pago cubre el total y se reparte entre las
+ * cuentas por pagar con la misma proporción; todas sus partes se reversan juntas.
  */
 final class ServiceOrderBulkInvoice
 {
@@ -158,9 +167,9 @@ final class ServiceOrderBulkInvoice
     /**
      * @param  Collection<int, OperationServiceOrder>  $records
      * @param  array<string, mixed>  $data
-     * @return array{updated: int, payables_created: int, payments_preserved: int, quote_difference_usd: ?float}
+     * @return array{updated: int, payables_created: int, payments_preserved: int, quote_difference_usd: ?float, cash_payments: int, cash_reference: ?string}
      */
-    public static function apply(Collection $records, array $data, string $actor): array
+    public static function apply(Collection $records, array $data, string $actor, ?User $user = null): array
     {
         if (! self::haveSameSupplier($records)) {
             throw new InvalidArgumentException(self::mismatchMessage($records));
@@ -201,6 +210,20 @@ final class ServiceOrderBulkInvoice
             ? round($usd - $serviceCostTotal, 2)
             : null;
 
+        /** Pago de contado: se valida contra el total de la factura antes de escribir nada. */
+        $cashPayment = null;
+        [$invoiceTotal, $invoiceCurrency] = ServiceOrderAccountsPayableRegistrar::resolveAmount(['invoice_amount_usd' => $usd, 'invoice_amount_ves' => $ves]);
+
+        if ((bool) ($data['cash_paid'] ?? false)) {
+            $blockers = self::cashPaymentBlockers($records);
+
+            if ($blockers !== []) {
+                throw new InvalidArgumentException(self::cashPaymentBlockerMessage($blockers));
+            }
+
+            $cashPayment = CashPaymentService::normalize(CashPaymentService::paymentData($data), (float) $invoiceTotal, (string) $invoiceCurrency, $data['invoice_date'] ?? null);
+        }
+
         return DB::transaction(function () use (
             $records,
             $allocated,
@@ -214,6 +237,9 @@ final class ServiceOrderBulkInvoice
             $formBusinessUnitId,
             $actor,
             $quoteDifference,
+            $cashPayment,
+            $invoiceCurrency,
+            $user,
         ): array {
             $ids = $records
                 ->map(fn (OperationServiceOrder $record): int => (int) $record->getKey())
@@ -237,6 +263,8 @@ final class ServiceOrderBulkInvoice
             $updated = 0;
             $created = 0;
             $preserved = 0;
+            /** @var array<int, array{order: OperationServiceOrder, payable: OperationAccountsPayable}> $payables */
+            $payables = [];
 
             foreach ($ids as $id) {
                 /** @var OperationServiceOrder|null $order */
@@ -278,6 +306,7 @@ final class ServiceOrderBulkInvoice
                 ], $actor);
 
                 $updated++;
+                $payables[$id] = ['order' => $order, 'payable' => $payable['payable']];
 
                 if ($payable['created']) {
                     $created++;
@@ -288,13 +317,78 @@ final class ServiceOrderBulkInvoice
                 }
             }
 
+            $cashPayments = 0;
+
+            if ($cashPayment !== null && $payables !== []) {
+                $shareKey = $invoiceCurrency === 'USD' ? 'usd' : 'ves';
+                $shares = [];
+
+                foreach (array_keys($payables) as $id) {
+                    $shares[$id] = (float) ($allocated[$id][$shareKey] ?? 0.0);
+                }
+
+                $batch = count($payables) > 1 ? (string) Str::uuid() : null;
+
+                /** Si una cuenta ya no está pendiente, register() lanza y se revierte todo: factura y pago. */
+                foreach (CashPaymentService::split($cashPayment, $shares) as $id => $part) {
+                    CashPaymentService::register($payables[$id]['order'], $payables[$id]['payable'], $part, $user, $actor, $batch);
+                    $cashPayments++;
+                }
+            }
+
             return [
                 'updated' => $updated,
                 'payables_created' => $created,
                 'payments_preserved' => $preserved,
                 'quote_difference_usd' => $quoteDifference,
+                'cash_payments' => $cashPayments,
+                'cash_reference' => $cashPayment['payment_reference'] ?? null,
             ];
         });
+    }
+
+    /**
+     * Órdenes que impiden el pago de contado masivo: su cuenta por pagar ya tiene un
+     * pago o ya tienen un pago de contado activo.
+     *
+     * @param  Collection<int, OperationServiceOrder>  $records
+     * @return list<string> número de cada orden bloqueada
+     */
+    public static function cashPaymentBlockers(Collection $records): array
+    {
+        $ids = $records->map(fn (OperationServiceOrder $record): int => (int) $record->getKey())->filter()->unique()->values()->all();
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $blocked = OperationAccountsPayable::query()
+            ->whereIn('operation_service_order_id', $ids)
+            ->get(['operation_service_order_id', 'payment_status'])
+            ->filter(fn (OperationAccountsPayable $payable): bool => StatusCuentaPorPagar::fromStored($payable->payment_status) !== StatusCuentaPorPagar::PendientePorPagar)
+            ->pluck('operation_service_order_id')
+            ->merge(OperationCashPayment::query()
+                ->whereIn('operation_service_order_id', $ids)
+                ->where('status', OperationCashPayment::STATUS_REGISTERED)
+                ->pluck('operation_service_order_id'))
+            ->map(fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->all();
+
+        return $records
+            ->filter(fn (OperationServiceOrder $record): bool => in_array((int) $record->getKey(), $blocked, true))
+            ->map(fn (OperationServiceOrder $record): string => (string) ($record->order_number ?: '#'.$record->getKey()))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  list<string>  $blockers
+     */
+    public static function cashPaymentBlockerMessage(array $blockers): string
+    {
+        return (count($blockers) === 1 ? 'La orden '.$blockers[0].' ya tiene' : 'Las órdenes '.implode(', ', $blockers).' ya tienen')
+            .' un pago registrado, así que no se puede pagar de contado esta factura. Quítalas de la selección o desactiva «Se pagó de contado».';
     }
 
     public static function normalizePath(mixed $path): ?string

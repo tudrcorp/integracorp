@@ -42,6 +42,7 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -995,6 +996,9 @@ class OperationServiceOrdersTable
                             'payable_supplier_name' => ServiceOrderAccountsPayableRegistrar::suggestedSupplierName($record),
                             'payable_supplier_rif' => ServiceOrderAccountsPayableRegistrar::suggestedSupplierRif($record),
                             'payable_business_unit_id' => ServiceOrderAccountsPayableRegistrar::suggestedBusinessUnitId($record),
+                            ...ServiceOrderCashPaymentSection::initialState(
+                                $record->invoice_amount_usd !== null ? (float) $record->invoice_amount_usd : OperationServiceOrderListDisplay::serviceCostUsd($record)
+                            ),
                         ])
                         ->form(fn (OperationServiceOrder $record): array => [
                             Section::make('Datos del proveedor y de la cotización')
@@ -1085,6 +1089,8 @@ class OperationServiceOrdersTable
                                                 ->numeric()
                                                 ->minValue(0)
                                                 ->requiredWithout('invoice_amount_ves')
+                                                ->live(onBlur: true)
+                                                ->afterStateUpdated(fn (Get $get, Set $set) => ServiceOrderCashPaymentSection::syncPaymentAmount($get, $set))
                                                 ->helperText(fn (): string => 'Se sugiere el costo del servicio sin la ganancia ('.OperationServiceOrderListDisplay::serviceCostLabel($record).'); ajústalo si la factura difiere.')
                                                 ->validationMessages([
                                                     'required_without' => 'Indica el monto en US$ o, en su defecto, el monto en bolívares.',
@@ -1098,6 +1104,8 @@ class OperationServiceOrdersTable
                                                 ->numeric()
                                                 ->minValue(0)
                                                 ->requiredWithout('invoice_amount_usd')
+                                                ->live(onBlur: true)
+                                                ->afterStateUpdated(fn (Get $get, Set $set) => ServiceOrderCashPaymentSection::syncPaymentAmount($get, $set))
                                                 ->helperText('Opcional si ya indicaste el monto en US$.')
                                                 ->validationMessages([
                                                     'required_without' => 'Indica el monto en bolívares o, en su defecto, el monto en US$.',

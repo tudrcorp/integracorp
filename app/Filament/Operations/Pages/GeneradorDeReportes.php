@@ -16,7 +16,10 @@ use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Operations\OperationsDashboardMetrics;
 use App\Support\Operations\Reports\CaseMedicationReportBuilder;
 use App\Support\Operations\Reports\MedicationInvoiceReportBuilder;
+use App\Support\Operations\Reports\AccountsPayableStatusReportBuilder;
+use App\Support\Operations\Reports\CashPaymentReportBuilder;
 use App\Support\Operations\Reports\OperationInventoryReportAccess;
+use App\Support\Operations\Reports\ServiceOrderStatusReportBuilder;
 use App\Support\Operations\Reports\OperationInventoryReportBuilder;
 use App\Support\Operations\Reports\OperationReportBuilder;
 use App\Support\Operations\Reports\OperationReportFilters;
@@ -54,7 +57,10 @@ use UnitEnum;
  * inventario propio (Diagnomóvil), solo para analistas TDG con permiso de inventario
  * ({@see OperationInventoryReportAccess}), facturas de medicamentos con su permiso
  * ({@see MedicationInvoiceReportBuilder::allows()}), y medicamentos cubiertos/no
- * cubiertos por caso ({@see CaseMedicationReportBuilder}).
+ * cubiertos por caso ({@see CaseMedicationReportBuilder}), y órdenes de servicio y
+ * cuentas por pagar por estatus, cada uno con su permiso propio
+ * ({@see ServiceOrderStatusReportBuilder}, {@see AccountsPayableStatusReportBuilder}),
+ * y pagos de contado ({@see CashPaymentReportBuilder}), también con permiso propio.
  *
  * Tres pasos en una sola pantalla: tipo, periodo (con filtros opcionales
  * plegados) y formato. Lo pequeño se descarga al instante; el detalle grande
@@ -111,7 +117,8 @@ class GeneradorDeReportes extends Page
     {
         return 'Elija el reporte, el periodo y el formato. Incluye servicios, medicamentos por caso'
             .(OperationInventoryReportAccess::allows() ? ', inventario Diagnomóvil' : '')
-            .(MedicationInvoiceReportBuilder::allows() ? ' y facturas a pacientes' : '')
+            .(MedicationInvoiceReportBuilder::allows() ? ', facturas a pacientes' : '')
+            .(ServiceOrderStatusReportBuilder::allows() || AccountsPayableStatusReportBuilder::allows() || CashPaymentReportBuilder::allows() ? ', órdenes de servicio, cuentas por pagar y pagos de contado' : '')
             .'.';
     }
 
@@ -143,6 +150,9 @@ class GeneradorDeReportes extends Page
                         self::selectedType($get)?->isInventory() ?? false => 'Por fecha del movimiento de inventario.',
                         self::selectedType($get)?->isMedicationInvoices() ?? false => 'Por fecha de emisión de la factura.',
                         self::selectedType($get)?->isCaseMedications() ?? false => 'Por fecha en que el médico asignó el medicamento al caso.',
+                        self::selectedType($get)?->isServiceOrdersByStatus() ?? false => 'Por fecha de creación de la orden de servicio.',
+                        self::selectedType($get)?->isAccountsPayableByStatus() ?? false => 'Por fecha de registro de la factura en cuentas por pagar.',
+                        self::selectedType($get)?->isCashPayments() ?? false => 'Por fecha del pago de contado.',
                         default => 'Por fecha de inicio del servicio.',
                     })
                     ->visible(fn (Get $get): bool => self::selectedType($get)?->usesPeriod() ?? true)
@@ -205,11 +215,103 @@ class GeneradorDeReportes extends Page
                                     ->options(CaseMedicationReportBuilder::coverageOptions())
                                     ->live(),
                             ]),
+                        Section::make('Filtros de órdenes de servicio')
+                            ->description('Elija los estatus que quiere ver (al menos uno). Documento del aliado y proveedor son opcionales.')
+                            ->visible(fn (Get $get): bool => self::selectedType($get)?->isServiceOrdersByStatus() ?? false)
+                            ->compact()
+                            ->schema([
+                                Grid::make(['default' => 1, 'md' => 2])
+                                    ->schema([
+                                        Select::make('order_statuses')
+                                            ->label('Estatus de la orden')
+                                            ->multiple()
+                                            ->placeholder('Elija uno o más estatus')
+                                            ->options(ServiceOrderStatusReportBuilder::statusOptions())
+                                            ->required(fn (Get $get): bool => self::selectedType($get)?->isServiceOrdersByStatus() ?? false)
+                                            ->validationMessages(['required' => 'Elija al menos un estatus de orden.'])
+                                            ->live(),
+                                        Select::make('document_statuses')
+                                            ->label('Documento del Aliado de Servicio')
+                                            ->multiple()
+                                            ->placeholder('Todos')
+                                            ->options(ServiceOrderStatusReportBuilder::documentOptions())
+                                            ->live(),
+                                        Select::make('order_suppliers')
+                                            ->label('Proveedor')
+                                            ->multiple()
+                                            ->searchable()
+                                            ->placeholder('Todos')
+                                            ->options(fn (): array => Cache::remember('operation-reports:order-suppliers', self::FILTER_OPTIONS_TTL_SECONDS, fn (): array => ServiceOrderStatusReportBuilder::supplierOptions()))
+                                            ->live()
+                                            ->columnSpanFull(),
+                                    ]),
+                            ]),
+                        Section::make('Filtros de cuentas por pagar')
+                            ->description('Elija los estatus que quiere ver (al menos uno). El proveedor es opcional.')
+                            ->visible(fn (Get $get): bool => self::selectedType($get)?->isAccountsPayableByStatus() ?? false)
+                            ->compact()
+                            ->schema([
+                                Grid::make(['default' => 1, 'md' => 2])
+                                    ->schema([
+                                        Select::make('payable_statuses')
+                                            ->label('Estatus de la cuenta por pagar')
+                                            ->multiple()
+                                            ->placeholder('Elija uno o más estatus')
+                                            ->options(AccountsPayableStatusReportBuilder::statusOptions())
+                                            ->required(fn (Get $get): bool => self::selectedType($get)?->isAccountsPayableByStatus() ?? false)
+                                            ->validationMessages(['required' => 'Elija al menos un estatus de cuenta por pagar.'])
+                                            ->live(),
+                                        Select::make('payable_suppliers')
+                                            ->label('Proveedor')
+                                            ->multiple()
+                                            ->searchable()
+                                            ->placeholder('Todos')
+                                            ->options(fn (): array => Cache::remember('operation-reports:payable-suppliers', self::FILTER_OPTIONS_TTL_SECONDS, fn (): array => AccountsPayableStatusReportBuilder::supplierOptions()))
+                                            ->live(),
+                                    ]),
+                            ]),
+                        Section::make('Filtros de pagos de contado')
+                            ->description('Elija los estatus que quiere ver (al menos uno). Tipo, moneda y proveedor son opcionales.')
+                            ->visible(fn (Get $get): bool => self::selectedType($get)?->isCashPayments() ?? false)
+                            ->compact()
+                            ->schema([
+                                Grid::make(['default' => 1, 'md' => 2])
+                                    ->schema([
+                                        Select::make('cash_statuses')
+                                            ->label('Estatus del pago')
+                                            ->multiple()
+                                            ->placeholder('Elija uno o ambos estatus')
+                                            ->options(CashPaymentReportBuilder::statusOptions())
+                                            ->required(fn (Get $get): bool => self::selectedType($get)?->isCashPayments() ?? false)
+                                            ->validationMessages(['required' => 'Elija al menos un estatus del pago de contado.'])
+                                            ->live(),
+                                        Select::make('cash_kinds')
+                                            ->label('Tipo de pago')
+                                            ->multiple()
+                                            ->placeholder('Individuales y masivos')
+                                            ->options(CashPaymentReportBuilder::kindOptions())
+                                            ->live(),
+                                        Select::make('cash_currencies')
+                                            ->label('Moneda del pago')
+                                            ->multiple()
+                                            ->placeholder('Todas')
+                                            ->options(CashPaymentReportBuilder::currencyOptions())
+                                            ->live(),
+                                        Select::make('cash_suppliers')
+                                            ->label('Proveedor')
+                                            ->multiple()
+                                            ->searchable()
+                                            ->placeholder('Todos')
+                                            ->options(fn (): array => Cache::remember('operation-reports:cash-suppliers', self::FILTER_OPTIONS_TTL_SECONDS, fn (): array => CashPaymentReportBuilder::supplierOptions()))
+                                            ->live(),
+                                    ]),
+                            ]),
                         Section::make('Filtros (opcional)')
                             ->description('Déjelos vacíos para incluir todo.')
                             ->visible(fn (Get $get): bool => ! (self::selectedType($get)?->isInventory() ?? false)
                                 && ! (self::selectedType($get)?->isMedicationInvoices() ?? false)
-                                && ! (self::selectedType($get)?->isCaseMedications() ?? false))
+                                && ! (self::selectedType($get)?->isCaseMedications() ?? false)
+                                && ! (self::selectedType($get)?->isOrdersOrPayables() ?? false))
                             ->collapsible()
                             ->collapsed()
                             ->compact()
@@ -341,6 +443,12 @@ class GeneradorDeReportes extends Page
             return null;
         }
 
+        if (! OperationReportGenerator::userCanGenerate($type)) {
+            $this->notifyError('Sin acceso', 'No tiene permiso para generar el reporte «'.$type->label().'».');
+
+            return null;
+        }
+
         if (! $type->supportsFormat($format)) {
             $this->notifyError('Formato no disponible', '«'.$type->label().'» solo se genera en '.implode(', ', array_map(fn (OperationReportFormat $f): string => $f->label(), $type->formats())).'.');
 
@@ -351,6 +459,12 @@ class GeneradorDeReportes extends Page
             $filters = OperationReportFilters::fromArray($data);
         } catch (InvalidArgumentException $exception) {
             $this->notifyError('Revise el periodo', $exception->getMessage());
+
+            return null;
+        }
+
+        if (($type->isServiceOrdersByStatus() && $filters->orderStatuses === []) || ($type->isAccountsPayableByStatus() && $filters->payableStatuses === []) || ($type->isCashPayments() && $filters->cashStatuses === [])) {
+            $this->notifyError('Elija los estatus', 'Indique al menos un estatus para armar el reporte.', 'warning');
 
             return null;
         }
@@ -457,9 +571,22 @@ class GeneradorDeReportes extends Page
                 'stock_statuses' => $type === OperationReportType::InventoryGeneral ? $get('stock_statuses') : [],
                 'invoice_statuses' => $type->isMedicationInvoices() ? $get('invoice_statuses') : [],
                 'invoice_types' => $type->isMedicationInvoices() ? $get('invoice_types') : [],
+                'order_statuses' => $get('order_statuses'),
+                'document_statuses' => $get('document_statuses'),
+                'order_suppliers' => $get('order_suppliers'),
+                'payable_statuses' => $get('payable_statuses'),
+                'payable_suppliers' => $get('payable_suppliers'),
+                'cash_statuses' => $get('cash_statuses'),
+                'cash_kinds' => $get('cash_kinds'),
+                'cash_currencies' => $get('cash_currencies'),
+                'cash_suppliers' => $get('cash_suppliers'),
             ]));
         } catch (InvalidArgumentException $exception) {
             return new HtmlString('<p class="text-sm text-amber-700 dark:text-amber-400">'.e($exception->getMessage()).'</p>');
+        }
+
+        if (($type->isServiceOrdersByStatus() && blank($get('order_statuses'))) || ($type->isAccountsPayableByStatus() && blank($get('payable_statuses'))) || ($type->isCashPayments() && blank($get('cash_statuses')))) {
+            return new HtmlString('<p class="text-sm text-amber-700 dark:text-amber-400">Elija al menos un estatus en los filtros para ver cuántos registros incluirá el reporte.</p>');
         }
 
         $formatted = number_format($count, 0, ',', '.');
@@ -529,6 +656,16 @@ class GeneradorDeReportes extends Page
 
         if (MedicationInvoiceReportBuilder::allows()) {
             $groups[] = ['label' => 'Facturación', 'types' => OperationReportType::forGroup(OperationReportType::GROUP_BILLING)];
+        }
+
+        /** Cada reporte de esta sección tiene su propio permiso: solo se listan los permitidos. */
+        $ordersAndPayables = array_values(array_filter(
+            OperationReportType::forGroup(OperationReportType::GROUP_ORDERS_PAYABLES),
+            fn (OperationReportType $type): bool => OperationReportGenerator::userCanGenerate($type),
+        ));
+
+        if ($ordersAndPayables !== []) {
+            $groups[] = ['label' => 'Órdenes y cuentas por pagar', 'types' => $ordersAndPayables];
         }
 
         return $groups;

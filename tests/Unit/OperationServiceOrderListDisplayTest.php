@@ -117,6 +117,14 @@ it('sin cotización aprobada el costo es la suma de las cotizaciones del proveed
     expect(OperationServiceOrderListDisplay::serviceCostUsd($order))->toBe(15.25);
 });
 
+it('una orden directa sin cotización usa como costo el precio del servicio', function (): void {
+    $order = serviceOrderWithCoordination(['total_amount_usd' => 12]);
+
+    expect(OperationServiceOrderListDisplay::serviceCostUsd($order))->toBe(12.0)
+        ->and(OperationServiceOrderListDisplay::serviceCostLabel($order))->toBe('US$ 12,00')
+        ->and(OperationServiceOrderListDisplay::quoteAmountUsd($order))->toBeNull();
+});
+
 it('sin cotización el costo queda en guion', function (): void {
     $order = serviceOrderWithCoordination();
 

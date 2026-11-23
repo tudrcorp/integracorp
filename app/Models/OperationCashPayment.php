@@ -43,6 +43,14 @@ class OperationCashPayment extends Model
         return $this->status === self::STATUS_REGISTERED;
     }
 
+    /**
+     * Parte de un pago masivo: una factura de varias órdenes pagada con un solo pago.
+     */
+    public function isBatch(): bool
+    {
+        return filled($this->payment_batch);
+    }
+
     public function serviceOrder(): BelongsTo
     {
         return $this->belongsTo(OperationServiceOrder::class, 'operation_service_order_id');

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Filament\Operations\Resources\OperationServiceOrders\Actions;
 
 use App\Models\BusinessUnit;
+use App\Filament\Operations\Resources\OperationServiceOrders\Schemas\ServiceOrderCashPaymentSection;
 use App\Models\OperationServiceOrder;
+use App\Models\User;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Operations\ServiceOrderAccountsPayableRegistrar;
 use App\Support\Operations\ServiceOrderBulkInvoice;
@@ -20,6 +22,7 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Enums\Width;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -86,6 +89,8 @@ final class ServiceOrderBulkInvoiceActions
                     'payable_supplier_name' => ServiceOrderAccountsPayableRegistrar::suggestedSupplierName($first),
                     'payable_supplier_rif' => ServiceOrderAccountsPayableRegistrar::suggestedSupplierRif($first),
                     'payable_business_unit_id' => $businessUnits->count() === 1 ? $businessUnits->first() : null,
+                    /** Monto del pago: la suma de los costos de las órdenes seleccionadas. */
+                    ...ServiceOrderCashPaymentSection::initialState($serviceCostTotal > 0 ? $serviceCostTotal : null),
                 ];
             })
             ->form(fn (Collection $records): array => ServiceOrderBulkInvoice::haveSameSupplier($records)
@@ -102,14 +107,16 @@ final class ServiceOrderBulkInvoiceActions
                     return;
                 }
 
-                $actor = Auth::user()?->name ?? 'sistema';
+                $user = Auth::user();
+                $actor = $user?->name ?? 'sistema';
 
                 try {
-                    $result = ServiceOrderBulkInvoice::apply($records, $data, $actor);
+                    $result = ServiceOrderBulkInvoice::apply($records, $data, $actor, $user instanceof User ? $user : null);
                 } catch (InvalidArgumentException $exception) {
                     Notification::make()
                         ->warning()
-                        ->title('No se pudo guardar la factura')
+                        ->persistent()
+                        ->title((bool) ($data['cash_paid'] ?? false) ? 'No se guardó la factura ni el pago' : 'No se pudo guardar la factura')
                         ->body($exception->getMessage())
                         ->send();
 
@@ -117,6 +124,16 @@ final class ServiceOrderBulkInvoiceActions
                 }
 
                 $count = $result['updated'];
+
+                if ($result['cash_payments'] > 0) {
+                    Notification::make()
+                        ->success()
+                        ->title('Pago de contado registrado')
+                        ->body($result['cash_payments'] === 1
+                            ? 'La cuenta por pagar quedó «Pagada» con la referencia '.$result['cash_reference'].'. El pago está en «Pagos de contado».'
+                            : 'Las '.$result['cash_payments'].' cuentas por pagar quedaron «Pagadas» con la referencia '.$result['cash_reference'].', cada una por su parte de la factura. El pago está en «Pagos de contado» como un solo pago masivo.')
+                        ->send();
+                }
 
                 if ($result['payments_preserved'] > 0) {
                     Notification::make()
@@ -258,6 +275,8 @@ final class ServiceOrderBulkInvoiceActions
                                 ->numeric()
                                 ->minValue(0)
                                 ->requiredWithout('invoice_amount_ves')
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(fn (Get $get, Set $set) => ServiceOrderCashPaymentSection::syncPaymentAmount($get, $set))
                                 ->helperText('Se sugiere el costo total del servicio sin la ganancia ('.ServiceOrderBulkInvoice::money($serviceCostTotal).'). Se prorratea entre las órdenes.')
                                 ->validationMessages([
                                     'required_without' => 'Indica el monto en US$ o, en su defecto, el monto en bolívares.',
@@ -271,6 +290,8 @@ final class ServiceOrderBulkInvoiceActions
                                 ->numeric()
                                 ->minValue(0)
                                 ->requiredWithout('invoice_amount_usd')
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(fn (Get $get, Set $set) => ServiceOrderCashPaymentSection::syncPaymentAmount($get, $set))
                                 ->helperText('Opcional si ya indicaste el monto en US$.')
                                 ->validationMessages([
                                     'required_without' => 'Indica el monto en bolívares o, en su defecto, el monto en US$.',
@@ -341,6 +362,7 @@ final class ServiceOrderBulkInvoiceActions
                 ->extraAttributes([
                     'class' => 'fi-helpdesk-ios-section',
                 ]),
+            ServiceOrderCashPaymentSection::makeForBulk($records->count(), ServiceOrderBulkInvoice::cashPaymentBlockers($records), 'fi-helpdesk-ios-section'),
         ];
     }
 }

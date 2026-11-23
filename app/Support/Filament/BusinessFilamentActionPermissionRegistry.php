@@ -137,6 +137,12 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const REPORT_MEDICATION_INVOICES = 'reporte-facturas-medicamentos';
 
+    public const REPORT_SERVICE_ORDERS_BY_STATUS = 'reporte-ordenes-servicio-por-estatus';
+
+    public const REPORT_ACCOUNTS_PAYABLE_BY_STATUS = 'reporte-cuentas-por-pagar-por-estatus';
+
+    public const REPORT_CASH_PAYMENTS = 'reporte-pagos-de-contado';
+
     public const VIEW_AFFILIATE_CLINICAL_FICHA = 'ver-ficha-clinica-afiliado';
 
     /**
@@ -421,6 +427,21 @@ final class BusinessFilamentActionPermissionRegistry
                 'name' => 'Auditoría de cambios: revertir un cambio de afiliaciones, cotizaciones, agencias, agentes, ventas, cobranza, comisiones, planes, tarifas o Nuevos Negocios (con razón obligatoria)',
                 'group' => 'SISTEMA',
                 'modules' => ['ADMINISTRACION'],
+            ],
+            self::REPORT_SERVICE_ORDERS_BY_STATUS => [
+                'name' => 'Generador de reportes: órdenes de servicio por estatus (con costo y precio de venta)',
+                'group' => 'REPORTES',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::REPORT_ACCOUNTS_PAYABLE_BY_STATUS => [
+                'name' => 'Generador de reportes: cuentas por pagar por estatus (facturado y pagado)',
+                'group' => 'REPORTES',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::REPORT_CASH_PAYMENTS => [
+                'name' => 'Generador de reportes: pagos de contado (individuales y masivos, registrados y reversados)',
+                'group' => 'REPORTES',
+                'modules' => ['OPERACIONES'],
             ],
             self::CAPITATION_BILLING_REPORT => [
                 'name' => 'Centro de reportes: pre-facturación de capitado por proveedor Outsourcing (generar, cerrar y reabrir el mes con razón)',

@@ -51,7 +51,7 @@ final class OperationCashPaymentsTable
                     ->placeholder('—')
                     ->badge()
                     ->color('gray')
-                    ->description(fn (OperationCashPayment $record): string => $record->documentLabel()),
+                    ->description(fn (OperationCashPayment $record): string => $record->documentLabel().($record->isBatch() ? ' · Pago masivo' : '')),
                 TextColumn::make('supplier_name')
                     ->label('Proveedor')
                     ->description(fn (OperationCashPayment $record): ?string => $record->supplier_rif)
@@ -109,9 +109,7 @@ final class OperationCashPaymentsTable
                     ->color('danger')
                     ->visible(fn (OperationCashPayment $record): bool => $record->isActive() && self::canReverse())
                     ->modalHeading('Reversar el pago de contado')
-                    ->modalDescription(fn (OperationCashPayment $record): string => CashPaymentService::money((float) $record->payment_amount, (string) $record->payment_currency)
-                        .' · ref. '.$record->payment_reference.' · '.$record->supplier_name
-                        .'. El pago queda REVERSADO (no se borra) y la cuenta por pagar vuelve a como estaba antes del pago.')
+                    ->modalDescription(fn (OperationCashPayment $record): string => self::reversalDescription($record))
                     ->modalContent(fn (OperationCashPayment $record): ?HtmlString => ($blocker = CashPaymentService::reversalBlocker($record)) !== null
                         ? new HtmlString('<p class="rounded-xl bg-danger-50 px-4 py-3 text-sm text-danger-800 dark:bg-danger-500/10 dark:text-danger-300">'.e($blocker).'</p>')
                         : null)
@@ -151,11 +149,33 @@ final class OperationCashPaymentsTable
 
                         Notification::make()
                             ->title('Pago reversado')
-                            ->body('La cuenta por pagar volvió a «Pendiente por pagar». Si el pago se hizo de otra forma, regístrelo desde Cuentas por pagar.')
+                            ->body($record->isBatch()
+                                ? 'Se reversó el pago masivo completo: las cuentas por pagar de todas sus órdenes volvieron a «Pendiente por pagar». Si el pago se hizo de otra forma, regístrelo desde Cuentas por pagar.'
+                                : 'La cuenta por pagar volvió a «Pendiente por pagar». Si el pago se hizo de otra forma, regístrelo desde Cuentas por pagar.')
                             ->success()
                             ->send();
                     }),
             ]);
+    }
+
+    /**
+     * Qué se reversa: el pago de una orden o, si es masivo, el pago completo con todas sus órdenes.
+     */
+    public static function reversalDescription(OperationCashPayment $record): string
+    {
+        $base = ' · ref. '.$record->payment_reference.' · '.$record->supplier_name.'. ';
+
+        if (! $record->isBatch()) {
+            return CashPaymentService::money((float) $record->payment_amount, (string) $record->payment_currency)
+                .$base.'El pago queda REVERSADO (no se borra) y la cuenta por pagar vuelve a como estaba antes del pago.';
+        }
+
+        $group = CashPaymentService::reversalGroup($record);
+        $orders = $group->map(fn (OperationCashPayment $member): string => (string) ($member->serviceOrder?->order_number ?: '#'.$member->operation_service_order_id))->implode(', ');
+        $total = round((float) $group->sum(fn (OperationCashPayment $member): float => (float) $member->payment_amount), 2);
+
+        return 'Pago masivo de '.CashPaymentService::money($total, (string) $record->payment_currency).$base
+            .'Cubrió una sola factura de '.$group->count().' órdenes ('.$orders.'), así que se reversa completo: todos sus pagos quedan REVERSADOS (no se borran) y cada cuenta por pagar vuelve a como estaba antes del pago.';
     }
 
     public static function canReverse(): bool
