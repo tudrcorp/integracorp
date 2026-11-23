@@ -26,7 +26,16 @@ class ExpireOperationServiceOrders implements ShouldQueue
         $this->runWithScheduledReport(
             'Caducidad de órdenes de servicio',
             function (): void {
-                ScheduledTaskRunReport::addExecutionDetail('Acción', 'Marcar como caducadas las órdenes elegibles según reglas de vigencia');
+                OperationServiceOrderValidity::flushSettings();
+
+                if (! OperationServiceOrderValidity::expirationEnabled()) {
+                    ScheduledTaskRunReport::addExecutionDetail('Acción', 'Ninguna: la caducidad de órdenes está desactivada en Operaciones → Parámetros de órdenes');
+                    ScheduledTaskRunReport::addMetric('Órdenes caducadas', 0);
+
+                    return;
+                }
+
+                ScheduledTaskRunReport::addExecutionDetail('Acción', 'Marcar como caducadas las órdenes abiertas con más de '.OperationServiceOrderValidity::validityDays().' día(s) desde su aprobación');
 
                 $expiredCount = OperationServiceOrderValidity::expireEligibleOrders('system');
 
@@ -35,7 +44,8 @@ class ExpireOperationServiceOrders implements ShouldQueue
             'Caduca automáticamente las órdenes de servicio de operaciones que cumplieron las condiciones de vencimiento.',
             [
                 '*Órdenes caducadas* = registros actualizados a estado caducado en esta ejecución.',
-                'Si el valor es 0, no había órdenes pendientes de caducar hoy.',
+                'Si el valor es 0, no había órdenes pendientes de caducar hoy o la caducidad está desactivada.',
+                'El plazo y el interruptor se configuran en Operaciones → Parámetros de órdenes.',
             ],
         );
     }

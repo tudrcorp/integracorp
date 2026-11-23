@@ -83,6 +83,7 @@ class UserFormPermissionOptions
         'operationinventoryproductresource' => ['productos'],
         'operationinventoryproductcategoryresource' => ['categorias'],
         'manageoperationinventoryparameters' => ['parametros-inventario'],
+        'manageoperationserviceorderparameters' => ['parametros-ordenes-servicio'],
         'telemedicinedoctorresource' => ['doctores'],
         'telemedicinepatientresource' => ['pacientes'],
         'telemedicinecaseresource' => ['gestion-casos'],

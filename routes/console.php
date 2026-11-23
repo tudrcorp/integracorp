@@ -132,7 +132,8 @@ Schedule::job(new AnulateAgentQuotes, 'system')
     ->when($agentQuoteAnulationIsActive);
 
 /**
- * Caduca órdenes de servicio no finalizadas dentro de los 10 días posteriores a su aprobación.
+ * Caduca órdenes de servicio abiertas que superaron su vigencia. Si caducan y en cuántos días se
+ * configura en Operaciones → Parámetros de órdenes (apagado, el job no hace nada).
  */
 Schedule::job(new ExpireOperationServiceOrders, 'system')->dailyAt('7:30');
 

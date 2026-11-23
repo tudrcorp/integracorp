@@ -32,7 +32,7 @@ it('OperationServiceOrdersTable conserva estilo iOS, prioridades y accesos a PDF
         ->toContain("TextColumn::make('operationCoordinationService.reference_number')")
         ->toContain('OperationServiceOrderListDisplay::serviceReferenceNumber')
         ->toContain("->label('Paciente')")
-        ->toContain("->label('Estatus administrativo')")
+        ->toContain('->label(OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_LABEL)')
         ->toContain("->label('U.N. específica')")
         ->toContain("->label('Monto cotizado')")
         ->toContain("Action::make('preview_order_pdf')")

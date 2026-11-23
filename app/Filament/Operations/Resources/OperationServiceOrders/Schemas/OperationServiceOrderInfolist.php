@@ -97,9 +97,10 @@ class OperationServiceOrderInfolist
                                                     })
                                                     ->placeholder('-'),
                                                 TextEntry::make('administrative_status')
-                                                    ->label('Estatus administrativo')
+                                                    ->label(OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_LABEL)
                                                     ->badge()
                                                     ->state(fn (OperationServiceOrder $record): string => OperationServiceOrderListDisplay::administrativeStatus($record))
+                                                    ->formatStateUsing(fn (?string $state): string => OperationServiceOrderListDisplay::administrativeStatusLabel($state))
                                                     ->color(fn (?string $state): string => OperationServiceOrderListDisplay::administrativeStatusColor($state))
                                                     ->placeholder('-'),
                                                 TextEntry::make('approved_at')

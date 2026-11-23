@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\OperationQuoteGenerator;
 use App\Models\OperationServiceOrder;
 use App\Models\Supplier;
 use App\Support\Operations\ServiceOrderBulkInvoice;
@@ -60,7 +61,20 @@ it('prorratea el total de la factura según el monto cotizado de cada orden', fu
     expect($reparto[10]['usd'])->toBe(20.0)
         ->and($reparto[20]['usd'])->toBe(60.0)
         ->and($reparto[10]['ves'])->toBeNull()
-        ->and(ServiceOrderBulkInvoice::quotedTotalUsd(collect([$chica, $grande])))->toBe(40.0);
+        ->and(ServiceOrderBulkInvoice::serviceCostTotalUsd(collect([$chica, $grande])))->toBe(40.0);
+});
+
+it('sugiere y prorratea con el costo del servicio, no con el precio de venta con ganancia', function (): void {
+    $chica = ordenDeFacturaMasiva(10, ['supplier_id' => 1]);
+    $chica->setRelation('approvedOperationQuote', new OperationQuoteGenerator(['costo_dolares' => 10, 'total' => 15]));
+    $grande = ordenDeFacturaMasiva(20, ['supplier_id' => 1]);
+    $grande->setRelation('approvedOperationQuote', new OperationQuoteGenerator(['costo_dolares' => 30, 'total' => 36]));
+
+    $reparto = ServiceOrderBulkInvoice::allocateAmounts(collect([$chica, $grande]), 40, null);
+
+    expect(ServiceOrderBulkInvoice::serviceCostTotalUsd(collect([$chica, $grande])))->toBe(40.0)
+        ->and($reparto[10]['usd'])->toBe(10.0)
+        ->and($reparto[20]['usd'])->toBe(30.0);
 });
 
 it('reparte por igual cuando ninguna orden tiene monto cotizado', function (): void {

@@ -31,8 +31,10 @@ it('OperationServiceOrdersTable agrupa paciente y muestra estatus administrativo
         ->and($src)->toContain('OperationServiceOrderListDisplay::patientFullName')
         ->and($src)->toContain('OperationServiceOrderListDisplay::patientDocumentLabel')
         ->and($src)->toContain("TextColumn::make('administrative_status')")
-        ->and($src)->toContain("->label('Estatus administrativo')")
+        ->and($src)->toContain('->label(OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_LABEL)')
+        ->and($src)->toContain('OperationServiceOrderListDisplay::administrativeStatusLabel($state)')
         ->and($src)->toContain('OperationServiceOrderListDisplay::administrativeStatusColor')
+        ->and($src)->not->toContain("->label('Estatus administrativo')")
         ->and($src)->toContain("->label('U.N. específica')")
         ->and($src)->toContain("->label('Monto cotizado')")
         ->and($src)->toContain("SelectFilter::make('administrative_status')")
@@ -44,6 +46,16 @@ it('OperationServiceOrderInfolist muestra el estatus administrativo', function (
 
     expect($src)
         ->toContain("TextEntry::make('administrative_status')")
-        ->and($src)->toContain("->label('Estatus administrativo')")
+        ->and($src)->toContain('->label(OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_LABEL)')
+        ->and($src)->toContain('OperationServiceOrderListDisplay::administrativeStatusLabel($state)')
         ->and($src)->toContain('OperationServiceOrderListDisplay::administrativeStatusColor');
+});
+
+it('la pantalla de órdenes del proveedor muestra el documento del aliado con los mismos estados', function (): void {
+    $src = file_get_contents(dirname(__DIR__, 2).'/app/Filament/Operations/Resources/Suppliers/Pages/SupplierServiceOrders.php');
+
+    expect($src)
+        ->toContain('->label(OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_LABEL)')
+        ->toContain('OperationServiceOrderListDisplay::administrativeStatusLabel($state)')
+        ->not->toContain("'Sin factura'");
 });
