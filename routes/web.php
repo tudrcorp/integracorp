@@ -531,6 +531,12 @@ Route::get('operations/operation-service-orders/{operationServiceOrder}/pdf/down
     ->middleware(['web', 'auth'])
     ->name('operations.operation-service-orders.pdf');
 
+/** Expediente del caso (disco privado): portada, índice y todos los documentos en un solo PDF. */
+Route::get('operations/telemedicine-cases/{telemedicineCase}/expediente/{fingerprint}', [\App\Http\Controllers\TelemedicineCaseRecordController::class, 'download'])
+    ->middleware(['web', 'auth'])
+    ->where('fingerprint', '[a-f0-9]{40}')
+    ->name('operations.telemedicine-cases.record.download');
+
 Route::get('operations/coordination/clinic-documents/{document}/download', [OperationCoordinationClinicDocumentDownloadController::class, 'download'])
     ->middleware(['web', 'auth'])
     ->name('operations.coordination.clinic-documents.download');

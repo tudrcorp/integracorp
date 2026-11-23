@@ -10,6 +10,7 @@ use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Operations\CaseMessagingAuditLog;
 use App\Support\Telemedicine\TelemedicineAmdBitacoraCatalog;
 use App\Support\Telemedicine\TelemedicineCaseDocumentsCatalog;
+use App\Support\Telemedicine\TelemedicineCaseRecordAction;
 use App\Support\Telemedicine\TelemedicineMedicalTeam;
 use Filament\Forms\Components\Repeater\TableColumn;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -314,6 +315,9 @@ class TelemedicineCaseInfolist
                                 Section::make('Centro de documentos del caso')
                                     ->description('Toda la documentación generada y cargada: referencias médicas, coordinación, cotizaciones y órdenes de servicio.')
                                     ->icon(Heroicon::OutlinedDocumentDuplicate)
+                                    ->headerActions([
+                                        TelemedicineCaseRecordAction::make(),
+                                    ])
                                     ->extraAttributes([
                                         'class' => self::IOS_SECTION_CLASS,
                                     ])
