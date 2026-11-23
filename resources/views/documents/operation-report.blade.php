@@ -10,6 +10,8 @@
     /** @var \Illuminate\Support\Carbon $generatedAt */
     /** @var string $logoDataUri */
     $sections = $sections ?? [];
+    $leadingSections = $leadingSections ?? [];
+    $detailTitle = $detailTitle ?? null;
     $brandBlue = '#052F60';
     $brandCyan = '#00ADEF';
     $columnCount = max(1, count($headings));
@@ -128,8 +130,47 @@
 
     <table class="spacer"><tr><td></td></tr></table>
 
+    @foreach ($leadingSections as $section)
+        <table class="section-title"><tr><td>{{ $section['title'] }}</td></tr></table>
+        @foreach ($section['rowChunks'] as $chunkIndex => $chunk)
+            <table class="data">
+                <thead>
+                    <tr>
+                        @foreach ($section['headings'] as $heading)
+                            <th style="width: {{ round(100 / max(1, count($section['headings'])), 3) }}%;">{{ $heading }}</th>
+                        @endforeach
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($chunk as $row)
+                        <tr>
+                            @foreach ($row as $index => $value)
+                                @php($numeric = in_array($index, $section['numericColumns'] ?? [], true))
+                                <td @class(['num' => $numeric])>{{ $format($value, $numeric) }}</td>
+                            @endforeach
+                        </tr>
+                    @endforeach
+                </tbody>
+                @if ($chunkIndex === count($section['rowChunks']) - 1 && ($section['totals'] ?? null) !== null)
+                    <tfoot>
+                        <tr>
+                            @foreach ($section['totals'] as $index => $value)
+                                @php($numeric = in_array($index, $section['numericColumns'] ?? [], true))
+                                <td @class(['num' => $numeric])>{{ $value === '' ? '' : $format($value, $numeric) }}</td>
+                            @endforeach
+                        </tr>
+                    </tfoot>
+                @endif
+            </table>
+        @endforeach
+    @endforeach
+    @if (filled($detailTitle))
+        <table class="spacer"><tr><td></td></tr></table>
+        <table class="section-title"><tr><td>{{ $detailTitle }}</td></tr></table>
+    @endif
+
     @if ($rowChunks === [])
-        <table class="empty"><tr><td>No hay servicios para el periodo y los filtros seleccionados.</td></tr></table>
+        <table class="empty"><tr><td>No hay registros para el periodo y los filtros seleccionados.</td></tr></table>
     @else
         {{-- Una tabla por bloque: DomPDF no soporta una sola tabla de cientos de filas. --}}
         @foreach ($rowChunks as $chunkIndex => $chunk)

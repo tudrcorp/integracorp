@@ -182,6 +182,18 @@ final class OperationReportBuilder
             return CaseMedicationReportBuilder::count($filters);
         }
 
+        if ($type->isServiceOrdersByStatus()) {
+            return ServiceOrderStatusReportBuilder::count($filters);
+        }
+
+        if ($type->isAccountsPayableByStatus()) {
+            return AccountsPayableStatusReportBuilder::count($filters);
+        }
+
+        if ($type->isCashPayments()) {
+            return CashPaymentReportBuilder::count($filters);
+        }
+
         if ($type->isInventory()) {
             return OperationInventoryReportBuilder::count($type, $filters);
         }
@@ -197,6 +209,18 @@ final class OperationReportBuilder
 
         if ($type->isCaseMedications()) {
             return CaseMedicationReportBuilder::build($type, $filters, $rowLimit);
+        }
+
+        if ($type->isServiceOrdersByStatus()) {
+            return ServiceOrderStatusReportBuilder::build($type, $filters, $rowLimit);
+        }
+
+        if ($type->isAccountsPayableByStatus()) {
+            return AccountsPayableStatusReportBuilder::build($type, $filters, $rowLimit);
+        }
+
+        if ($type->isCashPayments()) {
+            return CashPaymentReportBuilder::build($type, $filters, $rowLimit);
         }
 
         if ($type->isInventory()) {

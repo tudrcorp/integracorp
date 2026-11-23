@@ -123,7 +123,9 @@ final class OperationServiceOrderListDisplay
      *
      * Con cotización aprobada es su costo base (`costo_dolares`, o `subtotal` si
      * falta); el `total` incluye la ganancia y es el precio de venta. Sin cotización
-     * aprobada se usan las cotizaciones del proveedor, que ya vienen sin ganancia.
+     * aprobada se usan las cotizaciones del proveedor, que ya vienen sin ganancia. Una
+     * orden directa de ítems cubiertos no tiene cotización: su costo es el «Precio del
+     * servicio» que se cargó al crearla (`total_amount_usd`).
      */
     public static function serviceCostUsd(OperationServiceOrder $record): ?float
     {
@@ -139,7 +141,15 @@ final class OperationServiceOrderListDisplay
             }
         }
 
-        return self::supplierQuotesAmountUsd($record);
+        $supplierQuotes = self::supplierQuotesAmountUsd($record);
+
+        if ($supplierQuotes !== null) {
+            return $supplierQuotes;
+        }
+
+        $directPrice = self::numericOrNull($record->total_amount_usd ?? null);
+
+        return $directPrice !== null && $directPrice > 0 ? round($directPrice, 2) : null;
     }
 
     public static function serviceCostLabel(OperationServiceOrder $record): string

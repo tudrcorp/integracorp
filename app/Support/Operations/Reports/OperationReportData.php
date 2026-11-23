@@ -9,7 +9,9 @@ namespace App\Support\Operations\Reports;
  *
  * Las filas son un iterable perezoso: el detalle y la tabla completa se leen
  * por lotes y nunca se cargan enteros en memoria. Las secciones adicionales
- * (p. ej. conciliación) se escriben debajo de la tabla principal.
+ * (p. ej. conciliación) se escriben debajo de la tabla principal; las de
+ * `leadingSections` (p. ej. un resumen por estatus) van antes, y entonces la
+ * tabla principal lleva el título `detailTitle`.
  */
 final readonly class OperationReportData
 {
@@ -22,6 +24,7 @@ final readonly class OperationReportData
      * @param  list<int>|null  $pdfColumns  Columnas que caben en el PDF horizontal; null = todas.
      * @param  int|null  $totalRows  Filas antes de aplicar el tope del PDF (sólo resúmenes).
      * @param  list<array{title: string, headings: list<string>, rows: list<list<scalar|null>>, totals?: list<scalar|null>|null, numericColumns?: list<int>}>  $sections
+     * @param  list<array{title: string, headings: list<string>, rows: list<list<scalar|null>>, totals?: list<scalar|null>|null, numericColumns?: list<int>}>  $leadingSections
      */
     public function __construct(
         public string $title,
@@ -33,5 +36,7 @@ final readonly class OperationReportData
         public ?array $pdfColumns = null,
         public ?int $totalRows = null,
         public array $sections = [],
+        public array $leadingSections = [],
+        public ?string $detailTitle = null,
     ) {}
 }

@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Support\BankCatalog;
 use App\Support\SecurityAudit;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -19,6 +20,10 @@ use Throwable;
 
 /**
  * Pago de contado de la factura de una orden de servicio.
+ *
+ * Una factura masiva (varias órdenes) se paga con un solo pago: se reparte entre las
+ * órdenes con la misma proporción que la factura ({@see self::split()}), cada parte queda
+ * con el mismo `payment_batch` y se reversan todas juntas.
  *
  * - **Registrar** (al cargar la factura, dentro de su misma transacción): valida que el pago
  *   cubra el total de la factura —en la moneda de la factura o convertido a la tasa BCV—,
@@ -38,6 +43,22 @@ final class CashPaymentService
         'payment_status', 'payment_reference', 'payment_date', 'national_bank', 'international_bank',
         'payment_amount_usd', 'payment_amount_ves', 'payment_receipt_path',
     ];
+
+    /**
+     * Datos del formulario con el banco que corresponde a la moneda del pago.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function paymentData(array $data): array
+    {
+        return [
+            ...$data,
+            'cash_payment_bank' => ($data['cash_payment_currency'] ?? 'USD') === 'VES'
+                ? ($data['cash_payment_bank_national'] ?? null)
+                : ($data['cash_payment_bank_international'] ?? null),
+        ];
+    }
 
     /**
      * Valida los datos del formulario contra la factura y devuelve el pago listo para guardar.
@@ -122,7 +143,7 @@ final class CashPaymentService
      *
      * @param  array{payment_date: string, payment_reference: string, payment_currency: string, payment_amount: float, bcv_rate: ?float, amount_in_invoice_currency: float, bank_scope: string, bank: string, receipt_path: string}  $payment
      */
-    public static function register(OperationServiceOrder $order, OperationAccountsPayable $payable, array $payment, ?User $user, string $actor): OperationCashPayment
+    public static function register(OperationServiceOrder $order, OperationAccountsPayable $payable, array $payment, ?User $user, string $actor, ?string $batch = null): OperationCashPayment
     {
         $locked = OperationAccountsPayable::query()->lockForUpdate()->findOrFail($payable->getKey());
 
@@ -165,6 +186,7 @@ final class CashPaymentService
             'invoice_amount' => $locked->invoice_amount,
             'invoice_currency' => $locked->invoice_currency,
             ...$payment,
+            'payment_batch' => $batch,
             'status' => OperationCashPayment::STATUS_REGISTERED,
             'payable_snapshot' => $snapshot,
             'registered_by_user_id' => $user?->getKey(),
@@ -173,9 +195,94 @@ final class CashPaymentService
     }
 
     /**
-     * Si el pago se puede reversar; si no, por qué.
+     * Reparte un pago que cubre una factura de varias órdenes, con la misma proporción
+     * que la factura. La última parte absorbe el redondeo: la suma cuadra exacta.
+     *
+     * @template TKey of array-key
+     *
+     * @param  array{payment_amount: float, amount_in_invoice_currency: float}&array<string, mixed>  $payment  pago validado contra el total de la factura
+     * @param  array<TKey, float>  $invoiceShares  parte de la factura de cada orden, en la moneda de la factura
+     * @return array<TKey, array<string, mixed>>
+     */
+    public static function split(array $payment, array $invoiceShares): array
+    {
+        if ($invoiceShares === []) {
+            return [];
+        }
+
+        $total = array_sum(array_map(static fn (mixed $share): float => max(0.0, (float) $share), $invoiceShares));
+        $keys = array_keys($invoiceShares);
+        $lastKey = end($keys);
+        $count = count($invoiceShares);
+        $assignedPayment = 0.0;
+        $assignedInvoice = 0.0;
+        $parts = [];
+
+        foreach ($invoiceShares as $key => $share) {
+            if ($key === $lastKey) {
+                $paymentPart = round((float) $payment['payment_amount'] - $assignedPayment, 2);
+                $invoicePart = round((float) $payment['amount_in_invoice_currency'] - $assignedInvoice, 2);
+            } else {
+                $ratio = $total > 0 ? max(0.0, (float) $share) / $total : 1 / $count;
+                $paymentPart = round((float) $payment['payment_amount'] * $ratio, 2);
+                $invoicePart = round((float) $payment['amount_in_invoice_currency'] * $ratio, 2);
+                $assignedPayment += $paymentPart;
+                $assignedInvoice += $invoicePart;
+            }
+
+            $parts[$key] = [...$payment, 'payment_amount' => $paymentPart, 'amount_in_invoice_currency' => $invoicePart];
+        }
+
+        return $parts;
+    }
+
+    /**
+     * Pagos activos que se reversan junto con este: él mismo o, si es masivo, todo su grupo.
+     *
+     * @return Collection<int, OperationCashPayment>
+     */
+    public static function reversalGroup(OperationCashPayment $payment, bool $lock = false): Collection
+    {
+        $query = OperationCashPayment::query()->with('serviceOrder:id,order_number');
+
+        if ($payment->isBatch()) {
+            $query->where('payment_batch', $payment->payment_batch)->where('status', OperationCashPayment::STATUS_REGISTERED);
+        } else {
+            $query->whereKey($payment->getKey());
+        }
+
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+
+        return $query->orderBy('id')->get();
+    }
+
+    /**
+     * Si el pago (y, si es masivo, cada parte de su grupo) se puede reversar; si no, por qué.
      */
     public static function reversalBlocker(OperationCashPayment $payment): ?string
+    {
+        if (! $payment->isBatch()) {
+            return self::singleReversalBlocker($payment);
+        }
+
+        if (! $payment->isActive()) {
+            return self::singleReversalBlocker($payment);
+        }
+
+        foreach (self::reversalGroup($payment) as $member) {
+            $blocker = self::singleReversalBlocker($member);
+
+            if ($blocker !== null) {
+                return 'Orden '.($member->serviceOrder?->order_number ?: '#'.$member->operation_service_order_id).': '.$blocker;
+            }
+        }
+
+        return null;
+    }
+
+    private static function singleReversalBlocker(OperationCashPayment $payment): ?string
     {
         if (! $payment->isActive()) {
             return 'Este pago ya fue reversado el '.$payment->reversed_at?->format('d/m/Y h:i A').' por '.$payment->reversed_by_name.'.';
@@ -215,7 +322,13 @@ final class CashPaymentService
 
         return DB::transaction(function () use ($payment, $reason, $user): OperationCashPayment {
             $locked = OperationCashPayment::query()->lockForUpdate()->findOrFail($payment->getKey());
-            OperationAccountsPayable::query()->lockForUpdate()->find($locked->operation_accounts_payable_id);
+
+            /** Un pago masivo se reversa completo: nunca queda una factura medio pagada. */
+            $group = $locked->isBatch() && $locked->isActive()
+                ? self::reversalGroup($locked, lock: true)
+                : collect([$locked]);
+
+            OperationAccountsPayable::query()->whereIn('id', $group->pluck('operation_accounts_payable_id'))->lockForUpdate()->get();
 
             $blocker = self::reversalBlocker($locked);
 
@@ -223,35 +336,44 @@ final class CashPaymentService
                 throw new InvalidArgumentException($blocker);
             }
 
-            $payable = OperationAccountsPayable::query()->findOrFail($locked->operation_accounts_payable_id);
-            $snapshot = (array) $locked->payable_snapshot;
-            $restore = [];
-
-            foreach (self::PAYABLE_PAYMENT_FIELDS as $field) {
-                $restore[$field] = $snapshot[$field] ?? null;
+            foreach ($group as $member) {
+                self::reverseOne($member, $reason, $user, $group->count());
             }
-
-            $restore['payment_status'] = $restore['payment_status'] ?: StatusCuentaPorPagar::PendientePorPagar->value;
-            $payable->setRawAttributes(array_merge($payable->getAttributes(), $restore, ['updated_by' => $user->name]));
-            $payable->save();
-
-            $locked->forceFill([
-                'status' => OperationCashPayment::STATUS_REVERSED,
-                'reversed_at' => now(),
-                'reversed_by_user_id' => $user->getKey(),
-                'reversed_by_name' => $user->name,
-                'reversal_reason' => Str::limit($reason, 2000, ''),
-            ])->save();
-
-            SecurityAudit::log('AUDIT_OPERATION_CASH_PAYMENT_REVERSED', 'operations.cash-payments.reverse', [
-                'cash_payment_id' => $locked->getKey(),
-                'accounts_payable_id' => $payable->getKey(),
-                'service_order_id' => $locked->operation_service_order_id,
-                'reason' => $reason,
-            ], $user);
 
             return $locked->refresh();
         });
+    }
+
+    private static function reverseOne(OperationCashPayment $locked, string $reason, User $user, int $groupSize): void
+    {
+        $payable = OperationAccountsPayable::query()->findOrFail($locked->operation_accounts_payable_id);
+        $snapshot = (array) $locked->payable_snapshot;
+        $restore = [];
+
+        foreach (self::PAYABLE_PAYMENT_FIELDS as $field) {
+            $restore[$field] = $snapshot[$field] ?? null;
+        }
+
+        $restore['payment_status'] = $restore['payment_status'] ?: StatusCuentaPorPagar::PendientePorPagar->value;
+        $payable->setRawAttributes(array_merge($payable->getAttributes(), $restore, ['updated_by' => $user->name]));
+        $payable->save();
+
+        $locked->forceFill([
+            'status' => OperationCashPayment::STATUS_REVERSED,
+            'reversed_at' => now(),
+            'reversed_by_user_id' => $user->getKey(),
+            'reversed_by_name' => $user->name,
+            'reversal_reason' => Str::limit($reason, 2000, ''),
+        ])->save();
+
+        SecurityAudit::log('AUDIT_OPERATION_CASH_PAYMENT_REVERSED', 'operations.cash-payments.reverse', [
+            'cash_payment_id' => $locked->getKey(),
+            'accounts_payable_id' => $payable->getKey(),
+            'service_order_id' => $locked->operation_service_order_id,
+            'payment_batch' => $locked->payment_batch,
+            'batch_size' => $groupSize,
+            'reason' => $reason,
+        ], $user);
     }
 
     public static function money(float $amount, string $currency): string

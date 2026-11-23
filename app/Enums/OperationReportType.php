@@ -13,6 +13,8 @@ namespace App\Enums;
  * sale de las facturas de medicamentos al paciente (una fila por factura).
  * El de medicamentos por caso sale de lo prescrito por el médico
  * (`telemedicine_patient_medications`), con costos de cotización y orden de servicio.
+ * Los de órdenes y cuentas por pagar salen de las órdenes de servicio y de
+ * `operation_accounts_payables`, cada uno con su permiso propio.
  */
 enum OperationReportType: string
 {
@@ -36,6 +38,9 @@ enum OperationReportType: string
     case InventoryReconciliation = 'inventory_reconciliation';
     case MedicationInvoices = 'medication_invoices';
     case CaseMedications = 'case_medications';
+    case ServiceOrdersByStatus = 'service_orders_by_status';
+    case AccountsPayableByStatus = 'accounts_payable_by_status';
+    case CashPayments = 'cash_payments';
 
     public const GROUP_SERVICES = 'services';
 
@@ -44,6 +49,8 @@ enum OperationReportType: string
     public const GROUP_BILLING = 'billing';
 
     public const GROUP_MEDICATIONS = 'medications';
+
+    public const GROUP_ORDERS_PAYABLES = 'orders_payables';
 
     public function label(): string
     {
@@ -68,6 +75,9 @@ enum OperationReportType: string
             self::InventoryReconciliation => 'Conciliación de existencias',
             self::MedicationInvoices => 'Facturas a pacientes',
             self::CaseMedications => 'Medicamentos por caso (cubiertos y no cubiertos)',
+            self::ServiceOrdersByStatus => 'Órdenes de servicio por estatus',
+            self::AccountsPayableByStatus => 'Cuentas por pagar por estatus',
+            self::CashPayments => 'Pagos de contado',
         };
     }
 
@@ -94,6 +104,9 @@ enum OperationReportType: string
             self::InventoryReconciliation => 'Diferencias entre almacén, ficha de inventario y movimientos registrados.',
             self::MedicationInvoices => 'Facturas al paciente por lo no cubierto (medicamentos, laboratorios, estudios, especialistas), con totales por cobrar y cobrados.',
             self::CaseMedications => 'Medicamentos asignados por el médico a cada caso: detalle (sin indicaciones), cobertura, costos de cotización y de orden de servicio, más conciliación por caso y paciente.',
+            self::ServiceOrdersByStatus => 'Resumen por estatus y documento del aliado, con costo y precio de venta, más el detalle de cada orden.',
+            self::AccountsPayableByStatus => 'Resumen por estatus y moneda, con facturado y pagado, más el detalle de cada cuenta por pagar.',
+            self::CashPayments => 'Facturas de proveedor pagadas de contado al cargarlas: resumen por estatus y moneda, individuales y masivos, más el detalle de cada pago.',
         };
     }
 
@@ -120,6 +133,9 @@ enum OperationReportType: string
             self::InventoryReconciliation => 'heroicon-o-clipboard-document-check',
             self::MedicationInvoices => 'heroicon-o-receipt-percent',
             self::CaseMedications => 'heroicon-o-beaker',
+            self::ServiceOrdersByStatus => 'heroicon-o-clipboard-document-list',
+            self::AccountsPayableByStatus => 'heroicon-o-credit-card',
+            self::CashPayments => 'heroicon-o-currency-dollar',
         };
     }
 
@@ -132,6 +148,7 @@ enum OperationReportType: string
             str_starts_with($this->value, 'inventory_') => self::GROUP_INVENTORY,
             $this === self::MedicationInvoices => self::GROUP_BILLING,
             $this === self::CaseMedications => self::GROUP_MEDICATIONS,
+            $this === self::ServiceOrdersByStatus, $this === self::AccountsPayableByStatus, $this === self::CashPayments => self::GROUP_ORDERS_PAYABLES,
             default => self::GROUP_SERVICES,
         };
     }
@@ -144,6 +161,29 @@ enum OperationReportType: string
     public function isCaseMedications(): bool
     {
         return $this === self::CaseMedications;
+    }
+
+    public function isServiceOrdersByStatus(): bool
+    {
+        return $this === self::ServiceOrdersByStatus;
+    }
+
+    public function isAccountsPayableByStatus(): bool
+    {
+        return $this === self::AccountsPayableByStatus;
+    }
+
+    public function isCashPayments(): bool
+    {
+        return $this === self::CashPayments;
+    }
+
+    /**
+     * Reportes con permiso propio que se acotan por estatus elegido por el analista.
+     */
+    public function isOrdersOrPayables(): bool
+    {
+        return $this->group() === self::GROUP_ORDERS_PAYABLES;
     }
 
     public function isInventory(): bool
@@ -178,6 +218,9 @@ enum OperationReportType: string
             self::InventoryGeneral, self::InventoryLowStock, self::InventoryConsumption, self::InventoryIdle => ['producto', 'productos'],
             self::MedicationInvoices => ['factura', 'facturas'],
             self::CaseMedications => ['medicamento', 'medicamentos'],
+            self::ServiceOrdersByStatus => ['orden de servicio', 'órdenes de servicio'],
+            self::AccountsPayableByStatus => ['cuenta por pagar', 'cuentas por pagar'],
+            self::CashPayments => ['pago de contado', 'pagos de contado'],
             default => ['servicio', 'servicios'],
         };
     }
@@ -217,6 +260,9 @@ enum OperationReportType: string
             self::InventoryMovements,
             self::MedicationInvoices,
             self::CaseMedications,
+            self::ServiceOrdersByStatus,
+            self::AccountsPayableByStatus,
+            self::CashPayments,
         ], true);
     }
 
@@ -226,7 +272,7 @@ enum OperationReportType: string
      */
     public function hasManyRows(): bool
     {
-        if ($this === self::MedicationInvoices || $this === self::CaseMedications) {
+        if ($this === self::MedicationInvoices || $this === self::CaseMedications || $this->isOrdersOrPayables()) {
             // Se acota y va a cola solo si de verdad es grande (ver OperationReportGenerator::shouldQueue).
             return false;
         }

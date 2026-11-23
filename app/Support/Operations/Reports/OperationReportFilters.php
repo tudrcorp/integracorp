@@ -48,6 +48,15 @@ final readonly class OperationReportFilters
      * @param  list<string>  $invoiceStatuses  Estados de factura de medicamentos.
      * @param  list<string>  $invoiceTypes  Tipos de factura a paciente (medicamentos, laboratorios…).
      * @param  list<int>  $invoiceIds  Facturas elegidas a mano (acción masiva): si hay, manda sobre el periodo.
+     * @param  list<string>  $orderStatuses  Estatus de orden de servicio elegidos {@see ServiceOrderStatusReportBuilder::statusOptions()}.
+     * @param  list<string>  $documentStatuses  Documento del aliado de servicio (PENDIENTE / FACTURADO).
+     * @param  list<int>  $orderSuppliers  Proveedores (ids) de las órdenes.
+     * @param  list<string>  $payableStatuses  Estatus de cuenta por pagar {@see AccountsPayableStatusReportBuilder::statusOptions()}.
+     * @param  list<string>  $payableSuppliers  Proveedor de la cuenta por pagar (nombre congelado en la factura).
+     * @param  list<string>  $cashStatuses  Estatus del pago de contado (REGISTRADO / REVERSADO).
+     * @param  list<string>  $cashKinds  Pago individual o masivo {@see CashPaymentReportBuilder::kindOptions()}.
+     * @param  list<string>  $cashCurrencies  Moneda del pago (USD / VES).
+     * @param  list<string>  $cashSuppliers  Proveedor del pago (nombre congelado).
      */
     public function __construct(
         public CarbonImmutable $from,
@@ -64,6 +73,15 @@ final readonly class OperationReportFilters
         public array $invoiceStatuses = [],
         public array $invoiceIds = [],
         public array $invoiceTypes = [],
+        public array $orderStatuses = [],
+        public array $documentStatuses = [],
+        public array $orderSuppliers = [],
+        public array $payableStatuses = [],
+        public array $payableSuppliers = [],
+        public array $cashStatuses = [],
+        public array $cashKinds = [],
+        public array $cashCurrencies = [],
+        public array $cashSuppliers = [],
     ) {
         if ($from->greaterThan($to)) {
             throw new InvalidArgumentException('La fecha inicial no puede ser posterior a la final.');
@@ -133,6 +151,24 @@ final readonly class OperationReportFilters
                 self::strings($data['invoice_types'] ?? []),
                 array_keys(\App\Models\OperationMedicationInvoice::typeOptions()),
             )),
+            orderStatuses: array_values(array_intersect(
+                self::strings($data['order_statuses'] ?? []),
+                array_keys(ServiceOrderStatusReportBuilder::statusOptions()),
+            )),
+            documentStatuses: array_values(array_intersect(
+                self::strings($data['document_statuses'] ?? []),
+                array_keys(ServiceOrderStatusReportBuilder::documentOptions()),
+            )),
+            orderSuppliers: self::ids($data['order_suppliers'] ?? []),
+            payableStatuses: array_values(array_intersect(
+                self::strings($data['payable_statuses'] ?? []),
+                array_keys(AccountsPayableStatusReportBuilder::statusOptions()),
+            )),
+            payableSuppliers: array_slice(self::strings($data['payable_suppliers'] ?? []), 0, 200),
+            cashStatuses: array_values(array_intersect(self::strings($data['cash_statuses'] ?? []), array_keys(CashPaymentReportBuilder::statusOptions()))),
+            cashKinds: array_values(array_intersect(self::strings($data['cash_kinds'] ?? []), array_keys(CashPaymentReportBuilder::kindOptions()))),
+            cashCurrencies: array_values(array_intersect(self::strings($data['cash_currencies'] ?? []), array_keys(CashPaymentReportBuilder::currencyOptions()))),
+            cashSuppliers: array_slice(self::strings($data['cash_suppliers'] ?? []), 0, 200),
         );
     }
 
@@ -226,6 +262,15 @@ final readonly class OperationReportFilters
             'invoice_statuses' => $this->invoiceStatuses,
             'invoice_ids' => $this->invoiceIds,
             'invoice_types' => $this->invoiceTypes,
+            'order_statuses' => $this->orderStatuses,
+            'document_statuses' => $this->documentStatuses,
+            'order_suppliers' => $this->orderSuppliers,
+            'payable_statuses' => $this->payableStatuses,
+            'payable_suppliers' => $this->payableSuppliers,
+            'cash_statuses' => $this->cashStatuses,
+            'cash_kinds' => $this->cashKinds,
+            'cash_currencies' => $this->cashCurrencies,
+            'cash_suppliers' => $this->cashSuppliers,
         ];
     }
 

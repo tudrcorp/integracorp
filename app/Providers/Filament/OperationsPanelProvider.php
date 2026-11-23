@@ -56,6 +56,8 @@ class OperationsPanelProvider extends PanelProvider
             ->darkModeBrandLogo(asset('image/logoTDG.png'))
             ->brandLogoHeight('3rem')
             ->databaseNotifications()
+            /** Igual que Negocios y Telemedicina: la campanita se entera en segundos de un aviso nuevo (p. ej. «Expediente listo»). */
+            ->databaseNotificationsPolling('10s')
             ->databaseTransactions()
             ->breadcrumbs(false)
             ->maxContentWidth(Width::Full)
@@ -144,6 +146,11 @@ class OperationsPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn () => view('filament.operations.hooks.case-follow-up-chat-panel')
+            )
+            /** Campanita: se sacude, brilla y vibra cuando llega una notificación nueva. */
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => view('filament.operations.partials.database-notifications-alert')
             )
             /** Aviso con sonido: medicamentos NO CUBIERTOS en Plan Especial 30K/40K/50K (solo analistas TDG). */
             ->renderHook(

@@ -56,7 +56,7 @@ final class OperationReportGenerator
             return $rowCount > ($format === OperationReportFormat::Pdf ? self::PDF_ROW_LIMIT : self::SYNC_ROW_LIMIT);
         }
 
-        if ($type->isCaseMedications()) {
+        if ($type->isCaseMedications() || $type->isOrdersOrPayables()) {
             // Como facturas: lo chico se descarga al instante; PDF grande o Excel/CSV enormes van a cola.
             return $rowCount > ($format === OperationReportFormat::Pdf ? self::PDF_ROW_LIMIT : self::SYNC_ROW_LIMIT);
         }
@@ -66,6 +66,19 @@ final class OperationReportGenerator
         }
 
         return $type->isDetail() && $rowCount > self::SYNC_ROW_LIMIT;
+    }
+
+    /**
+     * Reportes con permiso propio: órdenes de servicio y cuentas por pagar por estatus, y pagos de contado.
+     */
+    public static function userCanGenerate(OperationReportType $type): bool
+    {
+        return match (true) {
+            $type->isServiceOrdersByStatus() => ServiceOrderStatusReportBuilder::allows(),
+            $type->isAccountsPayableByStatus() => AccountsPayableStatusReportBuilder::allows(),
+            $type->isCashPayments() => CashPaymentReportBuilder::allows(),
+            default => true,
+        };
     }
 
     public static function filename(OperationReportType $type, OperationReportFormat $format, ?CarbonImmutable $now = null): string
@@ -103,11 +116,15 @@ final class OperationReportGenerator
             throw new AuthorizationException('No tiene permiso para generar el reporte de facturas de medicamentos.');
         }
 
+        if (! self::userCanGenerate($type)) {
+            throw new AuthorizationException('No tiene permiso para generar el reporte «'.$type->label().'».');
+        }
+
         $disk = self::disk();
         $relativePath = self::userDirectory($userId).'/'.$filename;
         $disk->makeDirectory(self::userDirectory($userId));
 
-        $rowLimit = $format === OperationReportFormat::Pdf && ($type->hasManyRows() || $type->isMedicationInvoices() || $type->isCaseMedications())
+        $rowLimit = $format === OperationReportFormat::Pdf && ($type->hasManyRows() || $type->isMedicationInvoices() || $type->isCaseMedications() || $type->isOrdersOrPayables())
             ? self::PDF_ROW_LIMIT
             : null;
         $data = OperationReportBuilder::build($type, $filters, $rowLimit);

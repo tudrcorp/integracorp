@@ -39,6 +39,26 @@ final class OperationReportWriter
 
         try {
             fwrite($handle, CsvExportStream::UTF8_BOM);
+
+            foreach ($data->leadingSections as $section) {
+                fputcsv($handle, [$section['title']], escape: '');
+                fputcsv($handle, $section['headings'], escape: '');
+
+                foreach ($section['rows'] as $row) {
+                    fputcsv($handle, array_map(self::cell(...), $row), escape: '');
+                }
+
+                if (($section['totals'] ?? null) !== null) {
+                    fputcsv($handle, array_map(self::cell(...), $section['totals']), escape: '');
+                }
+
+                fputcsv($handle, [], escape: '');
+            }
+
+            if ($data->leadingSections !== [] && filled($data->detailTitle)) {
+                fputcsv($handle, [$data->detailTitle], escape: '');
+            }
+
             fputcsv($handle, $data->headings, escape: '');
 
             foreach ($data->rows as $row) {
@@ -76,6 +96,25 @@ final class OperationReportWriter
             $headerStyle = (new Style)->setFontBold()->setFontColor('FFFFFF')->setBackgroundColor('052F60');
             $totalStyle = (new Style)->setFontBold()->setBackgroundColor('E2E8F0');
             $sectionStyle = (new Style)->setFontBold()->setFontColor('052F60');
+
+            foreach ($data->leadingSections as $section) {
+                $writer->addRow(Row::fromValues([$section['title']], $sectionStyle));
+                $writer->addRow(Row::fromValues($section['headings'], $headerStyle));
+
+                foreach ($section['rows'] as $row) {
+                    $writer->addRow(Row::fromValues(array_map(self::cell(...), $row)));
+                }
+
+                if (($section['totals'] ?? null) !== null) {
+                    $writer->addRow(Row::fromValues(array_map(self::cell(...), $section['totals']), $totalStyle));
+                }
+
+                $writer->addRow(Row::fromValues([]));
+            }
+
+            if ($data->leadingSections !== [] && filled($data->detailTitle)) {
+                $writer->addRow(Row::fromValues([$data->detailTitle], $sectionStyle));
+            }
 
             $writer->addRow(Row::fromValues($data->headings, $headerStyle));
 
@@ -127,22 +166,8 @@ final class OperationReportWriter
 
         $numericColumns = array_values(array_keys(array_intersect($keep, $data->numericColumns)));
 
-        $sections = [];
-
-        foreach ($data->sections as $section) {
-            $sectionRows = array_map(
-                static fn (array $row): array => array_map(self::cell(...), $row),
-                $section['rows'],
-            );
-
-            $sections[] = [
-                'title' => $section['title'],
-                'headings' => $section['headings'],
-                'rowChunks' => array_chunk($sectionRows, self::PDF_ROWS_PER_TABLE),
-                'totals' => ($section['totals'] ?? null) === null ? null : array_map(self::cell(...), $section['totals']),
-                'numericColumns' => $section['numericColumns'] ?? [],
-            ];
-        }
+        $sections = array_map(self::pdfSection(...), $data->sections);
+        $leadingSections = array_map(self::pdfSection(...), $data->leadingSections);
 
         $pdf = Pdf::loadView('documents.operation-report', [
             'title' => $data->title,
@@ -153,6 +178,8 @@ final class OperationReportWriter
             'criteria' => $data->criteria,
             'notice' => $notice,
             'sections' => $sections,
+            'leadingSections' => $leadingSections,
+            'detailTitle' => $data->leadingSections !== [] ? $data->detailTitle : null,
             'generatedAt' => now(),
             'logoDataUri' => self::logoDataUri(),
         ])
@@ -162,6 +189,23 @@ final class OperationReportWriter
         if (file_put_contents($path, $pdf->output()) === false) {
             throw new RuntimeException('No se pudo guardar el PDF del reporte.');
         }
+    }
+
+    /**
+     * @param  array{title: string, headings: list<string>, rows: list<list<scalar|null>>, totals?: list<scalar|null>|null, numericColumns?: list<int>}  $section
+     * @return array{title: string, headings: list<string>, rowChunks: list<list<list<string|int|float|null>>>, totals: list<string|int|float|null>|null, numericColumns: list<int>}
+     */
+    private static function pdfSection(array $section): array
+    {
+        $rows = array_map(static fn (array $row): array => array_map(self::cell(...), $row), $section['rows']);
+
+        return [
+            'title' => $section['title'],
+            'headings' => $section['headings'],
+            'rowChunks' => array_chunk($rows, self::PDF_ROWS_PER_TABLE),
+            'totals' => ($section['totals'] ?? null) === null ? null : array_map(self::cell(...), $section['totals']),
+            'numericColumns' => $section['numericColumns'] ?? [],
+        ];
     }
 
     private static function cell(mixed $value): string|int|float|null
