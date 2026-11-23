@@ -49,8 +49,8 @@ it('el modelo declara los campos de factura como fillable y con sus casts', func
 
 it('FACTURADO es una opción del estatus administrativo y se pinta en verde', function (): void {
     expect(OperationServiceOrderListDisplay::administrativeStatusOptions())
-        ->toHaveKey(OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_INVOICED, 'Facturado')
-        ->toHaveKey(OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_PENDING, 'Pendiente');
+        ->toHaveKey(OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_INVOICED, 'Registrado')
+        ->toHaveKey(OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_PENDING, 'Pendiente por Registrar');
 
     expect(OperationServiceOrderListDisplay::administrativeStatusColor('FACTURADO'))->toBe('success')
         ->and(OperationServiceOrderListDisplay::administrativeStatusColor('facturado'))->toBe('success')
@@ -79,10 +79,23 @@ it('la tabla expone la acción de carga de factura con los datos del proveedor y
         ->and($src)->toContain('renderInvoiceContextPreview')
         ->and($src)->toContain('invoiceSupplier')
         ->and($src)->toContain("'Código de cotización', \$quoteCode")
-        ->and($src)->toContain("'Monto cotizado', \$quoteAmount")
+        ->and($src)->toContain("'Costo del servicio', \$serviceCost")
+        ->and($src)->toContain("'Precio de venta (con ganancia)', \$salePrice")
         ->and($src)->toContain("'Proveedor', \$supplierName")
         ->and($src)->toContain('OperationServiceOrderListDisplay::quoteCodeLabel($record->approvedOperationQuote?->id)')
         ->and($src)->toContain('OperationServiceOrderListDisplay::quoteAmountLabel($record)');
+});
+
+it('la factura sugiere y compara contra el costo del servicio, no contra el precio con ganancia', function (): void {
+    $src = invoiceUploadTableSource();
+
+    expect($src)
+        ->toContain('?? OperationServiceOrderListDisplay::serviceCostUsd($record),')
+        ->toContain("'Se sugiere el costo del servicio sin la ganancia ('.OperationServiceOrderListDisplay::serviceCostLabel(\$record)")
+        ->toContain('$serviceCost = OperationServiceOrderListDisplay::serviceCostUsd($record);')
+        ->toContain('difiere del costo del servicio')
+        ->not->toContain('?? OperationServiceOrderListDisplay::quoteAmountUsd($record),')
+        ->not->toContain('Se sugiere el monto cotizado');
 });
 
 it('el formulario de factura valida número, fecha, monto y archivo', function (): void {

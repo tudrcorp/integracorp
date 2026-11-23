@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Models\OperationServiceOrder;
+use App\Support\Operations\OperationServiceOrderListDisplay;
 use App\Support\Operations\OperationServiceOrderValidity;
 use App\Support\Operations\ServiceOrderFlowTrace;
 
@@ -62,10 +63,10 @@ class OperationServiceOrderFlowTraceObserver
             ServiceOrderFlowTrace::record(
                 ServiceOrderFlowTrace::ORDER_ADMIN_STATUS_CHANGED,
                 sprintf(
-                    'El estatus administrativo de la orden %s pasó de %s a %s.',
+                    'El documento del aliado de servicio de la orden %s pasó de «%s» a «%s».',
                     ServiceOrderFlowTrace::orderLabel($order),
-                    filled($order->getOriginal('administrative_status')) ? (string) $order->getOriginal('administrative_status') : 'PENDIENTE',
-                    filled($order->administrative_status) ? (string) $order->administrative_status : 'PENDIENTE',
+                    OperationServiceOrderListDisplay::administrativeStatusLabel($order->getOriginal('administrative_status')),
+                    OperationServiceOrderListDisplay::administrativeStatusLabel($order->administrative_status),
                 ),
                 ['order' => $order],
                 changes: $this->diff($order, ['administrative_status']),

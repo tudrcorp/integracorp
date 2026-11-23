@@ -14,14 +14,38 @@ final class OperationServiceOrderListDisplay
     public const ADMINISTRATIVE_STATUS_INVOICED = 'FACTURADO';
 
     /**
+     * Nombre visible de `administrative_status`. En la base se siguen guardando
+     * PENDIENTE y FACTURADO; solo cambia lo que se muestra.
+     */
+    public const ADMINISTRATIVE_STATUS_LABEL = 'Documento del Aliado de Servicio';
+
+    public const ADMINISTRATIVE_STATUS_PENDING_LABEL = 'Pendiente por Registrar';
+
+    public const ADMINISTRATIVE_STATUS_INVOICED_LABEL = 'Registrado';
+
+    /**
      * @return array<string, string>
      */
     public static function administrativeStatusOptions(): array
     {
         return [
-            self::ADMINISTRATIVE_STATUS_PENDING => 'Pendiente',
-            self::ADMINISTRATIVE_STATUS_INVOICED => 'Facturado',
+            self::ADMINISTRATIVE_STATUS_PENDING => self::ADMINISTRATIVE_STATUS_PENDING_LABEL,
+            self::ADMINISTRATIVE_STATUS_INVOICED => self::ADMINISTRATIVE_STATUS_INVOICED_LABEL,
         ];
+    }
+
+    /**
+     * Texto visible de un estatus administrativo guardado (vacío = pendiente).
+     */
+    public static function administrativeStatusLabel(?string $status): string
+    {
+        $normalized = mb_strtoupper(trim((string) $status));
+
+        if ($normalized === '') {
+            $normalized = self::ADMINISTRATIVE_STATUS_PENDING;
+        }
+
+        return self::administrativeStatusOptions()[$normalized] ?? $normalized;
     }
 
     public static function serviceReferenceNumber(OperationServiceOrder $record): string
@@ -91,6 +115,45 @@ final class OperationServiceOrderListDisplay
             }
         }
 
+        return self::supplierQuotesAmountUsd($record);
+    }
+
+    /**
+     * Costo del servicio sin la ganancia de TDG: lo que debería facturar el aliado.
+     *
+     * Con cotización aprobada es su costo base (`costo_dolares`, o `subtotal` si
+     * falta); el `total` incluye la ganancia y es el precio de venta. Sin cotización
+     * aprobada se usan las cotizaciones del proveedor, que ya vienen sin ganancia.
+     */
+    public static function serviceCostUsd(OperationServiceOrder $record): ?float
+    {
+        $approved = $record->approvedOperationQuote;
+
+        if ($approved !== null) {
+            foreach (['costo_dolares', 'subtotal'] as $column) {
+                $cost = self::numericOrNull($approved->{$column} ?? null);
+
+                if ($cost !== null && $cost > 0) {
+                    return round($cost, 2);
+                }
+            }
+        }
+
+        return self::supplierQuotesAmountUsd($record);
+    }
+
+    public static function serviceCostLabel(OperationServiceOrder $record): string
+    {
+        $amount = self::serviceCostUsd($record);
+
+        return $amount === null ? '—' : 'US$ '.number_format($amount, 2, ',', '.');
+    }
+
+    /**
+     * Suma de las cotizaciones del proveedor cargadas en la orden (medicamentos).
+     */
+    private static function supplierQuotesAmountUsd(OperationServiceOrder $record): ?float
+    {
         $aggregated = self::numericOrNull($record->getAttribute('operation_service_order_quotes_sum_total_amount_usd'));
 
         if ($aggregated !== null) {

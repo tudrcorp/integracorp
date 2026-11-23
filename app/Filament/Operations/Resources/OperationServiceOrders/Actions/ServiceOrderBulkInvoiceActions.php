@@ -62,7 +62,7 @@ final class ServiceOrderBulkInvoiceActions
 
                 /** @var OperationServiceOrder $first */
                 $first = $records->first();
-                $quotedTotal = ServiceOrderBulkInvoice::quotedTotalUsd($records);
+                $serviceCostTotal = ServiceOrderBulkInvoice::serviceCostTotalUsd($records);
                 $businessUnits = $records
                     ->map(fn (OperationServiceOrder $record): ?int => ServiceOrderAccountsPayableRegistrar::suggestedBusinessUnitId($record))
                     ->filter()
@@ -80,7 +80,7 @@ final class ServiceOrderBulkInvoiceActions
                     'invoice_control_number' => $first->invoice_control_number,
                     'invoice_date' => $first->invoice_date,
                     'invoice_registration_date' => now()->startOfDay(),
-                    'invoice_amount_usd' => $quotedTotal > 0 ? $quotedTotal : null,
+                    'invoice_amount_usd' => $serviceCostTotal > 0 ? $serviceCostTotal : null,
                     'invoice_amount_ves' => null,
                     'invoice_file_path' => null,
                     'payable_supplier_name' => ServiceOrderAccountsPayableRegistrar::suggestedSupplierName($first),
@@ -136,7 +136,7 @@ final class ServiceOrderBulkInvoiceActions
                         ->warning()
                         ->persistent()
                         ->title('Factura registrada con diferencia')
-                        ->body('Se facturaron '.$count.' órdenes, pero el total de la factura difiere de la sumatoria cotizada en '
+                        ->body('Se facturaron '.$count.' órdenes, pero el total de la factura difiere del costo total del servicio en '
                             .ServiceOrderBulkInvoice::money(abs($difference))
                             .' ('.($difference > 0 ? 'por encima' : 'por debajo').'). Verifica con el proveedor si corresponde.')
                         ->send();
@@ -148,8 +148,8 @@ final class ServiceOrderBulkInvoiceActions
                     ->success()
                     ->title($count === 1 ? 'Factura registrada' : 'Factura registrada en '.$count.' órdenes')
                     ->body($count === 1
-                        ? 'La orden pasó a estatus administrativo «Facturado» y quedó en Cuentas por pagar.'
-                        : 'Las '.$count.' órdenes pasaron a «Facturado». El total de la factura se prorrateó según el monto cotizado de cada una y se generó o actualizó su cuenta por pagar.')
+                        ? 'El documento del aliado de servicio quedó «Registrado» y la orden pasó a Cuentas por pagar.'
+                        : 'El documento del aliado de servicio de las '.$count.' órdenes quedó «Registrado». El total de la factura se prorrateó según el costo del servicio de cada una y se generó o actualizó su cuenta por pagar.')
                     ->send();
             });
     }
@@ -179,12 +179,12 @@ final class ServiceOrderBulkInvoiceActions
      */
     private static function invoiceForm(Collection $records): array
     {
-        $quotedTotal = ServiceOrderBulkInvoice::quotedTotalUsd($records);
+        $serviceCostTotal = ServiceOrderBulkInvoice::serviceCostTotalUsd($records);
         $supplierName = ServiceOrderBulkInvoice::supplierDisplayName($records->first());
 
         return [
             Section::make('Órdenes seleccionadas')
-                ->description($records->count().' órdenes de '.$supplierName.' · sumatoria cotizada '.ServiceOrderBulkInvoice::money($quotedTotal).'. El total de la factura se reparte entre estas filas.')
+                ->description($records->count().' órdenes de '.$supplierName.' · costo total del servicio '.ServiceOrderBulkInvoice::money($serviceCostTotal).'. El total de la factura se reparte entre estas filas.')
                 ->icon('heroicon-m-queue-list')
                 ->schema([
                     Placeholder::make('selected_orders_table')
@@ -258,7 +258,7 @@ final class ServiceOrderBulkInvoiceActions
                                 ->numeric()
                                 ->minValue(0)
                                 ->requiredWithout('invoice_amount_ves')
-                                ->helperText('Se sugiere la sumatoria cotizada ('.ServiceOrderBulkInvoice::money($quotedTotal).'). Se prorratea entre las órdenes.')
+                                ->helperText('Se sugiere el costo total del servicio sin la ganancia ('.ServiceOrderBulkInvoice::money($serviceCostTotal).'). Se prorratea entre las órdenes.')
                                 ->validationMessages([
                                     'required_without' => 'Indica el monto en US$ o, en su defecto, el monto en bolívares.',
                                     'numeric' => 'El monto en US$ debe ser un número.',

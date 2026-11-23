@@ -397,7 +397,9 @@ class OperationServiceOrdersTable
     {
         return $table
             ->heading('Órdenes de servicio')
-            ->description('Órdenes generadas desde coordinación. Vigencia de 10 días desde la aprobación; vencidas pasan a CADUCADA. La franja lateral refleja la prioridad salvo en órdenes cerradas.')
+            ->description(fn (): string => 'Órdenes generadas desde coordinación. '.(OperationServiceOrderValidity::expirationEnabled()
+                ? 'Vigencia de '.OperationServiceOrderValidity::validityDays().' día(s) desde la aprobación; vencidas pasan a CADUCADA. '
+                : 'La caducidad automática está desactivada. ').'La franja lateral refleja la prioridad salvo en órdenes cerradas.')
             ->defaultSort('created_at', 'desc')
             ->searchable()
             ->searchPlaceholder('Buscar por orden, referencia, paciente, cédula, unidad, caso, proveedor o descripción…')
@@ -503,10 +505,11 @@ class OperationServiceOrdersTable
                         default => 'gray',
                     }),
                 TextColumn::make('administrative_status')
-                    ->label('Estatus administrativo')
+                    ->label(OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_LABEL)
                     ->badge()
                     ->sortable()
                     ->state(fn (OperationServiceOrder $record): string => OperationServiceOrderListDisplay::administrativeStatus($record))
+                    ->formatStateUsing(fn (?string $state): string => OperationServiceOrderListDisplay::administrativeStatusLabel($state))
                     ->color(fn (?string $state): string => OperationServiceOrderListDisplay::administrativeStatusColor($state))
                     ->icon(fn (?string $state): string => OperationServiceOrderListDisplay::administrativeStatusIcon($state))
                     ->description(fn (OperationServiceOrder $record): ?string => OperationServiceOrderListDisplay::hasInvoice($record)
@@ -677,7 +680,7 @@ class OperationServiceOrdersTable
                         return $query->whereIn('status', array_values(array_unique($values)));
                     }),
                 SelectFilter::make('administrative_status')
-                    ->label('Estatus administrativo')
+                    ->label(OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_LABEL)
                     ->options(OperationServiceOrderListDisplay::administrativeStatusOptions())
                     ->multiple(),
                 SelectFilter::make('service_type')
@@ -964,7 +967,7 @@ class OperationServiceOrdersTable
                         ->modalHeading(fn (OperationServiceOrder $record): string => OperationServiceOrderListDisplay::hasInvoice($record)
                             ? 'Actualizar factura del proveedor'
                             : 'Cargar factura del proveedor')
-                        ->modalDescription('Revisa los datos del proveedor y de la cotización antes de registrar la factura. Al guardar, la orden pasa a estatus administrativo «Facturado».')
+                        ->modalDescription('Revisa los datos del proveedor y de la cotización antes de registrar la factura. Al guardar, el documento del aliado de servicio queda «Registrado».')
                         ->modalSubmitActionLabel('Guardar factura')
                         ->modalSubmitAction(
                             fn (Action $action): Action => $action
@@ -986,7 +989,7 @@ class OperationServiceOrdersTable
                             'invoice_date' => $record->invoice_date,
                             'invoice_registration_date' => $record->invoice_registration_date ?? now()->startOfDay(),
                             'invoice_amount_usd' => $record->invoice_amount_usd
-                                ?? OperationServiceOrderListDisplay::quoteAmountUsd($record),
+                                ?? OperationServiceOrderListDisplay::serviceCostUsd($record),
                             'invoice_amount_ves' => $record->invoice_amount_ves,
                             'invoice_file_path' => $record->invoice_file_path,
                             'payable_supplier_name' => ServiceOrderAccountsPayableRegistrar::suggestedSupplierName($record),
@@ -1082,7 +1085,7 @@ class OperationServiceOrdersTable
                                                 ->numeric()
                                                 ->minValue(0)
                                                 ->requiredWithout('invoice_amount_ves')
-                                                ->helperText(fn (): string => 'Se sugiere el monto cotizado ('.OperationServiceOrderListDisplay::quoteAmountLabel($record).'); ajústalo si la factura difiere.')
+                                                ->helperText(fn (): string => 'Se sugiere el costo del servicio sin la ganancia ('.OperationServiceOrderListDisplay::serviceCostLabel($record).'); ajústalo si la factura difiere.')
                                                 ->validationMessages([
                                                     'required_without' => 'Indica el monto en US$ o, en su defecto, el monto en bolívares.',
                                                     'numeric' => 'El monto en US$ debe ser un número.',
@@ -1315,15 +1318,15 @@ class OperationServiceOrdersTable
                                     ->send();
                             }
 
-                            $quoted = OperationServiceOrderListDisplay::quoteAmountUsd($record);
-                            $difference = ($usd !== null && $quoted !== null) ? round($usd - $quoted, 2) : null;
+                            $serviceCost = OperationServiceOrderListDisplay::serviceCostUsd($record);
+                            $difference = ($usd !== null && $serviceCost !== null) ? round($usd - $serviceCost, 2) : null;
 
                             if ($difference !== null && abs($difference) >= 0.01) {
                                 Notification::make()
                                     ->title('Factura registrada con diferencia')
                                     ->body('La orden #'.($record->order_number ?: $record->getKey()).' quedó facturada y '
                                         .($payableResult['created'] ? 'se creó su cuenta por pagar' : 'se actualizó su cuenta por pagar')
-                                        .', pero el monto difiere de la cotización en US$ '
+                                        .', pero el monto difiere del costo del servicio en US$ '
                                         .number_format(abs($difference), 2, ',', '.').' ('.($difference > 0 ? 'por encima' : 'por debajo').'). Verifica con el proveedor si corresponde.')
                                     ->warning()
                                     ->persistent()
@@ -1334,7 +1337,7 @@ class OperationServiceOrdersTable
 
                             Notification::make()
                                 ->title($payableResult['created'] ? 'Factura registrada y cuenta por pagar creada' : 'Factura actualizada')
-                                ->body('La orden #'.($record->order_number ?: $record->getKey()).' pasó a estatus administrativo «Facturado» y '
+                                ->body('La orden #'.($record->order_number ?: $record->getKey()).': el documento del aliado de servicio quedó «Registrado» y '
                                     .(isset($payableResult['cash_payment'])
                                         ? 'su cuenta por pagar quedó «Pagada» con el pago de contado.'
                                         : ($payableResult['created']
@@ -1448,7 +1451,8 @@ class OperationServiceOrdersTable
         $supplier = self::invoiceSupplier($record);
         $supplierName = filled($supplier?->name) ? (string) $supplier->name : self::supplierLabel($record);
         $quoteCode = OperationServiceOrderListDisplay::quoteCodeLabel($record->approvedOperationQuote?->id);
-        $quoteAmount = OperationServiceOrderListDisplay::quoteAmountLabel($record);
+        $serviceCost = OperationServiceOrderListDisplay::serviceCostLabel($record);
+        $salePrice = OperationServiceOrderListDisplay::quoteAmountLabel($record);
         $quotePdfUrl = self::quotePdfPublicUrl($record);
 
         $rows = [
@@ -1469,7 +1473,8 @@ class OperationServiceOrdersTable
                 filled($supplier?->tiempo_credito) ? 'Crédito: '.$supplier->tiempo_credito : null,
             ]))) ?: '—'],
             ['Código de cotización', $quoteCode],
-            ['Monto cotizado', $quoteAmount],
+            ['Costo del servicio', $serviceCost],
+            ['Precio de venta (con ganancia)', $salePrice],
         ];
 
         $cells = '';

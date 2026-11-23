@@ -122,7 +122,7 @@ final class TechnologyAdvancesPresentationSlides
                         ],
                         [
                             'title' => 'Nace la CxP',
-                            'detail' => 'Pendiente por pagar. La OS pasa a Facturado.',
+                            'detail' => 'Pendiente por pagar. El documento del aliado de servicio queda «Registrado».',
                         ],
                         [
                             'title' => 'Cargar comprobante',
@@ -131,7 +131,7 @@ final class TechnologyAdvancesPresentationSlides
                     ],
                     'invoice_modal' => [
                         'heading' => 'Cargar factura del proveedor',
-                        'description' => 'Al guardar, la orden pasa a estatus administrativo «Facturado».',
+                        'description' => 'Al guardar, el documento del aliado de servicio queda «Registrado».',
                         'order' => 'OS-4521',
                         'supplier' => 'Clínica QA',
                         'quoted' => 'US$ 250,50',

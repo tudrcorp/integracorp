@@ -343,7 +343,7 @@ it('una orden vigente no lleva aviso de anulación', function (): void {
 
 it('la caducidad automática también queda en la traza', function (): void {
     ['order' => $order] = flowScenario(withLinkedQuote: false);
-    $order->forceFill(['approved_at' => now()->subDays(OperationServiceOrderValidity::VALIDITY_DAYS + 2)])->saveQuietly();
+    $order->forceFill(['approved_at' => now()->subDays(OperationServiceOrderValidity::validityDays() + 2)])->saveQuietly();
 
     expect(OperationServiceOrderValidity::expireIfNeeded($order->refresh(), 'system'))->toBeTrue()
         ->and(flowEvents($order))->toContain(ServiceOrderFlowTrace::ORDER_EXPIRED)

@@ -83,6 +83,47 @@ it('usa el total de la cotización aprobada como monto', function (): void {
         ->and(OperationServiceOrderListDisplay::quoteAmountLabel($order))->toBe('US$ 150,50');
 });
 
+it('el costo del servicio es el costo base de la cotización aprobada, sin la ganancia', function (): void {
+    $order = serviceOrderWithCoordination();
+    $order->setRelation('approvedOperationQuote', new OperationQuoteGenerator([
+        'total' => 150.5,
+        'costo_dolares' => 100,
+        'subtotal' => 100,
+    ]));
+
+    expect(OperationServiceOrderListDisplay::serviceCostUsd($order))->toBe(100.0)
+        ->and(OperationServiceOrderListDisplay::serviceCostLabel($order))->toBe('US$ 100,00')
+        ->and(OperationServiceOrderListDisplay::quoteAmountUsd($order))->toBe(150.5);
+});
+
+it('sin costo base usa el subtotal, nunca el total con ganancia', function (): void {
+    $order = serviceOrderWithCoordination();
+    $order->setRelation('approvedOperationQuote', new OperationQuoteGenerator([
+        'total' => 120,
+        'costo_dolares' => null,
+        'subtotal' => 80,
+    ]));
+
+    expect(OperationServiceOrderListDisplay::serviceCostUsd($order))->toBe(80.0);
+});
+
+it('sin cotización aprobada el costo es la suma de las cotizaciones del proveedor', function (): void {
+    $order = serviceOrderWithCoordination();
+    $order->setRelation('operationServiceOrderQuotes', collect([
+        new OperationServiceOrderQuote(['total_amount_usd' => 10]),
+        new OperationServiceOrderQuote(['total_amount_usd' => 5.25]),
+    ]));
+
+    expect(OperationServiceOrderListDisplay::serviceCostUsd($order))->toBe(15.25);
+});
+
+it('sin cotización el costo queda en guion', function (): void {
+    $order = serviceOrderWithCoordination();
+
+    expect(OperationServiceOrderListDisplay::serviceCostUsd($order))->toBeNull()
+        ->and(OperationServiceOrderListDisplay::serviceCostLabel($order))->toBe('—');
+});
+
 it('suma cotizaciones de medicamentos cuando no hay cotización aprobada', function (): void {
     $order = serviceOrderWithCoordination();
     $order->setRelation('operationServiceOrderQuotes', collect([
@@ -149,4 +190,17 @@ it('el estatus administrativo queda en PENDIENTE y color rojo por defecto', func
         ->and(OperationServiceOrderListDisplay::administrativeStatusColor('PENDIENTE'))->toBe('danger')
         ->and(OperationServiceOrderListDisplay::administrativeStatusColor('PROCESADO'))->toBe('gray')
         ->and(OperationServiceOrderListDisplay::administrativeStatus($other))->toBe('PROCESADO');
+});
+
+it('muestra el documento del aliado como «Pendiente por Registrar» o «Registrado» sin cambiar lo guardado', function (): void {
+    expect(OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_LABEL)->toBe('Documento del Aliado de Servicio')
+        ->and(OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_PENDING)->toBe('PENDIENTE')
+        ->and(OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_INVOICED)->toBe('FACTURADO')
+        ->and(OperationServiceOrderListDisplay::administrativeStatusLabel('PENDIENTE'))->toBe('Pendiente por Registrar')
+        ->and(OperationServiceOrderListDisplay::administrativeStatusLabel('pendiente'))->toBe('Pendiente por Registrar')
+        ->and(OperationServiceOrderListDisplay::administrativeStatusLabel(null))->toBe('Pendiente por Registrar')
+        ->and(OperationServiceOrderListDisplay::administrativeStatusLabel(''))->toBe('Pendiente por Registrar')
+        ->and(OperationServiceOrderListDisplay::administrativeStatusLabel('FACTURADO'))->toBe('Registrado')
+        ->and(OperationServiceOrderListDisplay::administrativeStatusLabel(' facturado '))->toBe('Registrado')
+        ->and(OperationServiceOrderListDisplay::administrativeStatusLabel('PROCESADO'))->toBe('PROCESADO');
 });

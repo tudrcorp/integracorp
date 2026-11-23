@@ -267,7 +267,7 @@ final class OperationServiceOrderDocuments
             // Una orden vencida se marca CADUCADA fuera de la transacción: si se
             // hiciera dentro, el rechazo revertiría también la caducidad.
             if (OperationServiceOrderValidity::expireIfNeeded($order)) {
-                throw new OperationServiceOrderFinalizationException('La orden superó su vigencia de '.OperationServiceOrderValidity::VALIDITY_DAYS.' días y quedó CADUCADA: ya no puede finalizarse.');
+                throw new OperationServiceOrderFinalizationException('La orden superó su vigencia de '.OperationServiceOrderValidity::validityDays().' día(s) y quedó CADUCADA: ya no puede finalizarse.');
             }
 
             $result = DB::transaction(function () use ($order, $documents, $user, $origin, $inventoryUbicationId): array {

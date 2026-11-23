@@ -139,6 +139,7 @@ use App\Filament\Operations\Pages\DashboardProveedor;
 use App\Filament\Operations\Pages\GeneradorDeReportes;
 use App\Filament\Operations\Pages\GuardiasOperaciones as OperationsGuardiasOperaciones;
 use App\Filament\Operations\Pages\ManageOperationInventoryParameters;
+use App\Filament\Operations\Pages\ManageOperationServiceOrderParameters;
 use App\Filament\Operations\Resources\AccountsPayables\AccountsPayableResource;
 use App\Filament\Operations\Resources\AccountsReceivables\AccountsReceivableResource;
 use App\Filament\Operations\Resources\AffiliateCorporates\AffiliateCorporateResource;
@@ -352,6 +353,7 @@ final class DepartmentNavigationPermissionRegistry
         OperationInventoryProductResource::class => ['productos'],
         OperationInventoryProductCategoryResource::class => ['categorias'],
         ManageOperationInventoryParameters::class => ['parametros-inventario'],
+        ManageOperationServiceOrderParameters::class => ['parametros-ordenes-servicio'],
         TelemedicineDoctorResource::class => ['doctores'],
         TelemedicinePatientResource::class => ['pacientes'],
         TelemedicineCaseResource::class => ['gestion-casos'],

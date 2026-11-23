@@ -703,7 +703,7 @@ final class TelemedicineCaseBitacora
                 'Fecha' => self::dateTime($order->created_at),
                 'Tipo' => self::text($order->service_type),
                 'Estatus' => self::text($order->status),
-                'Estatus administrativo' => self::text($order->administrative_status),
+                OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_LABEL => OperationServiceOrderListDisplay::administrativeStatusLabel($order->administrative_status),
                 'Monto USD' => self::text($order->total_amount_usd),
             ])
             ->all();

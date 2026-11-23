@@ -116,19 +116,19 @@ final class ServiceOrderBulkInvoice
     /**
      * @param  Collection<int, OperationServiceOrder>  $records
      */
-    public static function quotedTotalUsd(Collection $records): float
+    public static function serviceCostTotalUsd(Collection $records): float
     {
         $total = 0.0;
 
         foreach ($records as $record) {
-            $total += OperationServiceOrderListDisplay::quoteAmountUsd($record) ?? 0.0;
+            $total += OperationServiceOrderListDisplay::serviceCostUsd($record) ?? 0.0;
         }
 
         return round($total, 4);
     }
 
     /**
-     * Reparte el total de la factura entre las órdenes según el peso del monto cotizado.
+     * Reparte el total de la factura entre las órdenes según el peso del costo del servicio (sin ganancia).
      *
      * @param  Collection<int, OperationServiceOrder>  $records
      * @return array<int, array{usd: ?float, ves: ?float}>
@@ -196,9 +196,9 @@ final class ServiceOrderBulkInvoice
             throw new InvalidArgumentException('Indica el nombre y el RIF del proveedor que emite la factura.');
         }
 
-        $quotedTotal = self::quotedTotalUsd($records);
-        $quoteDifference = ($usd !== null && $quotedTotal > 0)
-            ? round($usd - $quotedTotal, 2)
+        $serviceCostTotal = self::serviceCostTotalUsd($records);
+        $quoteDifference = ($usd !== null && $serviceCostTotal > 0)
+            ? round($usd - $serviceCostTotal, 2)
             : null;
 
         return DB::transaction(function () use (
@@ -354,13 +354,13 @@ final class ServiceOrderBulkInvoice
                 .'<td style="'.$td.'">'.e(self::supplierDisplayName($record)).'</td>'
                 .'<td style="'.$td.'">'.e(filled($record->service_type) ? mb_strtoupper((string) $record->service_type) : '—').'</td>'
                 .'<td style="'.$td.'text-align:right;font-weight:600;white-space:nowrap;">'
-                .e(OperationServiceOrderListDisplay::quoteAmountLabel($record))
+                .e(OperationServiceOrderListDisplay::serviceCostLabel($record))
                 .'</td>'
                 .'</tr>';
         }
 
         $count = $records->count();
-        $total = self::quotedTotalUsd($records);
+        $total = self::serviceCostTotalUsd($records);
         $foot = 'padding:0.65rem 0.7rem;border-top:2px solid rgba(120,130,150,0.35);font-weight:700;font-size:0.8125rem;';
 
         return new HtmlString(
@@ -371,7 +371,7 @@ final class ServiceOrderBulkInvoice
             .'<th style="'.$th.'">Paciente</th>'
             .'<th style="'.$th.'">Proveedor</th>'
             .'<th style="'.$th.'">Tipo</th>'
-            .'<th style="'.$th.'text-align:right;">Monto cotizado</th>'
+            .'<th style="'.$th.'text-align:right;">Costo del servicio</th>'
             .'</tr></thead>'
             .'<tbody>'.$rows.'</tbody>'
             .'<tfoot><tr>'
@@ -391,7 +391,7 @@ final class ServiceOrderBulkInvoice
         $weights = [];
 
         foreach ($records as $record) {
-            $quote = OperationServiceOrderListDisplay::quoteAmountUsd($record);
+            $quote = OperationServiceOrderListDisplay::serviceCostUsd($record);
             $weights[(int) $record->getKey()] = ($quote !== null && $quote > 0) ? $quote : 0.0;
         }
 

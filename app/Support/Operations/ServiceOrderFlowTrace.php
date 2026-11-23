@@ -328,7 +328,7 @@ final class ServiceOrderFlowTrace
             self::ORDER_FINALIZED => ['Orden finalizada', $green],
             self::ORDER_STATUS_CHANGED => ['Cambio de estado', $blue],
             self::ORDER_PROVIDER_CHANGED => ['Cambio de proveedor', $amber],
-            self::ORDER_ADMIN_STATUS_CHANGED => ['Estatus administrativo', $blue],
+            self::ORDER_ADMIN_STATUS_CHANGED => ['Documento del aliado de servicio', $blue],
             self::QUOTE_CREATED => ['Cotización registrada', $blue],
             self::QUOTE_UPDATED => ['Cotización editada', $blue],
             self::QUOTE_STATUS_CHANGED => ['Estado de cotización', $blue],

@@ -195,9 +195,9 @@ class SupplierServiceOrders extends ManageRelatedRecords
                     ->placeholder('—')
                     ->visible(fn (): bool => $this->activeTab === SupplierServiceOrderBuckets::IN_PROGRESS),
                 TextColumn::make('administrative_status')
-                    ->label('Factura')
+                    ->label(OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_LABEL)
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => $state === OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_INVOICED ? 'Facturada' : 'Sin factura')
+                    ->formatStateUsing(fn (?string $state): string => OperationServiceOrderListDisplay::administrativeStatusLabel($state))
                     ->color(fn (?string $state): string => $state === OperationServiceOrderListDisplay::ADMINISTRATIVE_STATUS_INVOICED ? 'success' : 'warning')
                     ->visible(fn (): bool => in_array($this->activeTab, [SupplierServiceOrderBuckets::PENDING_INVOICE, SupplierServiceOrderBuckets::FINALIZED], true)),
                 TextColumn::make('total_amount_usd')
