@@ -40,6 +40,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const DELETE_TELEMEDICINE_CASE = 'eliminar-caso-servicios-medicos';
 
+    public const GENERATE_TELEMEDICINE_CASE_RECORD = 'generar-expediente-caso';
+
     public const DELETE_PROVIDERS = 'eliminar-proveedores';
 
     public const REGISTER_DIRECT_MEDICAL_SERVICE = 'registrar-servicio-medico-directo';
@@ -262,6 +264,11 @@ final class BusinessFilamentActionPermissionRegistry
             ],
             self::DELETE_TELEMEDICINE_CASE => [
                 'name' => 'Eliminar caso de servicios médicos',
+                'group' => 'COORDINACIÓN DE SERVICIOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::GENERATE_TELEMEDICINE_CASE_RECORD => [
+                'name' => 'Generar expediente del caso (un solo PDF con portada, índice y todos los documentos del caso)',
                 'group' => 'COORDINACIÓN DE SERVICIOS',
                 'modules' => ['OPERACIONES'],
             ],
