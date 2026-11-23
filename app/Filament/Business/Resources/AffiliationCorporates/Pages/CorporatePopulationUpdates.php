@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Support\AffiliationCorporates\Population\PopulationColumnMapping;
 use App\Support\AffiliationCorporates\Population\PopulationFileReader;
 use App\Support\AffiliationCorporates\Population\PopulationUpdateDeletion;
+use App\Support\AffiliationCorporates\Population\PopulationUpdateStuckRelease;
 use App\Support\AffiliationCorporates\Population\PopulationUpdateUrls;
 use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
@@ -326,7 +327,11 @@ class CorporatePopulationUpdates extends Page implements HasTable
                     ->label('Estatus')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => CorporatePopulationUpdate::labelFor($state))
-                    ->color(fn (string $state): string => CorporatePopulationUpdate::colorFor($state)),
+                    ->color(fn (string $state): string => CorporatePopulationUpdate::colorFor($state))
+                    ->description(fn (CorporatePopulationUpdate $record): ?string => PopulationUpdateStuckRelease::isStuckStatus($record)
+                        && PopulationUpdateStuckRelease::busySinceMinutes($record) >= PopulationUpdateStuckRelease::STALE_MINUTES
+                            ? 'Parece trabada: ábrala para liberarla.'
+                            : null),
                 TextColumn::make('summary')
                     ->label('Resumen')
                     ->state(fn (CorporatePopulationUpdate $record): string => self::summaryLine($record))
