@@ -8,6 +8,7 @@ use App\Support\Operations\OperationServiceOrderListDisplay;
 use App\Support\Operations\OperationServiceOrderProviderSummary;
 use App\Support\Operations\OperationServiceOrderValidity;
 use App\Support\Operations\OperationServiceOrderViewActions;
+use App\Support\Operations\PatientWhatsApp\ServiceOrderPatientNotificationSection;
 use App\Support\Operations\RetailServiceRegistration;
 use App\Support\Operations\ServiceOrderFlowTrace;
 use Filament\Forms\Components\Repeater\TableColumn;
@@ -270,6 +271,7 @@ class OperationServiceOrderInfolist
                                             ->columns(2),
                                     ])
                                     ->columnSpanFull(),
+                                ServiceOrderPatientNotificationSection::make(self::SECTION_CARD),
                                 Section::make('Traza de la orden')
                                     ->description('Camino recorrido por la orden y su cotización, del más reciente al más antiguo: quién hizo qué, cuándo y por qué. Incluye los intentos que el sistema bloqueó.')
                                     ->icon(Heroicon::OutlinedQueueList)

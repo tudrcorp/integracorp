@@ -42,6 +42,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const GENERATE_TELEMEDICINE_CASE_RECORD = 'generar-expediente-caso';
 
+    public const RESEND_SERVICE_ORDER_PATIENT_WHATSAPP = 'reenviar-whatsapp-paciente-orden';
+
     public const DELETE_PROVIDERS = 'eliminar-proveedores';
 
     public const REGISTER_DIRECT_MEDICAL_SERVICE = 'registrar-servicio-medico-directo';
@@ -275,6 +277,11 @@ final class BusinessFilamentActionPermissionRegistry
             ],
             self::GENERATE_TELEMEDICINE_CASE_RECORD => [
                 'name' => 'Generar expediente del caso (un solo PDF con portada, índice y todos los documentos del caso)',
+                'group' => 'COORDINACIÓN DE SERVICIOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::RESEND_SERVICE_ORDER_PATIENT_WHATSAPP => [
+                'name' => 'Reenviar WhatsApp al paciente de la orden de servicio (no cubiertos)',
                 'group' => 'COORDINACIÓN DE SERVICIOS',
                 'modules' => ['OPERACIONES'],
             ],

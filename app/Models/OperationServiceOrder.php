@@ -128,6 +128,14 @@ class OperationServiceOrder extends Model
         return $this->hasOne(OperationQuoteGenerator::class, 'operation_service_order_id');
     }
 
+    /**
+     * WhatsApp al paciente con la orden y la pregunta SI/NO (solo órdenes de no cubiertos).
+     */
+    public function patientWhatsAppNotification(): HasOne
+    {
+        return $this->hasOne(ServiceOrderPatientNotification::class);
+    }
+
     public function medicalAppointment(): HasOne
     {
         return $this->hasOne(OperationMedicalAppointment::class);

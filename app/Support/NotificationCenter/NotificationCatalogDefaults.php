@@ -260,6 +260,10 @@ final class NotificationCatalogDefaults
                 'App\Jobs\SendQualityControlPdfJob::handle', 'mail:App\Mail\QualityControlPdfMail',
             ]],
             'ext.supplier_report' => ['name' => 'Reporte al proveedor', 'area' => 'operaciones', 'audience' => $external, 'channels' => ['mail'], 'origins' => ['mail:App\Mail\SupplierReportMail']],
+            'ext.service_order_patient' => ['name' => 'Orden de servicio no cubierta al paciente (con respuesta SI/NO)', 'area' => 'operaciones', 'audience' => $external, 'channels' => ['whatsapp'], 'origins' => [
+                'App\Support\Operations\PatientWhatsApp\ServiceOrderPatientNotifier::deliver',
+                'App\Jobs\SendServiceOrderPatientWhatsAppTextJob::handle',
+            ], 'description' => 'Documento de la orden con su detalle y la pregunta SI/NO; incluye la confirmación y el recordatorio automáticos.'],
 
             // Telemedicina
             'ext.consultation_documents' => ['name' => 'Documentos de la consulta al paciente', 'area' => 'telemedicina', 'audience' => $external, 'channels' => ['whatsapp', 'mail'], 'origins' => [
