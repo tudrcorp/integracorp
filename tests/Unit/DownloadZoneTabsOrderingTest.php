@@ -163,6 +163,8 @@ it('usa sidebar de carpetas en business, administración, operaciones, marketing
     expect($styles)
         ->toContain('.fi-download-zone-sidebar')
         ->toContain('flex-direction: column')
+        ->toContain('text-align: left')
+        ->toContain('.fi-tabs-item-label')
         ->toContain('@media (min-width: 768px)')
         ->toContain('width: 18rem')
         ->toContain('.fi-download-zone-view-toggle');
