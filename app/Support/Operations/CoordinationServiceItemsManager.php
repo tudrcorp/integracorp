@@ -1777,6 +1777,8 @@ final class CoordinationServiceItemsManager
             'manage_quote_generates_invoice' => false,
             'manage_quote_invoice_payer_type' => null,
             'manage_quote_invoice_payer_address' => null,
+            'manage_quote_invoice_payer_phone' => null,
+            'manage_quote_invoice_payer_email' => null,
         ];
     }
 
@@ -2109,6 +2111,8 @@ final class CoordinationServiceItemsManager
                         $record,
                         is_string($data['manage_quote_invoice_payer_type'] ?? null) ? $data['manage_quote_invoice_payer_type'] : null,
                         $data['manage_quote_invoice_payer_address'] ?? null,
+                        $data['manage_quote_invoice_payer_phone'] ?? null,
+                        $data['manage_quote_invoice_payer_email'] ?? null,
                     );
                 } catch (MedicationInvoiceException $exception) {
                     Notification::make()
@@ -2725,6 +2729,8 @@ final class CoordinationServiceItemsManager
             'invoice_payer_name' => $isCourtesy ? null : ($invoiceSnapshot['invoice_payer_name'] ?? null),
             'invoice_payer_identification' => $isCourtesy ? null : ($invoiceSnapshot['invoice_payer_identification'] ?? null),
             'invoice_payer_address' => $isCourtesy ? null : ($invoiceSnapshot['invoice_payer_address'] ?? null),
+            'invoice_payer_phone' => $isCourtesy ? null : ($invoiceSnapshot['invoice_payer_phone'] ?? null),
+            'invoice_payer_email' => $isCourtesy ? null : ($invoiceSnapshot['invoice_payer_email'] ?? null),
             'created_by' => Auth::user()?->name ?? 'system',
             'updated_by' => Auth::user()?->name,
         ]);

@@ -72,6 +72,7 @@ final class ServiceInvoiceIssuer
     public static function validationMessage(OperationCoordinationService $record, string $kind, array $plan): ?string
     {
         try {
+            TelemedicineCaseClaimNumber::requireForCase($record->telemedicine_case_id);
             self::assertPlan($record, $kind, $plan, lock: false);
         } catch (MedicationInvoiceException $exception) {
             return $exception->getMessage();
@@ -91,6 +92,7 @@ final class ServiceInvoiceIssuer
         $userName = filled($user?->name) ? (string) $user->name : 'SISTEMA';
         $definition = ClinicalServiceCatalog::definition($kind);
 
+        $claimNumber = TelemedicineCaseClaimNumber::requireForCase($record->telemedicine_case_id);
         $resolved = self::assertPlan($record, $kind, $plan, lock: true);
         $bcvRate = BcvOfficialRate::resolve();
 
@@ -100,6 +102,7 @@ final class ServiceInvoiceIssuer
 
         $record->loadMissing(['telemedicinePatient', 'telemedicineCase']);
         $patient = $record->telemedicinePatient;
+        $contact = QuoteInvoicePayer::patientContact($record);
         $totalUsd = round(array_sum(array_column($resolved['lines'], 'price')), 2);
 
         $invoice = OperationMedicationInvoice::query()->create([
@@ -109,6 +112,10 @@ final class ServiceInvoiceIssuer
             'patient_name' => TelemedicinePatientDisplayName::forCoordination($record) ?: (string) ($patient?->full_name ?? '—'),
             'patient_identification' => filled($patient?->nro_identificacion) ? (string) $patient->nro_identificacion : null,
             'case_code' => filled($record->telemedicineCase?->code) ? mb_strtoupper((string) $record->telemedicineCase->code) : null,
+            'claim_number' => $claimNumber,
+            'payer_address' => $contact['address'],
+            'payer_phone' => $contact['phone'],
+            'payer_email' => $contact['email'],
             'status' => OperationMedicationInvoice::STATUS_PENDING_PAYMENT,
             'invoice_type' => $definition['invoice_type'],
             'total_usd' => $totalUsd,

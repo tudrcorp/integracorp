@@ -34,6 +34,8 @@ final class QuoteInvoiceFormFields
         $generates = $prefix.'generates_invoice';
         $payerType = $prefix.'invoice_payer_type';
         $manualAddress = $prefix.'invoice_payer_address';
+        $manualPhone = $prefix.'invoice_payer_phone';
+        $manualEmail = $prefix.'invoice_payer_email';
         $isVisible = fn (Get $get, mixed $livewire): bool => MedicationInvoiceWizard::userCanInvoice() && $applies($get, $livewire);
         $generatesInvoice = fn (Get $get, mixed $livewire): bool => $isVisible($get, $livewire) && (bool) $get($generates);
         $selectedPayer = fn (Get $get, mixed $livewire): ?array => $generatesInvoice($get, $livewire)
@@ -83,6 +85,25 @@ final class QuoteInvoiceFormFields
                     ->visible(fn (Get $get, mixed $livewire): bool => ($payer = $selectedPayer($get, $livewire)) !== null && blank($payer['address']))
                     ->required(fn (Get $get, mixed $livewire): bool => ($payer = $selectedPayer($get, $livewire)) !== null && blank($payer['address']))
                     ->helperText('Queda solo en la factura; no cambia la ficha.'),
+                Grid::make(['default' => 1, 'sm' => 2])
+                    ->visible(fn (Get $get, mixed $livewire): bool => ($payer = $selectedPayer($get, $livewire)) !== null && (blank($payer['phone']) || blank($payer['email'])))
+                    ->schema([
+                        TextInput::make($manualPhone)
+                            ->label('Teléfono para la factura (opcional)')
+                            ->placeholder('Su ficha no tiene teléfono')
+                            ->tel()
+                            ->prefixIcon(Heroicon::OutlinedPhone)
+                            ->maxLength(QuoteInvoicePayer::PHONE_MAX)
+                            ->visible(fn (Get $get, mixed $livewire): bool => ($payer = $selectedPayer($get, $livewire)) !== null && blank($payer['phone'])),
+                        TextInput::make($manualEmail)
+                            ->label('Correo para la factura (opcional)')
+                            ->placeholder('Su ficha no tiene correo')
+                            ->email()
+                            ->prefixIcon(Heroicon::OutlinedEnvelope)
+                            ->maxLength(QuoteInvoicePayer::EMAIL_MAX)
+                            ->visible(fn (Get $get, mixed $livewire): bool => ($payer = $selectedPayer($get, $livewire)) !== null && blank($payer['email'])),
+                    ])
+                    ->columnSpanFull(),
             ])
             ->columnSpanFull();
     }
@@ -122,7 +143,7 @@ final class QuoteInvoiceFormFields
     }
 
     /**
-     * @return array{name: string, identification: string|null, address: string|null}|null
+     * @return array{name: string, identification: string|null, address: string|null, phone: string|null, email: string|null}|null
      */
     private static function payerFor(mixed $livewire, mixed $type): ?array
     {
@@ -162,7 +183,7 @@ final class QuoteInvoiceFormFields
     }
 
     /**
-     * @param  array{name?: string, identification?: string|null, address?: string|null}  $payer
+     * @param  array{name?: string, identification?: string|null, address?: string|null, phone?: string|null, email?: string|null}  $payer
      */
     private static function payerCard(mixed $type, array $payer): HtmlString
     {
@@ -171,6 +192,8 @@ final class QuoteInvoiceFormFields
             [$isCorporate ? 'Razón social' : 'Nombre y apellido', $payer['name'] ?? null],
             [$isCorporate ? 'RIF' : 'Cédula de identidad', $payer['identification'] ?? null],
             ['Dirección', $payer['address'] ?? null],
+            ['Teléfono', $payer['phone'] ?? null],
+            ['Correo', $payer['email'] ?? null],
         ];
 
         $html = '<div class="rounded-2xl border border-sky-200/80 bg-sky-50/60 p-4 dark:border-sky-500/25 dark:bg-sky-950/20">'

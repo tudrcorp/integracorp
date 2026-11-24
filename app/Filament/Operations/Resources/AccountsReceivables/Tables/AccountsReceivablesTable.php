@@ -31,7 +31,7 @@ class AccountsReceivablesTable
                         'operationCoordinationService.telemedicineCase:id,code',
                         'operationQuoteGenerator:id,total,costo_bolivares',
                         'operationServiceOrder:id,order_number',
-                        'operationMedicationInvoice:id,invoice_number',
+                        'operationMedicationInvoice:id,invoice_number,manual_invoice_number',
                     ])
                     ->whereHas(
                         'operationCoordinationService',

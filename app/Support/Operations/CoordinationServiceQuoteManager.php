@@ -355,7 +355,7 @@ final class CoordinationServiceQuoteManager
         }
 
         $invoiceNumber = filled($quote->operation_medication_invoice_id)
-            ? \App\Models\OperationMedicationInvoice::query()->whereKey($quote->operation_medication_invoice_id)->value('invoice_number')
+            ? \App\Models\OperationMedicationInvoice::query()->whereKey($quote->operation_medication_invoice_id)->first(['id', 'invoice_number', 'manual_invoice_number'])?->displayNumber()
             : null;
         $payer = \App\Models\OperationMedicationInvoice::payerLabel($quote->invoice_payer_type) ?? 'Responsable';
 
@@ -583,6 +583,8 @@ final class CoordinationServiceQuoteManager
             'invoice_payer_name' => null,
             'invoice_payer_identification' => null,
             'invoice_payer_address' => null,
+            'invoice_payer_phone' => null,
+            'invoice_payer_email' => null,
         ];
 
         $wantsInvoice = (bool) ($data['edit_quote_generates_invoice'] ?? false)
@@ -596,6 +598,8 @@ final class CoordinationServiceQuoteManager
                     $record,
                     is_string($data['edit_quote_invoice_payer_type'] ?? null) ? $data['edit_quote_invoice_payer_type'] : null,
                     $data['edit_quote_invoice_payer_address'] ?? null,
+                    $data['edit_quote_invoice_payer_phone'] ?? null,
+                    $data['edit_quote_invoice_payer_email'] ?? null,
                 )];
             } catch (MedicationInvoiceException $exception) {
                 Notification::make()

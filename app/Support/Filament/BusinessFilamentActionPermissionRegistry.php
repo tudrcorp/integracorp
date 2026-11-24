@@ -135,6 +135,10 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const ANNUL_MEDICATION_INVOICE = 'anular-factura-medicamentos';
 
+    public const SET_MEDICATION_INVOICE_NUMBER = 'registrar-numero-factura-medicamentos';
+
+    public const SET_TELEMEDICINE_CASE_CLAIM_NUMBER = 'registrar-siniestro-caso';
+
     public const MANAGE_MEDICATION_FAILURES = 'gestionar-fallas-medicamentos';
 
     public const REPORT_MEDICATION_INVOICES = 'reporte-facturas-medicamentos';
@@ -312,6 +316,16 @@ final class BusinessFilamentActionPermissionRegistry
             ],
             self::ANNUL_MEDICATION_INVOICE => [
                 'name' => 'Facturas a pacientes: anular (con motivo obligatorio; en medicamentos devuelve la existencia)',
+                'group' => 'COORDINACIÓN DE SERVICIOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::SET_MEDICATION_INVOICE_NUMBER => [
+                'name' => 'Facturas a pacientes: registrar o corregir el número de factura',
+                'group' => 'COORDINACIÓN DE SERVICIOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::SET_TELEMEDICINE_CASE_CLAIM_NUMBER => [
+                'name' => 'Casos de telemedicina: registrar o corregir el N.º de siniestro (obligatorio para facturar)',
                 'group' => 'COORDINACIÓN DE SERVICIOS',
                 'modules' => ['OPERACIONES'],
             ],

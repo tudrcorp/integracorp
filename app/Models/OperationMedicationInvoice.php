@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 /**
  * Factura al paciente (no fiscal) por lo NO CUBIERTO: medicamentos despachados desde el
@@ -44,16 +45,22 @@ class OperationMedicationInvoice extends Model
 
     protected $fillable = [
         'invoice_number',
+        'manual_invoice_number',
+        'manual_invoice_number_set_at',
+        'manual_invoice_number_set_by_name',
         'operation_coordination_service_id',
         'telemedicine_patient_id',
         'telemedicine_case_id',
         'patient_name',
         'patient_identification',
         'case_code',
+        'claim_number',
         'payer_type',
         'payer_name',
         'payer_identification',
         'payer_address',
+        'payer_phone',
+        'payer_email',
         'status',
         'invoice_type',
         'operation_service_order_id',
@@ -85,10 +92,39 @@ class OperationMedicationInvoice extends Model
             'bcv_rate' => 'decimal:4',
             'total_ves' => 'decimal:2',
             'issued_at' => 'datetime',
+            'manual_invoice_number_set_at' => 'datetime',
             'paid_at' => 'date',
             'payment_registered_at' => 'datetime',
             'annulled_at' => 'datetime',
         ];
+    }
+
+    /** Largo máximo del número de factura registrado a mano. */
+    public const MANUAL_NUMBER_MAX = 40;
+
+    /**
+     * Número que ve todo el mundo: el registrado a mano por el analista o, si aún no hay, el
+     * interno del sistema (FAC-000001). El interno no cambia: la bitácora y el inventario lo citan.
+     */
+    public function displayNumber(): string
+    {
+        return filled($this->manual_invoice_number) ? (string) $this->manual_invoice_number : (string) $this->invoice_number;
+    }
+
+    public function hasManualNumber(): bool
+    {
+        return filled($this->manual_invoice_number);
+    }
+
+    /** Condiciones de pago de toda factura a pacientes. */
+    public const PAYMENT_TERMS = 'CONTADO';
+
+    /** Días entre la emisión y el vencimiento de la factura. */
+    public const DUE_DAYS = 2;
+
+    public function dueDate(): ?Carbon
+    {
+        return $this->issued_at?->copy()->addDays(self::DUE_DAYS);
     }
 
     public static function formatNumber(int $id): string

@@ -82,6 +82,7 @@ it('los jobs del panel de telemedicina registran el fallo real y lo relanzan', f
     'GeneratePdfInformeMedicoLargo.php',
     'SendTelemedicinaDocument.php',
     'SendTelemedicineConsultationDocuments.php',
+    'SendTelemedicineConsultationDocumentsEmail.php',
 ]);
 
 it('el trait registra el intento y relanza la excepción original', function (): void {

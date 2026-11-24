@@ -8,6 +8,7 @@ use App\Models\ObservationCase;
 use App\Models\TelemedicineCase;
 use App\Support\Filament\PatientAgeDisplay;
 use App\Support\Operations\CaseMessagingAuditLog;
+use App\Support\Operations\TelemedicineCaseClaimNumber;
 use App\Support\Telemedicine\TelemedicineAmdBitacoraCatalog;
 use App\Support\Telemedicine\TelemedicineCaseDocumentsCatalog;
 use App\Support\Telemedicine\TelemedicineCaseRecordAction;
@@ -213,6 +214,9 @@ class TelemedicineCaseInfolist
                                 Section::make('Caso de telemedicina')
                                     ->description('Identificación, estado, fechas y contexto clínico-administrativo.')
                                     ->icon(Heroicon::OutlinedClipboardDocumentList)
+                                    ->headerActions([
+                                        TelemedicineCaseClaimNumber::action(),
+                                    ])
                                     ->extraAttributes([
                                         'class' => self::IOS_SECTION_CLASS,
                                     ])
@@ -229,6 +233,16 @@ class TelemedicineCaseInfolist
                                                     ->color('success')
                                                     ->copyable()
                                                     ->placeholder('—'),
+                                                TextEntry::make('claim_number')
+                                                    ->label('N.º de siniestro')
+                                                    ->icon(Heroicon::OutlinedShieldCheck)
+                                                    ->badge()
+                                                    ->color(fn (?string $state): string => filled($state) ? 'primary' : 'warning')
+                                                    ->copyable()
+                                                    ->placeholder('Sin registrar: obligatorio para facturar')
+                                                    ->helperText(fn (TelemedicineCase $record): ?string => filled($record->claim_number)
+                                                        ? 'Por '.($record->claim_number_set_by_name ?: '—').' el '.$record->claim_number_set_at?->format('d/m/Y H:i')
+                                                        : null),
                                                 TextEntry::make('status')
                                                     ->label('Estatus del caso')
                                                     ->icon(Heroicon::OutlinedSignal)

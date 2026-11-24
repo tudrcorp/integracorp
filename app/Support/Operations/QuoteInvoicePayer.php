@@ -10,13 +10,14 @@ use App\Models\CompanyAssociate;
 use App\Models\OperationCoordinationService;
 use App\Models\OperationMedicationInvoice;
 use App\Models\TelemedicinePatient;
+use App\Support\Telemedicine\TelemedicinePatientDeliveryEmail;
 use App\Support\Telemedicine\TelemedicinePatientDisplayName;
 use App\Support\Telemedicine\TelemedicinePatientPlanBridge;
 
 /**
  * Responsable de pago de la factura que nace de una cotización (10/11/2026).
  *
- * - Paciente: nombre y apellido, cédula y dirección. La dirección sale de la ficha del paciente
+ * - Paciente: nombre y apellido, cédula, dirección, teléfono y correo propio. La dirección sale de la ficha del paciente
  *   o, si está vacía, de la de su afiliado; si tampoco hay, el analista la escribe.
  * - Grupo corporativo: razón social, RIF y dirección de la afiliación corporativa del paciente.
  *   Para un asociado de Nuevos Negocios, su empresa. Un afiliado individual no tiene grupo:
@@ -28,13 +29,17 @@ final class QuoteInvoicePayer
 {
     public const ADDRESS_MAX = 500;
 
+    public const PHONE_MAX = 40;
+
+    public const EMAIL_MAX = 150;
+
     /** @var array<int, array<string, mixed>> Memoria por request: el formulario pregunta varias veces en un mismo render. */
     private static array $memo = [];
 
     /**
      * @return array{
-     *     patient: array{name: string, identification: string|null, address: string|null},
-     *     corporate: array{name: string, identification: string|null, address: string|null}|null,
+     *     patient: array{name: string, identification: string|null, address: string|null, phone: string|null, email: string|null},
+     *     corporate: array{name: string, identification: string|null, address: string|null, phone: string|null, email: string|null}|null,
      *     corporate_unavailable_reason: string|null
      * }
      */
@@ -50,7 +55,7 @@ final class QuoteInvoicePayer
     }
 
     /**
-     * @return array{name: string, identification: string|null, address: string|null}|null
+     * @return array{name: string, identification: string|null, address: string|null, phone: string|null, email: string|null}|null
      */
     public static function payer(OperationCoordinationService $record, ?string $type): ?array
     {
@@ -67,11 +72,14 @@ final class QuoteInvoicePayer
      * Datos a congelar en la cotización. La dirección escrita por el analista solo se usa cuando
      * la ficha no trae una.
      *
-     * @return array{invoice_payer_type: string, invoice_payer_name: string, invoice_payer_identification: string|null, invoice_payer_address: string}
+     * Lo mismo con el teléfono y el correo: los de la ficha y, si la ficha no los trae, los que
+     * escriba el analista. Son opcionales: la factura los muestra si existen.
+     *
+     * @return array{invoice_payer_type: string, invoice_payer_name: string, invoice_payer_identification: string|null, invoice_payer_address: string, invoice_payer_phone: string|null, invoice_payer_email: string|null}
      *
      * @throws MedicationInvoiceException
      */
-    public static function snapshot(OperationCoordinationService $record, ?string $type, mixed $manualAddress): array
+    public static function snapshot(OperationCoordinationService $record, ?string $type, mixed $manualAddress, mixed $manualPhone = null, mixed $manualEmail = null): array
     {
         if (! in_array($type, [OperationMedicationInvoice::PAYER_PATIENT, OperationMedicationInvoice::PAYER_CORPORATE], true)) {
             throw new MedicationInvoiceException('Indique quién es el responsable de pago de la factura.');
@@ -90,11 +98,37 @@ final class QuoteInvoicePayer
             throw new MedicationInvoiceException('Escriba la dirección del responsable de pago: su ficha no tiene una.');
         }
 
+        $phone = $payer['phone'] ?? self::clean($manualPhone);
+        $email = $payer['email'] ?? self::clean($manualEmail);
+
+        if ($email !== null && filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            throw new MedicationInvoiceException('El correo del responsable de pago no es válido.');
+        }
+
         return [
             'invoice_payer_type' => $type,
             'invoice_payer_name' => $payer['name'],
             'invoice_payer_identification' => $payer['identification'],
             'invoice_payer_address' => mb_substr($address, 0, self::ADDRESS_MAX),
+            'invoice_payer_phone' => $phone !== null ? mb_substr($phone, 0, self::PHONE_MAX) : null,
+            'invoice_payer_email' => $email !== null ? mb_strtolower(mb_substr($email, 0, self::EMAIL_MAX)) : null,
+        ];
+    }
+
+    /**
+     * Datos de contacto del paciente para la factura que se le emite a él (inventario y
+     * servicios): dirección, teléfono y correo de su ficha.
+     *
+     * @return array{address: string|null, phone: string|null, email: string|null}
+     */
+    public static function patientContact(OperationCoordinationService $record): array
+    {
+        $patient = self::resolve($record)['patient'];
+
+        return [
+            'address' => $patient['address'] !== null ? mb_substr($patient['address'], 0, self::ADDRESS_MAX) : null,
+            'phone' => $patient['phone'] !== null ? mb_substr($patient['phone'], 0, self::PHONE_MAX) : null,
+            'email' => $patient['email'] !== null ? mb_substr($patient['email'], 0, self::EMAIL_MAX) : null,
         ];
     }
 
@@ -105,8 +139,8 @@ final class QuoteInvoicePayer
 
     /**
      * @return array{
-     *     patient: array{name: string, identification: string|null, address: string|null},
-     *     corporate: array{name: string, identification: string|null, address: string|null}|null,
+     *     patient: array{name: string, identification: string|null, address: string|null, phone: string|null, email: string|null},
+     *     corporate: array{name: string, identification: string|null, address: string|null, phone: string|null, email: string|null}|null,
      *     corporate_unavailable_reason: string|null
      * }
      */
@@ -120,6 +154,8 @@ final class QuoteInvoicePayer
             'name' => $patientName !== '' && $patientName !== '—' ? $patientName : (string) ($patient?->full_name ?? '—'),
             'identification' => self::clean($patient?->nro_identificacion),
             'address' => $patient instanceof TelemedicinePatient ? self::patientAddress($patient) : null,
+            'phone' => self::clean($patient?->phone),
+            'email' => $patient instanceof TelemedicinePatient ? self::email(TelemedicinePatientDeliveryEmail::for($patient)) : null,
         ];
 
         if (! $patient instanceof TelemedicinePatient) {
@@ -161,7 +197,7 @@ final class QuoteInvoicePayer
     }
 
     /**
-     * @return array{name: string, identification: string|null, address: string|null}|null
+     * @return array{name: string, identification: string|null, address: string|null, phone: string|null, email: string|null}|null
      */
     private static function corporateAffiliation(TelemedicinePatient $patient): ?array
     {
@@ -184,11 +220,13 @@ final class QuoteInvoicePayer
             'name' => (string) self::clean($affiliation->name_corporate),
             'identification' => self::rif($affiliation->document_type_rif, $affiliation->rif),
             'address' => self::clean($affiliation->address),
+            'phone' => self::clean($affiliation->phone) ?? self::clean($affiliation->phone_contact),
+            'email' => self::email($affiliation->email) ?? self::email($affiliation->email_contact),
         ];
     }
 
     /**
-     * @return array{name: string, identification: string|null, address: string|null}|null
+     * @return array{name: string, identification: string|null, address: string|null, phone: string|null, email: string|null}|null
      */
     private static function associateCompany(TelemedicinePatient $patient): ?array
     {
@@ -220,6 +258,8 @@ final class QuoteInvoicePayer
             'name' => (string) self::clean($company->name),
             'identification' => self::rif(null, $company->rif),
             'address' => self::clean($company->address),
+            'phone' => self::clean($company->phone),
+            'email' => self::email($company->email),
         ];
     }
 
@@ -238,6 +278,13 @@ final class QuoteInvoicePayer
         }
 
         return $type.'-'.$number;
+    }
+
+    private static function email(mixed $value): ?string
+    {
+        $email = self::clean($value);
+
+        return $email !== null && filter_var($email, FILTER_VALIDATE_EMAIL) !== false ? mb_strtolower($email) : null;
     }
 
     private static function clean(mixed $value): ?string

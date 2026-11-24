@@ -43,6 +43,11 @@ final class MedicationInvoiceActions
         return BusinessFilamentActionAccess::userCan(BusinessFilamentActionPermissionRegistry::ANNUL_MEDICATION_INVOICE);
     }
 
+    public static function canSetNumber(): bool
+    {
+        return BusinessFilamentActionAccess::userCan(BusinessFilamentActionPermissionRegistry::SET_MEDICATION_INVOICE_NUMBER);
+    }
+
     public const MAX_EMAILS = 5;
 
     public static function previewPdf(): Action
@@ -52,13 +57,13 @@ final class MedicationInvoiceActions
             ->icon(Heroicon::OutlinedDocumentText)
             ->color('info')
             ->visible(fn (OperationMedicationInvoice $record): bool => MedicationInvoicePdfController::userCanView($record))
-            ->modalHeading(fn (OperationMedicationInvoice $record): string => 'Factura '.$record->invoice_number)
+            ->modalHeading(fn (OperationMedicationInvoice $record): string => 'Factura '.$record->displayNumber())
             ->modalWidth(Width::SevenExtraLarge)
             ->modalContent(fn (OperationMedicationInvoice $record): ViewContract => View::make('filament.operations.operation-service-orders.pdf-preview', [
                 'pdfPreviewUrl' => route('operations.medication-invoices.pdf.preview', ['operationMedicationInvoice' => $record]),
                 'pdfDownloadUrl' => route('operations.medication-invoices.pdf.download', ['operationMedicationInvoice' => $record]),
                 'documentLabel' => 'Factura a paciente',
-                'documentTitle' => $record->invoice_number.' · '.$record->patient_name,
+                'documentTitle' => $record->displayNumber().' · '.$record->patient_name,
             ]))
             ->modalSubmitAction(false)
             ->modalCancelActionLabel('Cerrar')
@@ -77,7 +82,7 @@ final class MedicationInvoiceActions
             ->icon(Heroicon::OutlinedEnvelope)
             ->color('gray')
             ->visible(fn (OperationMedicationInvoice $record): bool => self::canSend($record))
-            ->modalHeading(fn (OperationMedicationInvoice $record): string => 'Enviar la factura '.$record->invoice_number.' por correo')
+            ->modalHeading(fn (OperationMedicationInvoice $record): string => 'Enviar la factura '.$record->displayNumber().' por correo')
             ->modalDescription('El PDF va adjunto. Se propone el correo del paciente; puede cambiarlo o agregar otros.')
             ->modalIcon(Heroicon::OutlinedEnvelope)
             ->modalWidth(Width::Large)
@@ -111,7 +116,7 @@ final class MedicationInvoiceActions
             ->icon(Heroicon::OutlinedChatBubbleLeftRight)
             ->color('success')
             ->visible(fn (OperationMedicationInvoice $record): bool => self::canSend($record))
-            ->modalHeading(fn (OperationMedicationInvoice $record): string => 'Enviar la factura '.$record->invoice_number.' por WhatsApp')
+            ->modalHeading(fn (OperationMedicationInvoice $record): string => 'Enviar la factura '.$record->displayNumber().' por WhatsApp')
             ->modalDescription('El PDF llega como documento por un enlace que vence en 48 horas. Se propone el teléfono del paciente; puede cambiarlo.')
             ->modalIcon(Heroicon::OutlinedChatBubbleLeftRight)
             ->modalWidth(Width::Large)
@@ -154,7 +159,7 @@ final class MedicationInvoiceActions
 
         Notification::make()
             ->title($channel === SendMedicationInvoicePdfJob::CHANNEL_EMAIL ? 'Enviando por correo' : 'Enviando por WhatsApp')
-            ->body('La factura '.$record->invoice_number.' se está enviando a '.implode(', ', $recipients).'. Quedará en la bitácora; si algo falla, le avisaremos en la campana de notificaciones.')
+            ->body('La factura '.$record->displayNumber().' se está enviando a '.implode(', ', $recipients).'. Quedará en la bitácora; si algo falla, le avisaremos en la campana de notificaciones.')
             ->success()
             ->send();
     }
@@ -185,6 +190,77 @@ final class MedicationInvoiceActions
         return $phone !== '' ? $phone : null;
     }
 
+    /**
+     * Registrar (o corregir) el número de factura a mano. Desde entonces reemplaza al FAC-… en
+     * pantalla, PDF, envíos y reportes; el interno queda en la ficha y en la bitácora.
+     */
+    public static function setNumber(): Action
+    {
+        return Action::make('set_medication_invoice_number')
+            ->label(fn (OperationMedicationInvoice $record): string => $record->hasManualNumber() ? 'Corregir N.º de factura' : 'Registrar N.º de factura')
+            ->icon(Heroicon::OutlinedHashtag)
+            ->color('primary')
+            ->visible(fn (OperationMedicationInvoice $record): bool => $record->status !== OperationMedicationInvoice::STATUS_ANNULLED && self::canSetNumber())
+            ->modalHeading(fn (OperationMedicationInvoice $record): string => $record->hasManualNumber()
+                ? 'Corregir el número de la factura '.$record->displayNumber()
+                : 'Registrar el número de la factura')
+            ->modalDescription(fn (OperationMedicationInvoice $record): string => 'Desde ahora será el número que se muestra en la factura, su PDF, los envíos, los reportes y la cuenta por cobrar. '
+                .'El número interno '.$record->invoice_number.' queda en la ficha y en la bitácora.')
+            ->modalIcon(Heroicon::OutlinedHashtag)
+            ->modalWidth(Width::Large)
+            ->modalSubmitActionLabel(fn (OperationMedicationInvoice $record): string => $record->hasManualNumber() ? 'Corregir' : 'Registrar')
+            ->fillForm(fn (OperationMedicationInvoice $record): array => ['number' => $record->manual_invoice_number])
+            ->schema([
+                TextInput::make('number')
+                    ->label('N.º de factura')
+                    ->placeholder('Ej.: 00012345')
+                    ->helperText('Tal como aparece en la factura. No puede repetirse con el de otra factura.')
+                    ->required()
+                    ->maxLength(OperationMedicationInvoice::MANUAL_NUMBER_MAX)
+                    ->autofocus()
+                    ->rule(fn () => function (string $attribute, mixed $value, \Closure $fail): void {
+                        $problem = MedicationInvoiceLifecycle::manualNumberProblem(MedicationInvoiceLifecycle::normalizeManualNumber($value));
+
+                        if ($problem !== null) {
+                            $fail($problem);
+                        }
+                    }),
+                Textarea::make('reason')
+                    ->label('Motivo de la corrección')
+                    ->placeholder('Ej.: se transcribió mal el número; la factura se reimprimió…')
+                    ->rows(2)
+                    ->minLength(5)
+                    ->maxLength(500)
+                    ->required()
+                    ->visible(fn (OperationMedicationInvoice $record): bool => $record->hasManualNumber()),
+            ])
+            ->action(function (OperationMedicationInvoice $record, array $data, Action $action): void {
+                if (! self::canSetNumber()) {
+                    Notification::make()->title('Sin permiso')->body('No tiene permiso para registrar el número de las facturas a pacientes.')->danger()->send();
+                    $action->halt();
+                }
+
+                $hadNumber = $record->hasManualNumber();
+
+                try {
+                    $updated = MedicationInvoiceLifecycle::setManualNumber($record, $data['number'] ?? '', $data['reason'] ?? null);
+                } catch (MedicationInvoiceException $exception) {
+                    Notification::make()->title('No se guardó el número')->body($exception->getMessage())->danger()->send();
+                    $action->halt();
+
+                    return;
+                }
+
+                $record->setRawAttributes($updated->getAttributes(), true);
+
+                Notification::make()
+                    ->title($hadNumber ? 'Número corregido' : 'Número registrado')
+                    ->body('La factura ahora se identifica como '.$updated->displayNumber().'.')
+                    ->success()
+                    ->send();
+            });
+    }
+
     public static function registerPayment(): Action
     {
         return Action::make('register_medication_invoice_payment')
@@ -192,7 +268,7 @@ final class MedicationInvoiceActions
             ->icon(Heroicon::OutlinedBanknotes)
             ->color('success')
             ->visible(fn (OperationMedicationInvoice $record): bool => $record->isPendingPayment() && self::canRegisterPayment())
-            ->modalHeading(fn (OperationMedicationInvoice $record): string => 'Registrar pago de la factura '.$record->invoice_number)
+            ->modalHeading(fn (OperationMedicationInvoice $record): string => 'Registrar pago de la factura '.$record->displayNumber())
             ->modalDescription(fn (OperationMedicationInvoice $record): string => 'Pago total de US$ '.number_format((float) $record->total_usd, 2, '.', ',')
                 .' (Bs. '.number_format((float) $record->total_ves, 2, '.', ',').' a la tasa de emisión). La factura y su cuenta por cobrar quedan COBRADAS y ya no podrán anularse.')
             ->modalIcon(Heroicon::OutlinedBanknotes)
@@ -239,7 +315,7 @@ final class MedicationInvoiceActions
 
                 Notification::make()
                     ->title('Pago registrado')
-                    ->body('La factura '.$paid->invoice_number.' y su cuenta por cobrar quedaron COBRADAS.')
+                    ->body('La factura '.$paid->displayNumber().' y su cuenta por cobrar quedaron COBRADAS.')
                     ->success()
                     ->send();
             });
@@ -253,7 +329,7 @@ final class MedicationInvoiceActions
             ->color('danger')
             ->visible(fn (OperationMedicationInvoice $record): bool => $record->isPendingPayment() && self::canAnnul())
             ->requiresConfirmation()
-            ->modalHeading(fn (OperationMedicationInvoice $record): string => 'Anular la factura '.$record->invoice_number)
+            ->modalHeading(fn (OperationMedicationInvoice $record): string => 'Anular la factura '.$record->displayNumber())
             ->modalDescription(fn (OperationMedicationInvoice $record): string => $record->isMedications() && ! $record->isFromQuote()
                 ? 'La existencia vuelve al almacén del que salió, los medicamentos recetados vuelven a PENDIENTE para gestionarlos de nuevo y la cuenta por cobrar queda ANULADA. No se puede deshacer.'
                 : 'La cuenta por cobrar queda ANULADA. La orden de servicio sigue activa: si el servicio ya no se realizará, cancélela o anúlela después. No se puede anular si la orden ya está FINALIZADA. No se puede deshacer.')
@@ -284,7 +360,7 @@ final class MedicationInvoiceActions
 
                 Notification::make()
                     ->title('Factura anulada')
-                    ->body('La factura '.$annulled->invoice_number.' quedó ANULADA, la existencia volvió al inventario y los medicamentos pueden gestionarse de nuevo.')
+                    ->body('La factura '.$annulled->displayNumber().' quedó ANULADA, la existencia volvió al inventario y los medicamentos pueden gestionarse de nuevo.')
                     ->success()
                     ->send();
             });

@@ -17,6 +17,7 @@ use App\Models\TelemedicinePatientMedications;
 use App\Models\User;
 use App\Support\SecurityAudit;
 use Carbon\CarbonInterface;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +34,8 @@ final class MedicationInvoiceLifecycle
     public const AUDIT_PAID = 'AUDIT_OPERATIONS_MEDICATION_INVOICE_PAID';
 
     public const AUDIT_ANNULLED = 'AUDIT_OPERATIONS_MEDICATION_INVOICE_ANNULLED';
+
+    public const AUDIT_NUMBER_SET = 'AUDIT_OPERATIONS_MEDICATION_INVOICE_NUMBER_SET';
 
     public const RESTOCK_ENTRY_TYPE = 'REPOSICIÓN DE INVENTARIO';
 
@@ -60,6 +63,115 @@ final class MedicationInvoiceLifecycle
     public static function paymentMethodRequiresReference(?string $method): bool
     {
         return ! in_array($method, ['EFECTIVO_BS', 'EFECTIVO_USD'], true);
+    }
+
+    /**
+     * Deja el número tal como lo escribe el analista, en mayúsculas y sin espacios repetidos.
+     */
+    public static function normalizeManualNumber(mixed $number): string
+    {
+        return mb_strtoupper(trim((string) preg_replace('/\s+/u', ' ', is_scalar($number) ? (string) $number : '')));
+    }
+
+    /**
+     * Motivo por el que el número no sirve, o null si sirve.
+     */
+    public static function manualNumberProblem(string $number): ?string
+    {
+        if ($number === '') {
+            return 'Escriba el número de la factura.';
+        }
+
+        if (mb_strlen($number) > OperationMedicationInvoice::MANUAL_NUMBER_MAX) {
+            return 'El número no puede pasar de '.OperationMedicationInvoice::MANUAL_NUMBER_MAX.' caracteres.';
+        }
+
+        if (preg_match('/^[A-Z0-9][A-Z0-9 .\/-]*$/u', $number) !== 1) {
+            return 'Use solo letras, números, guion, barra, punto o espacio, empezando por una letra o un número.';
+        }
+
+        return null;
+    }
+
+    /**
+     * Registra o corrige el número de factura que escribe el analista. Desde entonces es el número
+     * que se muestra; el interno (FAC-…) no cambia. No se repite entre facturas (ni con el número
+     * interno de otra) y no se registra en una factura anulada. Corregirlo exige un motivo.
+     *
+     * @throws MedicationInvoiceException
+     */
+    public static function setManualNumber(OperationMedicationInvoice $invoice, mixed $number, ?string $reason = null, ?User $user = null): OperationMedicationInvoice
+    {
+        $user ??= Auth::user();
+        $userName = filled($user?->name) ? (string) $user->name : 'SISTEMA';
+        $number = self::normalizeManualNumber($number);
+        $reason = trim((string) $reason);
+
+        if (($problem = self::manualNumberProblem($number)) !== null) {
+            throw new MedicationInvoiceException($problem);
+        }
+
+        try {
+            [$result, $previous] = DB::transaction(function () use ($invoice, $number, $reason, $userName, $user): array {
+                $locked = OperationMedicationInvoice::query()->whereKey($invoice->getKey())->lockForUpdate()->first();
+
+                if (! $locked instanceof OperationMedicationInvoice) {
+                    throw new MedicationInvoiceException('La factura ya no existe.');
+                }
+
+                if ($locked->status === OperationMedicationInvoice::STATUS_ANNULLED) {
+                    throw new MedicationInvoiceException('La factura '.$locked->displayNumber().' está anulada: no se le registra número.');
+                }
+
+                $previous = filled($locked->manual_invoice_number) ? (string) $locked->manual_invoice_number : null;
+
+                if ($previous === $number) {
+                    throw new MedicationInvoiceException('La factura ya tiene el número '.$number.'.');
+                }
+
+                if ($previous !== null && mb_strlen($reason) < 5) {
+                    throw new MedicationInvoiceException('Indique el motivo de la corrección.');
+                }
+
+                $taken = OperationMedicationInvoice::query()
+                    ->whereKeyNot($locked->getKey())
+                    ->where(fn ($query) => $query->where('manual_invoice_number', $number)->orWhere('invoice_number', $number))
+                    ->first(['id', 'invoice_number', 'manual_invoice_number', 'patient_name']);
+
+                if ($taken instanceof OperationMedicationInvoice) {
+                    throw new MedicationInvoiceException('El número '.$number.' ya lo tiene la factura de '.$taken->patient_name.' ('.$taken->invoice_number.').');
+                }
+
+                $locked->forceFill([
+                    'manual_invoice_number' => $number,
+                    'manual_invoice_number_set_at' => now(),
+                    'manual_invoice_number_set_by_name' => $userName,
+                ])->save();
+
+                OperationMedicationInvoiceEvent::query()->create([
+                    'operation_medication_invoice_id' => $locked->getKey(),
+                    'event' => OperationMedicationInvoiceEvent::EVENT_NUMBER_SET,
+                    'description' => $previous === null
+                        ? 'Número de factura '.$number.' registrado por '.$userName.' (número interno '.$locked->invoice_number.').'
+                        : 'Número de factura corregido por '.$userName.': '.$previous.' → '.$number.'. Motivo: '.$reason.'.',
+                    'payload' => ['previous' => $previous, 'number' => $number, 'reason' => $reason !== '' ? $reason : null],
+                    'user_id' => $user?->getKey(),
+                    'user_name' => $userName,
+                ]);
+
+                return [$locked, $previous];
+            });
+        } catch (UniqueConstraintViolationException) {
+            throw new MedicationInvoiceException('El número '.$number.' acaba de registrarse en otra factura. Revise e intente con otro.');
+        }
+
+        SecurityAudit::log(self::AUDIT_NUMBER_SET, MedicationInvoiceIssuer::AUDIT_ROUTE, [
+            'operation_medication_invoice_id' => $result->getKey(),
+            'previous' => $previous,
+            'number' => $number,
+        ], $user);
+
+        return $result;
     }
 
     /**
@@ -236,7 +348,7 @@ final class MedicationInvoiceLifecycle
 
             self::syncReceivable($locked, OperationAccountsReceivable::STATUS_ANNULLED, $userName);
 
-            $description = 'Factura '.$locked->invoice_number.' anulada por '.$userName.'. Motivo: '.$reason.'. '
+            $description = 'Factura '.$locked->displayNumber().' anulada por '.$userName.'. Motivo: '.$reason.'. '
                 .'Existencia devuelta: '.($restockLines !== [] ? implode('; ', $restockLines) : 'ninguna').'. '
                 .'Los medicamentos volvieron a PENDIENTE.';
 
@@ -304,7 +416,7 @@ final class MedicationInvoiceLifecycle
         self::syncReceivable($locked, OperationAccountsReceivable::STATUS_ANNULLED, $userName);
 
         $orderActive = $order !== null && ! in_array(mb_strtoupper(trim((string) $order->status)), ['CANCELADA', 'CANCELADO', 'CADUCADA'], true);
-        $description = 'Factura '.$locked->invoice_number.' ('.mb_strtolower(OperationMedicationInvoice::typeLabel($locked->invoice_type)).') anulada por '.$userName.'. Motivo: '.$reason.'.'
+        $description = 'Factura '.$locked->displayNumber().' ('.mb_strtolower(OperationMedicationInvoice::typeLabel($locked->invoice_type)).') anulada por '.$userName.'. Motivo: '.$reason.'.'
             .($orderActive
                 ? ' La orden '.($order->order_number ?: '#'.$order->getKey()).' sigue activa: si el servicio ya no se realizará, cancélela o anúlela.'
                 : '');
@@ -339,7 +451,7 @@ final class MedicationInvoiceLifecycle
         }
 
         if (! $locked->isPendingPayment()) {
-            throw new MedicationInvoiceException('La factura '.$locked->invoice_number.' ya está '.self::statusLabel($locked->status).'. Recargue la página.');
+            throw new MedicationInvoiceException('La factura '.$locked->displayNumber().' ya está '.self::statusLabel($locked->status).'. Recargue la página.');
         }
 
         return $locked;

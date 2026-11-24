@@ -89,6 +89,8 @@ final class QuoteInvoiceIssuer
             return null;
         }
 
+        $claimNumber = TelemedicineCaseClaimNumber::requireForCase($record->telemedicine_case_id);
+
         $user ??= Auth::user();
         $userName = filled($user?->name) ? (string) $user->name : 'SISTEMA';
         $bcvRate = BcvOfficialRate::resolve() ?? CoordinationServiceQuoteManager::resolveBcvRateFromQuote($quote);
@@ -114,6 +116,9 @@ final class QuoteInvoiceIssuer
             'payer_name' => $quote->invoice_payer_name,
             'payer_identification' => $quote->invoice_payer_identification,
             'payer_address' => $quote->invoice_payer_address,
+            'payer_phone' => $quote->invoice_payer_phone,
+            'payer_email' => $quote->invoice_payer_email,
+            'claim_number' => $claimNumber,
             'status' => OperationMedicationInvoice::STATUS_PENDING_PAYMENT,
             'invoice_type' => $invoiceType,
             'total_usd' => $totalUsd,
@@ -254,11 +259,11 @@ final class QuoteInvoiceIssuer
                 ->where('item_type', $invoiceType)
                 ->where('source_item_id', $itemId)
                 ->whereHas('invoice', fn ($query) => $query->where('status', '!=', OperationMedicationInvoice::STATUS_ANNULLED))
-                ->with('invoice:id,invoice_number')
+                ->with('invoice:id,invoice_number,manual_invoice_number')
                 ->first();
 
             if ($activeInvoice !== null) {
-                throw new MedicationInvoiceException('«'.$label.'» ya tiene la factura vigente '.($activeInvoice->invoice?->invoice_number ?? '').'. Anúlela o quite el ítem antes de aprobar.');
+                throw new MedicationInvoiceException('«'.$label.'» ya tiene la factura vigente '.($activeInvoice->invoice?->displayNumber() ?? '').'. Anúlela o quite el ítem antes de aprobar.');
             }
 
             $lines[] = [

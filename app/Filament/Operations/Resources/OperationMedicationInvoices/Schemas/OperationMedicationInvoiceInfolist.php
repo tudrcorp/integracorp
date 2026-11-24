@@ -42,7 +42,16 @@ class OperationMedicationInvoiceInfolist
                                     ->schema([
                                         Fieldset::make('Identificación')
                                             ->schema([
-                                                TextEntry::make('invoice_number')->label('N.º factura')->badge()->color('primary')->copyable(),
+                                                TextEntry::make('invoice_number')
+                                                    ->label('N.º factura')
+                                                    ->state(fn (OperationMedicationInvoice $record): string => $record->displayNumber())
+                                                    ->helperText(fn (OperationMedicationInvoice $record): ?string => $record->hasManualNumber()
+                                                        ? 'Interno '.$record->invoice_number.' · registrado por '.($record->manual_invoice_number_set_by_name ?: '—').' el '.$record->manual_invoice_number_set_at?->format('d/m/Y H:i')
+                                                        : 'Número interno del sistema: aún no se ha registrado el número de la factura.')
+                                                    ->badge()
+                                                    ->color('primary')
+                                                    ->copyable(),
+                                                TextEntry::make('claim_number')->label('N.º de siniestro')->badge()->color('gray')->copyable()->placeholder('—'),
                                                 TextEntry::make('invoice_type')->label('Tipo')->badge()->formatStateUsing(fn (?string $state): string => OperationMedicationInvoice::typeLabel($state)),
                                                 TextEntry::make('status')
                                                     ->label('Estado')
@@ -52,7 +61,7 @@ class OperationMedicationInvoiceInfolist
                                                 TextEntry::make('issued_at')->label('Emisión')->dateTime('d/m/Y H:i'),
                                                 TextEntry::make('issued_by_name')->label('Emitida por')->placeholder('—'),
                                             ])
-                                            ->columns(5),
+                                            ->columns(6),
                                         Fieldset::make('Paciente y caso')
                                             ->schema([
                                                 TextEntry::make('patient_name')->label('Paciente')->weight(FontWeight::SemiBold),
@@ -163,6 +172,8 @@ class OperationMedicationInvoiceInfolist
                                                 'PAGO_REGISTRADO' => 'Pago registrado',
                                                 'ANULADA' => 'Anulada',
                                                 'PDF_ENVIADO' => 'PDF enviado',
+                                                'NUMERO_REGISTRADO' => 'N.º de factura',
+                                                'SINIESTRO_REGISTRADO' => 'N.º de siniestro',
                                                 default => $state,
                                             })
                                             ->color(fn (string $state): string => match ($state) {
@@ -170,6 +181,8 @@ class OperationMedicationInvoiceInfolist
                                                 'PAGO_REGISTRADO' => 'success',
                                                 'ANULADA' => 'danger',
                                                 'PDF_ENVIADO' => 'primary',
+                                                'NUMERO_REGISTRADO' => 'warning',
+                                                'SINIESTRO_REGISTRADO' => 'gray',
                                                 default => 'gray',
                                             })
                                             ->columnSpan(1),

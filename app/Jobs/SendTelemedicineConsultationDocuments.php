@@ -62,6 +62,8 @@ class SendTelemedicineConsultationDocuments implements ShouldQueue
                 $this->patientEmail,
                 $this->patientName,
                 $pdfFilenames,
+                $this->consultationId,
+                $this->userId,
             );
 
             $user = User::query()->find($this->userId);
@@ -74,7 +76,7 @@ class SendTelemedicineConsultationDocuments implements ShouldQueue
                 ->title('¡TAREA COMPLETADA!')
                 ->body(
                     filled($this->patientEmail)
-                        ? 'Los documentos de la consulta fueron enviados al paciente por WhatsApp y correo electrónico.'
+                        ? 'Los documentos de la consulta fueron enviados al paciente por WhatsApp. El correo electrónico sale en unos instantes.'
                         : 'Los documentos de la consulta fueron enviados al paciente por WhatsApp. El paciente no tiene correo propio registrado: regístrelo en su ficha o envíe los documentos desde el caso indicando el correo.'
                 )
                 ->success()
