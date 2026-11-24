@@ -44,7 +44,7 @@ final class AccountsReceivablePresenter
 
     public static function medicationInvoiceNumber(OperationAccountsReceivable $record): ?string
     {
-        $number = $record->operationMedicationInvoice?->invoice_number;
+        $number = $record->operationMedicationInvoice?->displayNumber();
 
         return filled($number) ? (string) $number : null;
     }

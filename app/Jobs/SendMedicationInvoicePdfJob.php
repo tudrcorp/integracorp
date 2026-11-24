@@ -74,7 +74,7 @@ class SendMedicationInvoicePdfJob implements ShouldQueue
 
         if ($this->channel === self::CHANNEL_EMAIL) {
             Mail::to($this->recipients)->send(new MedicationInvoicePdfMail(
-                (string) $invoice->invoice_number,
+                $invoice->displayNumber(),
                 (string) $invoice->patient_name,
                 $total,
                 $statusLabel,
@@ -87,7 +87,7 @@ class SendMedicationInvoicePdfJob implements ShouldQueue
             $url = URL::temporarySignedRoute('medication-invoices.pdf.shared', now()->addHours(self::SHARE_HOURS), ['share' => $share]);
             $sent = NotificationController::sendWhatsAppDocumentUrl(
                 $this->recipients[0],
-                '🧾 *Factura '.$invoice->invoice_number.' · '.OperationMedicationInvoice::typeLabel($invoice->invoice_type).'*'."\n"
+                '🧾 *Factura '.$invoice->displayNumber().' · '.OperationMedicationInvoice::typeLabel($invoice->invoice_type).'*'."\n"
                     .$invoice->patient_name.' · '.$total.' · '.$statusLabel."\n"
                     .'Tu Doctor en Casa · Operaciones'.($user?->name ? "\n".'Enviada por '.$user->name : ''),
                 $url,

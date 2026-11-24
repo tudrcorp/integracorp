@@ -22,7 +22,7 @@ class ViewOperationMedicationInvoice extends ViewRecord
         /** @var OperationMedicationInvoice $invoice */
         $invoice = $this->getRecord();
 
-        return 'Factura '.$invoice->invoice_number;
+        return 'Factura '.$invoice->displayNumber();
     }
 
     public function getSubheading(): ?string
@@ -49,6 +49,10 @@ class ViewOperationMedicationInvoice extends ViewRecord
                     MedicationInvoiceActions::previewPdf(),
                     MedicationInvoiceActions::emailPdf(),
                     MedicationInvoiceActions::whatsAppPdf(),
+                ])->dropdown(false),
+                ActionGroup::make([
+                    MedicationInvoiceActions::setNumber()
+                        ->after(fn () => $this->refreshInvoice()),
                 ])->dropdown(false),
                 ActionGroup::make([
                     MedicationInvoiceActions::registerPayment()

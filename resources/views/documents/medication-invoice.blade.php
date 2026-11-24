@@ -1,123 +1,97 @@
-{{-- Factura al paciente (medicamentos, laboratorios, estudios o especialistas). Determinista: nada de now() ni valores al azar (la huella del HTML decide si se regenera). --}}
+{{-- Factura a pacientes (medicamentos, laboratorios, estudios o especialistas) con el formato de la factura de Tu Dr. en Casa. Determinista: nada de now() ni valores al azar (la huella del HTML decide si se regenera). --}}
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Factura {{ $invoice->invoice_number }}</title>
+    <title>Factura {{ $invoice->displayNumber() }}</title>
     <style>
-        @page { margin: 24px 0 28px 0; }
-        body { margin: 0; font-family: 'DejaVu Sans', sans-serif; font-size: 10px; color: #1f2937; }
+        /* Margen superior de 5 cm: la factura se imprime en hoja membretada (sin logo ni marca de agua). */
+        @page { margin: 5cm 0 30px 0; }
+        body { margin: 0; font-family: 'Times New Roman', Times, serif; font-size: 11px; color: #1f2937; }
         table.page { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        td.page-cell { padding: 0 34px 12px 34px; vertical-align: top; }
-        td.page-cell-first { padding: 6px 34px 14px 34px; vertical-align: top; }
-        td.page-cell-last { padding: 4px 34px 0 34px; vertical-align: top; }
-        .brand { width: 100%; border-collapse: collapse; table-layout: fixed; border-bottom: 2px solid #052F60; }
-        .brand td { padding: 0 0 10px 0; vertical-align: middle; }
-        .title { font-size: 16px; font-weight: bold; color: #052F60; }
-        .muted { color: #6b7280; }
-        .section { font-size: 11px; font-weight: bold; color: #052F60; text-transform: uppercase; letter-spacing: .5px; padding: 0 0 6px 0; }
-        table.grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        table.grid td { border: 1px solid #e5e7eb; padding: 6px 8px; vertical-align: top; word-wrap: break-word; }
-        td.label { background: #f8fafc; color: #475569; font-weight: bold; }
+        td.page-cell { padding: 0 40px 14px 40px; vertical-align: top; }
+        td.page-cell-first { padding: 0 40px 22px 40px; vertical-align: top; }
+        td.page-cell-last { padding: 6px 40px 0 40px; vertical-align: top; }
+        table.head { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        table.head td { vertical-align: top; padding: 0; }
+        .doc-data { text-align: right; text-transform: uppercase; font-weight: bold; line-height: 1.55; font-size: 11.5px; color: #374151; }
+        .client { text-transform: uppercase; font-weight: bold; line-height: 1.6; color: #374151; }
+        .patient { text-transform: uppercase; font-size: 10px; color: #4b5563; padding-top: 6px; }
         table.lines { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        table.lines th { background: #052F60; color: #ffffff; font-size: 9px; text-align: left; padding: 6px 6px; }
-        table.lines td { border-bottom: 1px solid #e5e7eb; padding: 6px 6px; vertical-align: top; word-wrap: break-word; }
+        table.lines th { text-transform: uppercase; font-size: 10.5px; color: #374151; text-align: left; padding: 0 4px 6px 4px; border-bottom: 1.5px solid #374151; }
+        table.lines td { text-transform: uppercase; padding: 7px 4px 3px 4px; vertical-align: top; word-wrap: break-word; color: #374151; }
         .num, table.lines th.num { text-align: right; }
-        .small { font-size: 8.5px; color: #6b7280; }
+        .small { font-size: 9px; color: #6b7280; text-transform: none; }
         table.totals { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        table.totals td { padding: 4px 8px; }
-        .total-usd { font-size: 15px; font-weight: bold; color: #047857; }
-        .status { font-weight: bold; padding: 3px 8px; border: 1px solid; }
-        .status-pending { color: #b45309; border-color: #f59e0b; }
-        .status-paid { color: #047857; border-color: #10b981; }
-        .status-annulled { color: #b91c1c; border-color: #ef4444; }
-        .annulled-banner { border: 2px solid #ef4444; color: #b91c1c; font-weight: bold; text-align: center; padding: 8px; font-size: 12px; }
-        .legal { font-size: 8.5px; color: #6b7280; border-top: 1px solid #e5e7eb; padding: 8px 0 0 0; }
+        table.totals td { padding: 2px 4px; text-transform: uppercase; font-weight: bold; color: #374151; }
+        .details { text-transform: uppercase; font-weight: bold; color: #374151; line-height: 1.6; }
+        table.details-row { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        table.details-row td { padding: 0; text-transform: uppercase; font-weight: bold; color: #374151; }
+        .annulled-banner { border: 2px solid #ef4444; color: #b91c1c; font-weight: bold; text-align: center; padding: 8px; font-size: 12px; text-transform: uppercase; }
+        .paid { font-size: 10px; color: #047857; text-transform: uppercase; font-weight: bold; border-top: 1px solid #d1d5db; padding-top: 8px; }
+        .legal { font-size: 8.5px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding: 6px 0 0 0; }
     </style>
 </head>
 <body>
+@use('App\Models\OperationMedicationInvoice')
 @php
-    $statusClass = match ($invoice->status) {
-        \App\Models\OperationMedicationInvoice::STATUS_PAID => 'status-paid',
-        \App\Models\OperationMedicationInvoice::STATUS_ANNULLED => 'status-annulled',
-        default => 'status-pending',
-    };
-    $usd = static fn ($value): string => 'US$ '.number_format((float) $value, 2, ',', '.');
+    $rate = (float) $invoice->bcv_rate;
+    $bs = static fn ($value): string => number_format((float) $value, 2, ',', '.');
+    $isCorporate = $invoice->payer_type === OperationMedicationInvoice::PAYER_CORPORATE;
+    $clientName = filled($invoice->payer_name) ? $invoice->payer_name : $invoice->patient_name;
+    $clientId = filled($invoice->payer_identification) ? $invoice->payer_identification : $invoice->patient_identification;
+    $issuedAt = $invoice->issued_at;
+    $dueAt = $invoice->dueDate();
 @endphp
 <table class="page">
     <tr>
         <td class="page-cell-first">
-            <table class="brand">
+            <table class="head">
                 <tr>
-                    <td style="width: 55%;">
-                        <div class="title">Factura al paciente</div>
-                        <div class="muted">{{ $typeLabel }} · N.º {{ $invoice->invoice_number }} · Emitida el {{ $invoice->issued_at?->format('d/m/Y h:i A') }}</div>
-                        <div style="padding-top: 6px;"><span class="status {{ $statusClass }}">{{ mb_strtoupper($statusLabel) }}</span></div>
-                    </td>
-                    <td style="width: 45%; text-align: right;">
-                        @if ($logoDataUri !== '')
-                            <img src="{{ $logoDataUri }}" alt="Tu Doctor en Casa" style="height: 42px;">
-                        @endif
+                    <td style="width: 45%;"></td>
+                    <td style="width: 55%;" class="doc-data">
+                        Factura No. {{ $invoice->displayNumber() }}<br>
+                        Fecha de emisión: {{ $issuedAt?->format('d/m/Y') }}<br>
+                        Nro. de siniestro: {{ $invoice->claim_number ?: '—' }}<br>
+                        Condiciones de pago: {{ OperationMedicationInvoice::PAYMENT_TERMS }}<br>
+                        F. Vcto de la factura: {{ $dueAt?->format('d/m/Y') }}
                     </td>
                 </tr>
             </table>
         </td>
     </tr>
-    @if ($invoice->status === \App\Models\OperationMedicationInvoice::STATUS_ANNULLED)
+    @if ($invoice->status === OperationMedicationInvoice::STATUS_ANNULLED)
         <tr>
             <td class="page-cell">
-                <div class="annulled-banner">FACTURA ANULADA el {{ $invoice->annulled_at?->format('d/m/Y') }} — sin validez para el cobro</div>
+                <div class="annulled-banner">Factura anulada el {{ $invoice->annulled_at?->format('d/m/Y') }} — sin validez para el cobro</div>
             </td>
         </tr>
     @endif
     <tr>
-        <td class="page-cell">
-            <div class="section">Paciente</div>
-            <table class="grid">
-                <tr>
-                    <td class="label" style="width: 18%;">Nombre</td>
-                    <td style="width: 32%;">{{ $invoice->patient_name }}</td>
-                    <td class="label" style="width: 18%;">Cédula</td>
-                    <td style="width: 32%;">{{ $invoice->patient_identification ?: '—' }}</td>
-                </tr>
-                <tr>
-                    <td class="label">Caso</td>
-                    <td>{{ $invoice->case_code ?: '—' }}</td>
-                    <td class="label">Servicio médico</td>
-                    <td>{{ $invoice->operation_coordination_service_id ? '#'.$invoice->operation_coordination_service_id : '—' }}</td>
-                </tr>
-            </table>
+        <td class="page-cell" style="padding-bottom: 26px;">
+            <div class="client">
+                Cliente: {{ $clientName }}<br>
+                {{ $isCorporate ? 'RIF' : 'C.I.' }}: {{ $clientId ?: '—' }}<br>
+                Dirección: {{ $invoice->payer_address ?: '—' }}<br>
+                Teléfono: {{ $invoice->payer_phone ?: '—' }}&nbsp;&nbsp;&nbsp;Correo: <span style="text-transform: none;">{{ $invoice->payer_email ?: '—' }}</span>
+            </div>
+            <div class="patient">
+                @if ($isCorporate)
+                    Paciente: {{ $invoice->patient_name }}@if (filled($invoice->patient_identification)) · C.I.: {{ $invoice->patient_identification }}@endif · Caso: {{ $invoice->case_code ?: '—' }}
+                @else
+                    Caso: {{ $invoice->case_code ?: '—' }} · {{ $typeLabel }}
+                @endif
+            </div>
         </td>
     </tr>
-    @if (filled($invoice->payer_type))
-        <tr>
-            <td class="page-cell">
-                <div class="section">Responsable de pago · {{ \App\Models\OperationMedicationInvoice::payerLabel($invoice->payer_type) }}</div>
-                <table class="grid">
-                    <tr>
-                        <td class="label" style="width: 18%;">{{ $invoice->payer_type === \App\Models\OperationMedicationInvoice::PAYER_CORPORATE ? 'Razón social' : 'Nombre y apellido' }}</td>
-                        <td style="width: 32%;">{{ $invoice->payer_name }}</td>
-                        <td class="label" style="width: 18%;">{{ $invoice->payer_type === \App\Models\OperationMedicationInvoice::PAYER_CORPORATE ? 'RIF' : 'Cédula de identidad' }}</td>
-                        <td style="width: 32%;">{{ $invoice->payer_identification ?: '—' }}</td>
-                    </tr>
-                    <tr>
-                        <td class="label">Dirección</td>
-                        <td colspan="3">{{ $invoice->payer_address ?: '—' }}</td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    @endif
     <tr>
         <td class="page-cell">
-            <div class="section">Detalle</div>
             <table class="lines">
                 <tr>
-                    <th style="width: 40%;">{{ $isMedications ? 'Medicamento' : 'Concepto' }}</th>
-                    <th style="width: 20%;">Recetado</th>
-                    <th style="width: 10%;" class="num">Cant.</th>
-                    <th style="width: 15%;" class="num">Precio unit.</th>
-                    <th style="width: 15%;" class="num">Subtotal</th>
+                    <th style="width: 55%;">Descripción</th>
+                    <th style="width: 10%;" class="num">Cant</th>
+                    <th style="width: 17%;" class="num">Precio unit</th>
+                    <th style="width: 18%;" class="num">Monto Bs.</th>
                 </tr>
                 @foreach ($items as $item)
                     <tr>
@@ -127,64 +101,69 @@
                                 <div class="small">Cód. {{ $item->product_code }}</div>
                             @endif
                         </td>
-                        <td>
-                            {{ $item->prescribed_name }}
-                            @if (filled($item->prescribed_indications))
-                                <div class="small">{{ $item->prescribed_indications }}</div>
-                            @endif
-                        </td>
-                        <td class="num">{{ $item->quantity }}</td>
-                        <td class="num">{{ $usd($item->unit_price_usd) }}</td>
-                        <td class="num">{{ $usd($item->line_total_usd) }}</td>
+                        <td class="num">{{ number_format((int) $item->quantity, 0, ',', '.') }}</td>
+                        <td class="num">{{ $bs((float) $item->unit_price_usd * $rate) }}</td>
+                        <td class="num">{{ $bs((float) $item->line_total_usd * $rate) }}</td>
                     </tr>
                 @endforeach
             </table>
         </td>
     </tr>
     <tr>
-        <td class="page-cell">
+        <td class="page-cell" style="padding-top: 18px;">
             <table class="totals">
                 <tr>
-                    <td style="width: 60%;"></td>
-                    <td style="width: 20%;" class="num muted">Total</td>
-                    <td style="width: 20%;" class="num total-usd">{{ $usd($invoice->total_usd) }}</td>
+                    <td style="width: 52%;"></td>
+                    <td style="width: 28%;">Sub total Bs.:</td>
+                    <td style="width: 20%;" class="num">{{ $bs($invoice->total_ves) }}</td>
                 </tr>
                 <tr>
                     <td></td>
-                    <td class="num muted">Equivalente</td>
-                    <td class="num">Bs. {{ number_format((float) $invoice->total_ves, 2, ',', '.') }}</td>
+                    <td>Monto exento Bs.:</td>
+                    <td class="num">{{ $bs($invoice->total_ves) }}</td>
                 </tr>
                 <tr>
                     <td></td>
-                    <td class="num muted">Tasa BCV</td>
-                    <td class="num">{{ number_format((float) $invoice->bcv_rate, 2, ',', '.') }}</td>
+                    <td>Base imponible Bs.:</td>
+                    <td class="num"></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>I.V.A. (16%) Bs.:</td>
+                    <td class="num"></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>Monto total Bs.:</td>
+                    <td class="num">{{ $bs($invoice->total_ves) }}</td>
                 </tr>
             </table>
         </td>
     </tr>
-    @if ($invoice->status === \App\Models\OperationMedicationInvoice::STATUS_PAID)
+    <tr>
+        <td class="page-cell" style="padding-top: 20px;">
+            <div class="details">Detalles:<br>Importe en (USD), a la tasa de cambio vigente según B.C.V:</div>
+            <table class="details-row">
+                <tr>
+                    <td style="width: 34%;">De fecha: {{ $issuedAt?->format('d/m/Y') }}</td>
+                    <td style="width: 33%;">${{ $bs($invoice->total_usd) }}</td>
+                    <td style="width: 33%;">{{ number_format($rate, 4, ',', '.') }}</td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+    @if ($invoice->status === OperationMedicationInvoice::STATUS_PAID)
         <tr>
             <td class="page-cell">
-                <div class="section">Pago</div>
-                <table class="grid">
-                    <tr>
-                        <td class="label" style="width: 18%;">Fecha</td>
-                        <td style="width: 32%;">{{ $invoice->paid_at?->format('d/m/Y') }}</td>
-                        <td class="label" style="width: 18%;">Forma de pago</td>
-                        <td style="width: 32%;">{{ $paymentMethodLabel }}</td>
-                    </tr>
-                    <tr>
-                        <td class="label">Referencia</td>
-                        <td colspan="3">{{ $invoice->payment_reference ?: '—' }}</td>
-                    </tr>
-                </table>
+                <div class="paid">
+                    Pagada el {{ $invoice->paid_at?->format('d/m/Y') }} · {{ $paymentMethodLabel }}@if (filled($invoice->payment_reference)) · Ref. {{ $invoice->payment_reference }}@endif
+                </div>
             </td>
         </tr>
     @endif
     <tr>
         <td class="page-cell-last">
             <div class="legal">
-                Documento interno de Tu Doctor en Casa: no constituye factura fiscal.
                 @if ($invoice->isFromQuote())
                     {{ $typeLabel }} no cubierto(s) por el plan del paciente, según la cotización aprobada{{ $invoice->operation_quote_generator_id ? ' #'.$invoice->operation_quote_generator_id : '' }}.
                 @elseif ($isMedications)
@@ -192,7 +171,7 @@
                 @else
                     {{ $typeLabel }} no cubierto(s) por el plan del paciente.
                 @endif
-                Emitida por {{ $invoice->issued_by_name ?: 'Operaciones' }}.
+                Emitida por {{ $invoice->issued_by_name ?: 'Operaciones' }} · Ref. interna {{ $invoice->invoice_number }}.
             </div>
         </td>
     </tr>

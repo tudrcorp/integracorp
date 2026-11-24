@@ -58,6 +58,7 @@ class TelemedicineCase extends Model
             'logically_deleted_at' => 'datetime',
             'deletion_reversed_usage_ids' => 'array',
             'agent_notice_sent_at' => 'datetime',
+            'claim_number_set_at' => 'datetime',
             'assigned_to_medical_team' => 'boolean',
             'medical_team_supplier_id' => 'integer',
         ];

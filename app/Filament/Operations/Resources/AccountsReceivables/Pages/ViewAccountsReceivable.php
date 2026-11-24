@@ -27,7 +27,7 @@ class ViewAccountsReceivable extends ViewRecord
             'operationCoordinationService.telemedicineCase:id,code',
             'operationQuoteGenerator',
             'operationServiceOrder',
-            'operationMedicationInvoice:id,invoice_number',
+            'operationMedicationInvoice:id,invoice_number,manual_invoice_number',
         ]);
     }
 

@@ -29,10 +29,12 @@ class OperationMedicationInvoicesTable
             ->columns([
                 TextColumn::make('invoice_number')
                     ->label('N.º factura')
+                    ->state(fn (OperationMedicationInvoice $record): string => $record->displayNumber())
+                    ->description(fn (OperationMedicationInvoice $record): ?string => $record->hasManualNumber() ? 'Interno '.$record->invoice_number : null)
                     ->badge()
                     ->color('primary')
                     ->weight(FontWeight::SemiBold)
-                    ->searchable()
+                    ->searchable(['invoice_number', 'manual_invoice_number'])
                     ->sortable()
                     ->copyable(),
                 TextColumn::make('invoice_type')
@@ -120,6 +122,7 @@ class OperationMedicationInvoicesTable
                     MedicationInvoiceActions::previewPdf(),
                     MedicationInvoiceActions::emailPdf(),
                     MedicationInvoiceActions::whatsAppPdf(),
+                    MedicationInvoiceActions::setNumber(),
                     MedicationInvoiceActions::registerPayment(),
                     MedicationInvoiceActions::annul(),
                 ]),

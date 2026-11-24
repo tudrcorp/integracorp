@@ -84,7 +84,7 @@ final class MedicationInvoicePdfService
 
     public static function filename(OperationMedicationInvoice $invoice): string
     {
-        return 'factura-'.Str::lower((string) $invoice->invoice_number).'.pdf';
+        return 'factura-'.(Str::slug($invoice->displayNumber()) ?: Str::lower((string) $invoice->invoice_number)).'.pdf';
     }
 
     public static function fingerprint(string $html): string

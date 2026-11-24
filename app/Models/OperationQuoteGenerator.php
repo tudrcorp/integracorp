@@ -37,6 +37,8 @@ class OperationQuoteGenerator extends Model
         'invoice_payer_name',
         'invoice_payer_identification',
         'invoice_payer_address',
+        'invoice_payer_phone',
+        'invoice_payer_email',
         'operation_medication_invoice_id',
         'supplier_id',
         'supplier_address',

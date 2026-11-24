@@ -18,6 +18,12 @@ class OperationMedicationInvoiceEvent extends Model
 
     public const EVENT_SENT = 'PDF_ENVIADO';
 
+    /** El analista registró o corrigió el número de factura. */
+    public const EVENT_NUMBER_SET = 'NUMERO_REGISTRADO';
+
+    /** Se completó el N.º de siniestro desde el caso (la factura se emitió sin él). */
+    public const EVENT_CLAIM_SET = 'SINIESTRO_REGISTRADO';
+
     public const UPDATED_AT = null;
 
     protected $table = 'operation_medication_invoice_events';

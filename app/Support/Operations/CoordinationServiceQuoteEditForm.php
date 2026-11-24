@@ -185,6 +185,8 @@ final class CoordinationServiceQuoteEditForm
             'edit_quote_generates_invoice' => (bool) $quote->generates_invoice,
             'edit_quote_invoice_payer_type' => $quote->invoice_payer_type,
             'edit_quote_invoice_payer_address' => $quote->invoice_payer_address,
+            'edit_quote_invoice_payer_phone' => $quote->invoice_payer_phone,
+            'edit_quote_invoice_payer_email' => $quote->invoice_payer_email,
             'edit_quote_observations' => $quote->observations,
         ];
     }

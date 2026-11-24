@@ -113,6 +113,7 @@ final class MedicationInvoiceIssuer
     public static function validationMessage(OperationCoordinationService $record, array $plan): ?string
     {
         try {
+            TelemedicineCaseClaimNumber::requireForCase($record->telemedicine_case_id);
             self::assertPlan($record, $plan, lock: false);
         } catch (MedicationInvoiceException $exception) {
             return $exception->getMessage();
@@ -133,6 +134,7 @@ final class MedicationInvoiceIssuer
         $user ??= Auth::user();
         $userName = filled($user?->name) ? (string) $user->name : 'SISTEMA';
 
+        $claimNumber = TelemedicineCaseClaimNumber::requireForCase($record->telemedicine_case_id);
         $resolved = self::assertPlan($record, $plan, lock: true);
         $bcvRate = BcvOfficialRate::resolve();
 
@@ -142,6 +144,7 @@ final class MedicationInvoiceIssuer
 
         $record->loadMissing(['telemedicinePatient', 'telemedicineCase']);
         $patient = $record->telemedicinePatient;
+        $contact = QuoteInvoicePayer::patientContact($record);
         $totalUsd = round(array_sum(array_column($resolved['lines'], 'line_total_usd')), 2);
 
         $invoice = OperationMedicationInvoice::query()->create([
@@ -151,6 +154,10 @@ final class MedicationInvoiceIssuer
             'patient_name' => TelemedicinePatientDisplayName::forCoordination($record) ?: (string) ($patient?->full_name ?? '—'),
             'patient_identification' => filled($patient?->nro_identificacion) ? (string) $patient->nro_identificacion : null,
             'case_code' => filled($record->telemedicineCase?->code) ? mb_strtoupper((string) $record->telemedicineCase->code) : null,
+            'claim_number' => $claimNumber,
+            'payer_address' => $contact['address'],
+            'payer_phone' => $contact['phone'],
+            'payer_email' => $contact['email'],
             'status' => OperationMedicationInvoice::STATUS_PENDING_PAYMENT,
             'total_usd' => $totalUsd,
             'bcv_rate' => round($bcvRate, 4),

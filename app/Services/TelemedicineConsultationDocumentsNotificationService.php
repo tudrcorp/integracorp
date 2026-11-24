@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Http\Controllers\NotificationController;
+use App\Jobs\SendTelemedicineConsultationDocumentsEmail;
 use App\Mail\TelemedicineConsultationDocumentsMail;
 use App\Support\UrlPathEncoder;
 use Illuminate\Support\Facades\Log;
@@ -17,6 +18,10 @@ class TelemedicineConsultationDocumentsNotificationService
     public const EMAIL_CC = 'solrodriguez@tudrencasa.com';
 
     /**
+     * Envía los documentos por WhatsApp en el momento y deja el correo en su propio trabajo
+     * ({@see SendTelemedicineConsultationDocumentsEmail}): si el correo falla, se reintenta
+     * solo el correo y el paciente no recibe los WhatsApp repetidos.
+     *
      * @param  array<int, string>  $pdfFilenames
      */
     public static function notify(
@@ -24,6 +29,8 @@ class TelemedicineConsultationDocumentsNotificationService
         ?string $patientEmail,
         string $patientName,
         array $pdfFilenames,
+        ?int $consultationId = null,
+        ?int $userId = null,
     ): void {
         $existingPdfFilenames = self::filterExistingPdfFilenames($pdfFilenames);
 
@@ -37,7 +44,8 @@ class TelemedicineConsultationDocumentsNotificationService
         }
 
         self::sendWhatsAppDocuments($patientPhone, $existingPdfFilenames);
-        self::sendEmailDocuments($patientEmail, $patientName, $existingPdfFilenames);
+
+        SendTelemedicineConsultationDocumentsEmail::dispatch($patientEmail, $patientName, $existingPdfFilenames, $consultationId, $userId);
 
         Log::info('TELEMEDICINA: Proceso de notificación de documentos completado.', [
             'patient_name' => $patientName,

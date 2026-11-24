@@ -81,7 +81,7 @@ final class MedicationInvoiceReportBuilder
         // El select va antes de withCount/withSum: si va después, borra esas columnas calculadas.
         $rowsQuery = self::query($filters)
             ->select([
-                'operation_medication_invoices.id', 'invoice_number', 'issued_at', 'patient_name', 'patient_identification',
+                'operation_medication_invoices.id', 'invoice_number', 'manual_invoice_number', 'issued_at', 'patient_name', 'patient_identification',
                 'case_code', 'operation_coordination_service_id', 'status', 'invoice_type', 'total_usd', 'bcv_rate', 'total_ves',
                 'issued_by_name', 'paid_at', 'payment_method', 'payment_reference',
             ])
@@ -97,7 +97,7 @@ final class MedicationInvoiceReportBuilder
         $rows = (static function () use ($rowsQuery): Generator {
             foreach ($rowsQuery->cursor() as $invoice) {
                 yield [
-                    (string) $invoice->invoice_number,
+                    $invoice->displayNumber(),
                     OperationMedicationInvoice::typeLabel($invoice->invoice_type),
                     $invoice->issued_at?->format('d/m/Y H:i'),
                     (string) $invoice->patient_name,

@@ -14,7 +14,9 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
 /**
@@ -43,6 +45,19 @@ class OperationMedicationInvoiceResource extends Resource
     protected static string|UnitEnum|null $navigationGroup = 'COORDINACIÓN DE SERVICIOS';
 
     protected static ?int $navigationSort = 26;
+
+    /**
+     * @return list<string>
+     */
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['invoice_number', 'manual_invoice_number', 'patient_name'];
+    }
+
+    public static function getGlobalSearchResultTitle(Model $record): string|Htmlable
+    {
+        return $record instanceof OperationMedicationInvoice ? 'Factura '.$record->displayNumber() : (string) $record->getKey();
+    }
 
     public static function canCreate(): bool
     {
