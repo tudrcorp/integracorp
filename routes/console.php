@@ -5,6 +5,7 @@ use App\Jobs\AnulateAgentQuotes;
 use App\Jobs\BackupDatabase;
 use App\Jobs\DispatchScheduledMassNotifications;
 use App\Jobs\ExpireOperationServiceOrders;
+use App\Jobs\SweepServiceOrderPatientNotificationsJob;
 use App\Jobs\ExportCorporateAffiliations;
 use App\Jobs\ExportIndividualAffiliations;
 use App\Jobs\ExportScheduledEntity;
@@ -136,6 +137,12 @@ Schedule::job(new AnulateAgentQuotes, 'system')
  * configura en Operaciones → Parámetros de órdenes (apagado, el job no hace nada).
  */
 Schedule::job(new ExpireOperationServiceOrders, 'system')->dailyAt('7:30');
+
+/**
+ * WhatsApp al paciente de las órdenes de servicio no cubiertas: vence las preguntas SI/NO sin
+ * respuesta, retoma envíos perdidos en la cola y envía la siguiente orden de cada teléfono.
+ */
+Schedule::job(new SweepServiceOrderPatientNotificationsJob, 'system')->everyTenMinutes();
 
 /**
  * Revisa inconsistencias de fechas (emisión, vigencia, avisos, renovaciones) en afiliaciones activas.

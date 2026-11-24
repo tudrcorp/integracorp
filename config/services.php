@@ -149,4 +149,28 @@ return [
         'timeout' => (int) env('FARMADOC_TIMEOUT', 20),
     ],
 
+    /*
+     * Webhook de UltraMsg (mensajes de WhatsApp recibidos). UltraMsg admite un solo
+     * webhook por instancia y la instancia es la misma en desarrollo y producción:
+     * se configura solo con la URL de producción. La clave va en la URL
+     * (…/ultramsg/webhook/{secret}) porque UltraMsg no firma sus llamadas.
+     * instance_id es opcional: si se indica, se rechaza lo que venga de otra instancia.
+     */
+    'ultramsg_webhook' => [
+        'secret' => env('ULTRAMSG_WEBHOOK_SECRET'),
+        'instance_id' => env('ULTRAMSG_INSTANCE_ID'),
+    ],
+
+    /*
+     * WhatsApp al paciente cuando nace la orden de servicio de un servicio no cubierto
+     * (medicamentos, laboratorios, imagenología y especialista), con pregunta SI/NO.
+     * Se activa y se prueba en Operaciones → «WhatsApp al paciente» (apagado por defecto).
+     * server_enabled es solo un freno de emergencia del servidor: en false no sale nada,
+     * ni siquiera las pruebas, aunque la pantalla esté activada.
+     */
+    'service_order_patient_whatsapp' => [
+        'server_enabled' => (bool) env('SERVICE_ORDER_PATIENT_WHATSAPP_ENABLED', true),
+        'queue' => env('SERVICE_ORDER_PATIENT_WHATSAPP_QUEUE', 'default'),
+    ],
+
 ];

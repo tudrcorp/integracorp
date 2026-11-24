@@ -809,6 +809,22 @@ Route::post('telegram/webhook', \App\Http\Controllers\Telegram\TelegramWebhookCo
     ])
     ->name('telegram.webhook');
 
+/**
+ * Webhook de UltraMsg: mensajes de WhatsApp recibidos (respuestas SI/NO de los pacientes
+ * a la orden de servicio). Público, sin sesión ni CSRF: lo protege la clave secreta
+ * ULTRAMSG_WEBHOOK_SECRET en la URL, porque UltraMsg no firma sus llamadas.
+ */
+Route::post('ultramsg/webhook/{secret}', \App\Http\Controllers\UltraMsg\UltraMsgWebhookController::class)
+    ->middleware('throttle:300,1')
+    ->where('secret', '[A-Za-z0-9_-]{24,128}')
+    ->withoutMiddleware([
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+        \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+    ])
+    ->name('ultramsg.webhook');
+
 Route::get('business/notifications/bell-alert', App\Http\Controllers\Business\DatabaseNotificationBellAlertController::class)
     ->middleware(['web', 'auth'])
     ->name('business.notifications.bell-alert');

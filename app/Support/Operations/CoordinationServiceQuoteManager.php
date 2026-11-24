@@ -12,6 +12,7 @@ use App\Models\OperationQuoteGenerator;
 use App\Models\OperationServiceOrder;
 use App\Models\TelemedicinePatientMedications;
 use App\Services\OperationQuoteGeneratorPdfService;
+use App\Support\Operations\PatientWhatsApp\ServiceOrderPatientNotifier;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -1529,6 +1530,10 @@ final class CoordinationServiceQuoteManager
                 'email' => $data['supplier_notify_email'] ?? null,
                 'phone' => $data['supplier_notify_phone'] ?? null,
             ]);
+
+            // WhatsApp al paciente con la orden y la pregunta SI/NO: sale tras el commit y
+            // nunca tumba la aprobación si falla.
+            ServiceOrderPatientNotifier::queueForOrder($order, Auth::user()?->name);
 
             return (int) $order->id;
         }
