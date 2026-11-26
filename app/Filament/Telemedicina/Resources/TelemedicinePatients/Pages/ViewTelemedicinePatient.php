@@ -39,6 +39,8 @@ class ViewTelemedicinePatient extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            \App\Filament\Shared\ClinicalRecord\ClinicalRecordAction::make(TelemedicinePatientResource::class, \App\Support\Telemedicine\ClinicalRecord\ClinicalRecordAccess::PANEL_TELEMEDICINE)
+                ->button(),
             Action::make('regresar')
                 ->label('Volver')
                 ->button()

@@ -5,6 +5,7 @@ namespace App\Filament\Telemedicina\Resources\TelemedicinePatients;
 use App\Filament\Telemedicina\Resources\TelemedicinePatients\Pages\CreateTelemedicinePatient;
 use App\Filament\Telemedicina\Resources\TelemedicinePatients\Pages\EditTelemedicinePatient;
 use App\Filament\Telemedicina\Resources\TelemedicinePatients\Pages\ListTelemedicinePatients;
+use App\Filament\Telemedicina\Resources\TelemedicinePatients\Pages\PatientClinicalRecord;
 use App\Filament\Telemedicina\Resources\TelemedicinePatients\Pages\ViewTelemedicinePatient;
 use App\Filament\Telemedicina\Resources\TelemedicinePatients\RelationManagers\TelemedicineCasesRelationManager;
 use App\Filament\Telemedicina\Resources\TelemedicinePatients\RelationManagers\TelemedicinePatientHistoryRelationManager;
@@ -73,6 +74,7 @@ class TelemedicinePatientResource extends Resource
             'create' => CreateTelemedicinePatient::route('/create'),
             'view' => ViewTelemedicinePatient::route('/{record}'),
             'edit' => EditTelemedicinePatient::route('/{record}/edit'),
+            'clinical-record' => PatientClinicalRecord::route('/{record}/ficha-clinica'),
         ];
     }
 }

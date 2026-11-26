@@ -2477,3 +2477,9 @@ Route::get('/monitor/tv/{token}', \App\Livewire\LiveMonitorTv::class)
 Route::post('/soporte/incidencias', \App\Http\Controllers\ErrorReportController::class)
     ->middleware(['auth', 'throttle:5,1'])
     ->name('error-report.store');
+
+/** Ficha clínica: descarga del PDF (enlace firmado, solo para quien lo generó). */
+Route::get('ficha-clinica/pdf/{file}', App\Http\Controllers\ClinicalRecordPdfController::class)
+    ->middleware(['web', 'auth', 'signed'])
+    ->where('file', '[0-9a-z\-]+\.pdf')
+    ->name('clinical-record.pdf');
