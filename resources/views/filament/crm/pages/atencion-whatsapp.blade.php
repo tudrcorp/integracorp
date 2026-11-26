@@ -1180,6 +1180,7 @@
                                 this.seen.push(tag);
                                 const id = tag.replace(/^crm-(?:handoff|late)-/, '').split('-')[0];
                                 if (id !== '' && !this.known.includes(id)) this.known.push(id);
+                                if (@js((bool) ($incomingModal ?? false)) && /^crm-handoff-\d+(?:-(?!late$|late_mine$|stale$|follow_up$|relay$)[a-z_0-9-]+)?$/.test(tag)) return;
                                 this.incomingId = id;
                                 this.incomingTitle = title || 'Nueva conversación';
                                 this.incomingBody = body || 'Hay una persona esperando.';

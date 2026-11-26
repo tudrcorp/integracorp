@@ -34,6 +34,7 @@ use App\Support\CrmInbox\CrmInboxQueue;
 use App\Support\CrmInbox\CrmInboxQuote;
 use App\Support\CrmInbox\CrmInboxSupervisor;
 use App\Support\CrmInbox\CrmInboxWatch;
+use App\Support\CrmInbox\CrmIncomingAlerts;
 use App\Support\CrmInbox\CrmPushSubscriptions;
 use BackedEnum;
 use Filament\Notifications\Notification;
@@ -1256,6 +1257,7 @@ class AtencionWhatsapp extends Page
             'viewerId' => $userId,
             'slaWarnSeconds' => $warn * 60,
             'slaLateSeconds' => $late * 60,
+            'incomingModal' => CrmIncomingAlerts::receives(Auth::user() instanceof User ? Auth::user() : null),
             'serverNow' => now()->getTimestamp(),
             'health' => CrmInboxHealth::status(),
             'presence' => CrmInboxPresence::chosen($userId),

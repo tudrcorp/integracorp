@@ -209,7 +209,7 @@ final class CrmInboxAlerts
         ];
     }
 
-    private static function canReceive(User $user, string $department): bool
+    public static function canReceive(User $user, string $department): bool
     {
         if (strtoupper((string) $user->status) !== 'ACTIVO') {
             return false;
