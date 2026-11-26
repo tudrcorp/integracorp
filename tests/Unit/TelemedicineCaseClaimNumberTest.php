@@ -154,7 +154,7 @@ it('el PDF dice NRO. DE SINIESTRO, contado, vencimiento a 2 días y montos en bo
     $invoice->forceFill(['claim_number' => '2026-00123456', 'payer_phone' => '0212 213 8350', 'payer_email' => 'pagos@example.com'])->save();
     $html = MedicationInvoicePdfService::html($invoice->fresh());
 
-    expect($html)->toContain('Nro. de siniestro: 2026-00123456', 'Condiciones de pago: CONTADO', 'F. Vcto de la factura: '.$invoice->issued_at->copy()->addDays(2)->format('d/m/Y'))
+    expect($html)->toContain('Nro. de siniestro: 2026-00123456', 'Condiciones de pago: CONTADO', 'F. Vcto de la factura: '.$invoice->issued_at->format('d/m/Y'))
         ->and($html)->toContain('Monto exento Bs.:', 'Base imponible Bs.:', 'I.V.A. (16%) Bs.:', 'Importe en (USD)', '0212 213 8350', 'pagos@example.com')
         ->and($html)->toContain(number_format((float) $invoice->total_ves, 2, ',', '.'))
         ->and($html)->not->toContain('Propuesta')

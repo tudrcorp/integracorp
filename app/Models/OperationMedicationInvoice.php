@@ -119,8 +119,8 @@ class OperationMedicationInvoice extends Model
     /** Condiciones de pago de toda factura a pacientes. */
     public const PAYMENT_TERMS = 'CONTADO';
 
-    /** Días entre la emisión y el vencimiento de la factura. */
-    public const DUE_DAYS = 2;
+    /** Días entre la emisión y el vencimiento: la factura es de contado y vence el mismo día. */
+    public const DUE_DAYS = 0;
 
     public function dueDate(): ?Carbon
     {

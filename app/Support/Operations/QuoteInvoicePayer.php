@@ -265,19 +265,33 @@ final class QuoteInvoicePayer
 
     private static function rif(?string $type, mixed $number): ?string
     {
+        $type = mb_strtoupper((string) self::clean($type));
         $number = self::clean($number);
 
         if ($number === null) {
             return null;
         }
 
-        $type = mb_strtoupper((string) self::clean($type));
+        return self::formatRif(preg_match('/^[A-Z]/i', $number) === 1 || $type === '' ? $number : $type.$number);
+    }
 
-        if ($type === '' || preg_match('/^[VEJGP]/i', $number) === 1) {
-            return mb_strtoupper($number);
+    /**
+     * RIF como sale en la factura: letra en mayúscula pegada a los dígitos, sin guiones ni
+     * espacios (J000214107). Si el RIF no trae letra, es de persona jurídica: «J».
+     */
+    public static function formatRif(mixed $value): ?string
+    {
+        $text = mb_strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', (string) $value));
+
+        if ($text === '') {
+            return null;
         }
 
-        return $type.'-'.$number;
+        if (preg_match('/^([VEJGPC])(\d+)$/', $text, $parts) === 1) {
+            return $parts[1].$parts[2];
+        }
+
+        return preg_match('/^\d+$/', $text) === 1 ? 'J'.$text : $text;
     }
 
     private static function email(mixed $value): ?string

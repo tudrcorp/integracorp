@@ -137,6 +137,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const SET_MEDICATION_INVOICE_NUMBER = 'registrar-numero-factura-medicamentos';
 
+    public const CHANGE_MEDICATION_INVOICE_PAYER = 'cambiar-responsable-factura-medicamentos';
+
     public const SET_TELEMEDICINE_CASE_CLAIM_NUMBER = 'registrar-siniestro-caso';
 
     public const MANAGE_MEDICATION_FAILURES = 'gestionar-fallas-medicamentos';
@@ -150,6 +152,8 @@ final class BusinessFilamentActionPermissionRegistry
     public const REPORT_CASH_PAYMENTS = 'reporte-pagos-de-contado';
 
     public const VIEW_AFFILIATE_CLINICAL_FICHA = 'ver-ficha-clinica-afiliado';
+
+    public const SUPERVISE_WHATSAPP_INBOX = 'supervisar-atencion-whatsapp';
 
     /**
      * Módulo dueño de estas acciones. Es el valor por defecto de `modules`.
@@ -321,6 +325,11 @@ final class BusinessFilamentActionPermissionRegistry
             ],
             self::SET_MEDICATION_INVOICE_NUMBER => [
                 'name' => 'Facturas a pacientes: registrar o corregir el número de factura',
+                'group' => 'COORDINACIÓN DE SERVICIOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::CHANGE_MEDICATION_INVOICE_PAYER => [
+                'name' => 'Facturas a pacientes: cambiar a nombre de quién va (paciente o grupo corporativo), una o varias',
                 'group' => 'COORDINACIÓN DE SERVICIOS',
                 'modules' => ['OPERACIONES'],
             ],
@@ -533,6 +542,11 @@ final class BusinessFilamentActionPermissionRegistry
                 'name' => 'Cotizaciones: ajustar tarifas y personas (individual y corporativa) con efecto en la afiliación y su cobranza, y revertir el ajuste',
                 'group' => 'COTIZACIONES',
                 'modules' => [self::OWNER_MODULE],
+            ],
+            self::SUPERVISE_WHATSAPP_INBOX => [
+                'name' => 'Supervisar Atención WhatsApp (tablero, relevos, respuestas y documentos)',
+                'group' => 'ATENCIÓN WHATSAPP',
+                'modules' => [self::OWNER_MODULE, 'OPERACIONES', 'ADMINISTRACION'],
             ],
         ];
     }

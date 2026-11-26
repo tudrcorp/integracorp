@@ -6,6 +6,7 @@ use App\Models\OperationMedicationInvoice;
 use App\Support\Operations\AccountsReceivableManager;
 use App\Support\Operations\AccountsReceivablePresenter;
 use App\Support\Operations\MedicationInvoiceLifecycle;
+use App\Support\Operations\MedicationInvoicePayerChange;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Fieldset;
@@ -68,6 +69,27 @@ class OperationMedicationInvoiceInfolist
                                                 TextEntry::make('patient_identification')->label('Cédula')->placeholder('—'),
                                                 TextEntry::make('case_code')->label('Caso')->badge()->color('info')->placeholder('—'),
                                                 TextEntry::make('operation_coordination_service_id')->label('Servicio médico')->prefix('#')->placeholder('—'),
+                                            ])
+                                            ->columns(4),
+                                        Fieldset::make('Factura a nombre de')
+                                            ->schema([
+                                                TextEntry::make('payer_type')
+                                                    ->label('Responsable')
+                                                    ->badge()
+                                                    ->state(fn (OperationMedicationInvoice $record): string => MedicationInvoicePayerChange::currentType($record))
+                                                    ->formatStateUsing(fn (string $state): string => (string) OperationMedicationInvoice::payerLabel($state))
+                                                    ->color(fn (string $state): string => $state === OperationMedicationInvoice::PAYER_CORPORATE ? 'warning' : 'gray'),
+                                                TextEntry::make('payer_name')
+                                                    ->label('Nombre o razón social')
+                                                    ->state(fn (OperationMedicationInvoice $record): string => MedicationInvoicePayerChange::currentName($record))
+                                                    ->weight(FontWeight::SemiBold),
+                                                TextEntry::make('payer_identification')
+                                                    ->label('Cédula o RIF')
+                                                    ->state(fn (OperationMedicationInvoice $record): ?string => filled($record->payer_identification) ? $record->payer_identification : $record->patient_identification)
+                                                    ->placeholder('—'),
+                                                TextEntry::make('payer_phone')->label('Teléfono')->placeholder('—'),
+                                                TextEntry::make('payer_address')->label('Dirección')->placeholder('—')->columnSpan(3),
+                                                TextEntry::make('payer_email')->label('Correo')->placeholder('—'),
                                             ])
                                             ->columns(4),
                                         Fieldset::make('Montos')
@@ -174,6 +196,7 @@ class OperationMedicationInvoiceInfolist
                                                 'PDF_ENVIADO' => 'PDF enviado',
                                                 'NUMERO_REGISTRADO' => 'N.º de factura',
                                                 'SINIESTRO_REGISTRADO' => 'N.º de siniestro',
+                                                'RESPONSABLE_CAMBIADO' => 'A nombre de',
                                                 default => $state,
                                             })
                                             ->color(fn (string $state): string => match ($state) {
@@ -183,6 +206,7 @@ class OperationMedicationInvoiceInfolist
                                                 'PDF_ENVIADO' => 'primary',
                                                 'NUMERO_REGISTRADO' => 'warning',
                                                 'SINIESTRO_REGISTRADO' => 'gray',
+                                                'RESPONSABLE_CAMBIADO' => 'primary',
                                                 default => 'gray',
                                             })
                                             ->columnSpan(1),

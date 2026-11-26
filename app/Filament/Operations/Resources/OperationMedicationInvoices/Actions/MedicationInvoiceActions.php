@@ -12,9 +12,12 @@ use App\Support\Filament\BusinessFilamentActionAccess;
 use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\Operations\MedicationInvoiceException;
 use App\Support\Operations\MedicationInvoiceLifecycle;
+use App\Support\Operations\MedicationInvoicePayerChange;
+use App\Support\Operations\QuoteInvoicePayer;
 use App\Support\Telemedicine\TelemedicinePatientDeliveryEmail;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\Textarea;
@@ -46,6 +49,11 @@ final class MedicationInvoiceActions
     public static function canSetNumber(): bool
     {
         return BusinessFilamentActionAccess::userCan(BusinessFilamentActionPermissionRegistry::SET_MEDICATION_INVOICE_NUMBER);
+    }
+
+    public static function canChangePayer(): bool
+    {
+        return BusinessFilamentActionAccess::userCan(BusinessFilamentActionPermissionRegistry::CHANGE_MEDICATION_INVOICE_PAYER);
     }
 
     public const MAX_EMAILS = 5;
@@ -259,6 +267,113 @@ final class MedicationInvoiceActions
                     ->success()
                     ->send();
             });
+    }
+
+    /**
+     * Cambiar a nombre de quién va la factura: el paciente o su grupo corporativo. Los datos salen
+     * de la ficha vigente; si la ficha no tiene dirección, el analista la escribe aquí.
+     */
+    public static function changePayer(): Action
+    {
+        return Action::make('change_medication_invoice_payer')
+            ->label('Cambiar a nombre de quién va')
+            ->icon(Heroicon::OutlinedUserCircle)
+            ->color('primary')
+            ->visible(fn (OperationMedicationInvoice $record): bool => MedicationInvoicePayerChange::isChangeable($record) && self::canChangePayer())
+            ->modalHeading(fn (OperationMedicationInvoice $record): string => 'A nombre de quién va la factura '.$record->displayNumber())
+            ->modalDescription(fn (OperationMedicationInvoice $record): string => 'Hoy va a nombre de '.mb_strtolower((string) OperationMedicationInvoice::payerLabel(MedicationInvoicePayerChange::currentType($record)))
+                .': '.MedicationInvoicePayerChange::currentName($record).'. Los datos se toman de la ficha vigente y se ven de inmediato en el PDF y los envíos.')
+            ->modalIcon(Heroicon::OutlinedUserCircle)
+            ->modalWidth(Width::TwoExtraLarge)
+            ->modalSubmitActionLabel('Guardar')
+            ->fillForm(fn (OperationMedicationInvoice $record): array => ['payer_type' => MedicationInvoicePayerChange::currentType($record)])
+            ->schema([
+                Radio::make('payer_type')
+                    ->label('La factura va a nombre de')
+                    ->options(OperationMedicationInvoice::payerOptions())
+                    ->descriptions(fn (OperationMedicationInvoice $record): array => self::payerDescriptions($record))
+                    ->disableOptionWhen(fn (string $value, OperationMedicationInvoice $record): bool => $value === OperationMedicationInvoice::PAYER_CORPORATE
+                        && (MedicationInvoicePayerChange::options($record)['corporate'] ?? null) === null)
+                    ->required()
+                    ->live(),
+                Textarea::make('address')
+                    ->label('Dirección del responsable')
+                    ->helperText('Su ficha no tiene dirección. Escríbala tal como debe salir en la factura.')
+                    ->rows(2)
+                    ->maxLength(QuoteInvoicePayer::ADDRESS_MAX)
+                    ->required(fn (Get $get, OperationMedicationInvoice $record): bool => self::payerNeedsAddress($record, $get('payer_type')))
+                    ->visible(fn (Get $get, OperationMedicationInvoice $record): bool => self::payerNeedsAddress($record, $get('payer_type'))),
+                Textarea::make('reason')
+                    ->label('Motivo del cambio')
+                    ->placeholder('Ej.: la empresa asume el pago; el paciente pidió la factura a su nombre…')
+                    ->rows(2)
+                    ->minLength(MedicationInvoicePayerChange::REASON_MIN)
+                    ->maxLength(MedicationInvoicePayerChange::REASON_MAX)
+                    ->required(),
+            ])
+            ->action(function (OperationMedicationInvoice $record, array $data, Action $action): void {
+                if (! self::canChangePayer()) {
+                    Notification::make()->title('Sin permiso')->body('No tiene permiso para cambiar a nombre de quién van las facturas a pacientes.')->danger()->send();
+                    $action->halt();
+                }
+
+                try {
+                    $updated = MedicationInvoicePayerChange::change($record, $data['payer_type'] ?? null, $data['reason'] ?? '', $data['address'] ?? null);
+                } catch (MedicationInvoiceException $exception) {
+                    Notification::make()->title('No se cambió el responsable')->body($exception->getMessage())->danger()->send();
+                    $action->halt();
+
+                    return;
+                }
+
+                $record->setRawAttributes($updated->getAttributes(), true);
+
+                Notification::make()
+                    ->title('Factura actualizada')
+                    ->body('La factura '.$updated->displayNumber().' ahora va a nombre de '.$updated->payer_name.'.')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function payerDescriptions(OperationMedicationInvoice $record): array
+    {
+        $options = MedicationInvoicePayerChange::options($record);
+
+        if ($options === null) {
+            return [];
+        }
+
+        $describe = static fn (array $payer, string $idLabel): string => $payer['name']
+            .' · '.$idLabel.': '.($payer['identification'] ?? '—')
+            .' · Dirección: '.($payer['address'] ?? 'sin dirección en la ficha');
+
+        return [
+            OperationMedicationInvoice::PAYER_PATIENT => $describe($options['patient'], 'C.I.'),
+            OperationMedicationInvoice::PAYER_CORPORATE => $options['corporate'] !== null
+                ? $describe($options['corporate'], 'RIF')
+                : (string) $options['corporate_unavailable_reason'],
+        ];
+    }
+
+    public static function payerNeedsAddress(OperationMedicationInvoice $record, mixed $type): bool
+    {
+        $options = MedicationInvoicePayerChange::options($record);
+
+        if ($options === null || ! is_string($type)) {
+            return false;
+        }
+
+        $payer = $type === OperationMedicationInvoice::PAYER_PATIENT ? $options['patient'] : $options['corporate'];
+
+        if ($payer === null || filled($payer['address'])) {
+            return false;
+        }
+
+        return ! (MedicationInvoicePayerChange::currentType($record) === $type && filled($record->payer_address));
     }
 
     public static function registerPayment(): Action

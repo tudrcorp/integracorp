@@ -25,8 +25,9 @@
         table.totals { width: 100%; border-collapse: collapse; table-layout: fixed; }
         table.totals td { padding: 2px 4px; text-transform: uppercase; font-weight: bold; color: #374151; }
         .details { text-transform: uppercase; font-weight: bold; color: #374151; line-height: 1.6; }
-        table.details-row { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        table.details-row td { padding: 0; text-transform: uppercase; font-weight: bold; color: #374151; }
+        table.details-row { border-collapse: collapse; }
+        table.details-row td { padding: 0 24px 0 0; text-transform: uppercase; font-weight: bold; color: #374151; white-space: nowrap; vertical-align: top; }
+        table.details-row td.bcv { padding-right: 0; }
         .annulled-banner { border: 2px solid #ef4444; color: #b91c1c; font-weight: bold; text-align: center; padding: 8px; font-size: 12px; text-transform: uppercase; }
         .paid { font-size: 10px; color: #047857; text-transform: uppercase; font-weight: bold; border-top: 1px solid #d1d5db; padding-top: 8px; }
         .legal { font-size: 8.5px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding: 6px 0 0 0; }
@@ -34,12 +35,16 @@
 </head>
 <body>
 @use('App\Models\OperationMedicationInvoice')
+@use('App\Support\Operations\QuoteInvoicePayer')
 @php
     $rate = (float) $invoice->bcv_rate;
     $bs = static fn ($value): string => number_format((float) $value, 2, ',', '.');
     $isCorporate = $invoice->payer_type === OperationMedicationInvoice::PAYER_CORPORATE;
     $clientName = filled($invoice->payer_name) ? $invoice->payer_name : $invoice->patient_name;
     $clientId = filled($invoice->payer_identification) ? $invoice->payer_identification : $invoice->patient_identification;
+    if ($isCorporate) {
+        $clientId = QuoteInvoicePayer::formatRif($clientId);
+    }
     $issuedAt = $invoice->issued_at;
     $dueAt = $invoice->dueDate();
 @endphp
@@ -142,12 +147,17 @@
     </tr>
     <tr>
         <td class="page-cell" style="padding-top: 20px;">
-            <div class="details">Detalles:<br>Importe en (USD), a la tasa de cambio vigente según B.C.V:</div>
+            {{-- La tasa va justo debajo de «B.C.V:»: comparten columna, así no depende del ancho del texto. --}}
+            <div class="details">Detalles:</div>
             <table class="details-row">
                 <tr>
-                    <td style="width: 34%;">De fecha: {{ $issuedAt?->format('d/m/Y') }}</td>
-                    <td style="width: 33%;">${{ $bs($invoice->total_usd) }}</td>
-                    <td style="width: 33%;">{{ number_format($rate, 4, ',', '.') }}</td>
+                    <td colspan="2" style="padding-right: 4px;">Importe en (USD), a la tasa de cambio vigente según</td>
+                    <td class="bcv">B.C.V:</td>
+                </tr>
+                <tr>
+                    <td>De fecha: {{ $issuedAt?->format('d/m/Y') }}</td>
+                    <td>${{ $bs($invoice->total_usd) }}</td>
+                    <td class="bcv">{{ number_format($rate, 4, ',', '.') }}</td>
                 </tr>
             </table>
         </td>
