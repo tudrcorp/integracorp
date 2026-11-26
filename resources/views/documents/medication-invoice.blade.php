@@ -181,7 +181,6 @@
                 @else
                     {{ $typeLabel }} no cubierto(s) por el plan del paciente.
                 @endif
-                Emitida por {{ $invoice->issued_by_name ?: 'Operaciones' }} · Ref. interna {{ $invoice->invoice_number }}.
             </div>
         </td>
     </tr>
