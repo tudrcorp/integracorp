@@ -7,6 +7,7 @@ namespace App\Filament\Administration\Resources\FiscalBooks\Pages;
 use App\Filament\Administration\Resources\FiscalBooks\FiscalPurchasesBookResource;
 use App\Support\Administration\FiscalBooks\FiscalAmount;
 use App\Support\Administration\FiscalBooks\FiscalPurchasesPayableImport;
+use App\Support\BcvRateHistory;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
@@ -14,6 +15,7 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
@@ -27,6 +29,9 @@ class ListFiscalPurchasesBook extends ListFiscalBookEntries
      * @var list<array<string, mixed>>|null
      */
     private ?array $pendingPayables = null;
+
+    /** @var array<string, array{rate: string, published: string}|null>|null */
+    private ?array $officialRates = null;
 
     protected static function bookResource(): string
     {
@@ -42,12 +47,15 @@ class ListFiscalPurchasesBook extends ListFiscalBookEntries
                 ->color('gray')
                 ->visible(fn (): bool => ! $this->isClosed())
                 ->modalHeading('Importar facturas de cuentas por pagar')
-                ->modalDescription('Facturas de proveedores registradas en Operaciones que aún no están en el libro. Están en dólares: indique la tasa BCV de cada fecha de factura para pasarlas a bolívares. Entran como exentas; si alguna trae IVA, edítela después.')
+                ->modalDescription('Facturas de proveedores registradas en Operaciones que aún no están en el libro. Están en dólares: cada una se pasa a bolívares con la tasa oficial BCV de su fecha, que ya viene puesta. Puede corregirla si hace falta (queda anotado). Entran como exentas; si alguna trae IVA, edítela después.')
                 ->modalWidth('4xl')
                 ->modalSubmitActionLabel('Importar al libro')
                 ->fillForm(fn (): array => [
                     'payables' => [],
-                    'rates' => array_map(fn (string $date): array => ['date' => $date, 'rate' => null], $this->pendingDates()),
+                    'rates' => array_map(fn (string $date): array => [
+                        'date' => $date,
+                        'rate' => ($official = $this->officialRates()[$date] ?? null) !== null ? number_format((float) $official['rate'], 4, '.', '') : null,
+                    ], $this->pendingDates()),
                 ])
                 ->schema(fn (): array => $this->importSchema())
                 ->action(function (array $data): void {
@@ -68,6 +76,7 @@ class ListFiscalPurchasesBook extends ListFiscalBookEntries
                     }
 
                     $this->pendingPayables = null;
+                    $this->officialRates = null;
                     Notification::make()->title($count === 1 ? '1 factura importada' : $count.' facturas importadas')->success()->send();
                 }),
         ];
@@ -110,7 +119,7 @@ class ListFiscalPurchasesBook extends ListFiscalBookEntries
                 ->validationMessages(['required' => 'Marque al menos una factura.']),
             Repeater::make('rates')
                 ->label('Tasa BCV por fecha de factura')
-                ->helperText('Solo hace falta la tasa de las fechas de las facturas marcadas.')
+                ->helperText('Tasa oficial BCV de cada fecha, puesta automáticamente. Cámbiela solo si contabilidad usa otra: quedará anotado en el asiento.')
                 ->addable(false)
                 ->deletable(false)
                 ->reorderable(false)
@@ -125,7 +134,8 @@ class ListFiscalPurchasesBook extends ListFiscalBookEntries
                         ->label('Tasa (Bs. por US$)')
                         ->numeric()
                         ->minValue(0.0001)
-                        ->step('0.0001'),
+                        ->step('0.0001')
+                        ->helperText(fn (Get $get): string => $this->rateHint($get('date'))),
                 ]),
         ];
     }
@@ -141,6 +151,30 @@ class ListFiscalPurchasesBook extends ListFiscalBookEntries
     /**
      * @return list<string>
      */
+    /**
+     * Tasa oficial BCV de cada fecha pendiente (una consulta para todas).
+     *
+     * @return array<string, array{rate: string, published: string}|null>
+     */
+    private function officialRates(): array
+    {
+        return $this->officialRates ??= BcvRateHistory::forDates($this->pendingDates());
+    }
+
+    private function rateHint(mixed $date): string
+    {
+        $date = is_string($date) && preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $date) === 1 ? CarbonImmutable::createFromFormat('d/m/Y', $date)->toDateString() : (string) $date;
+        $official = $this->officialRates()[$date] ?? null;
+
+        if ($official === null) {
+            return 'Sin tasa oficial publicada: escríbala.';
+        }
+
+        return $official['published'] === $date
+            ? 'Oficial BCV: '.FiscalPurchasesPayableImport::formatRate($official['rate'])
+            : 'Oficial BCV del '.CarbonImmutable::parse($official['published'])->format('d/m').' (ese día no hubo publicación)';
+    }
+
     private function pendingDates(): array
     {
         return array_values(array_unique(array_map(

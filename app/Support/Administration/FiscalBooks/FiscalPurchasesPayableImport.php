@@ -8,6 +8,7 @@ use App\Enums\FiscalBook;
 use App\Models\FiscalBookEntry;
 use App\Models\OperationAccountsPayable;
 use App\Models\User;
+use App\Support\BcvRateHistory;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -16,9 +17,10 @@ use InvalidArgumentException;
  * Trae al Libro de Compras las facturas de proveedores registradas en cuentas
  * por pagar de Operaciones.
  *
- * Las cuentas por pagar están en dólares y el libro va en bolívares: el analista
- * indica la tasa BCV de cada fecha de factura (el sistema no guarda tasas
- * históricas). Se importan como exentas; la que tenga IVA se ajusta después.
+ * Las cuentas por pagar están en dólares y el libro va en bolívares: cada factura
+ * toma la tasa oficial BCV de su fecha ({@see BcvRateHistory}; fin de semana o
+ * feriado, la última publicada antes). El analista puede corregirla a mano y queda
+ * anotado en el asiento. Se importan como exentas; la que tenga IVA se ajusta después.
  * Todo o nada: si una falla, no se importa ninguna.
  */
 final class FiscalPurchasesPayableImport
@@ -73,7 +75,7 @@ final class FiscalPurchasesPayableImport
 
     /**
      * @param  list<int|string>  $payableIds
-     * @param  array<string, mixed>  $ratesByDate  'Y-m-d' => tasa BCV
+     * @param  array<string, mixed>  $ratesByDate  'Y-m-d' => tasa escrita por el analista (opcional: sin ella se usa la oficial BCV)
      * @return int Facturas importadas.
      */
     public static function import(CarbonImmutable $period, array $payableIds, array $ratesByDate, ?User $user): int
@@ -95,28 +97,25 @@ final class FiscalPurchasesPayableImport
             throw new InvalidArgumentException('Algunas facturas marcadas ya están en el libro o no existen. Vuelva a abrir la importación.');
         }
 
+        $official = BcvRateHistory::forDates($pending->only($ids)->where('currency', 'USD')->pluck('date')->unique()->values()->all());
         $rows = [];
 
         foreach ($ids as $id) {
             $payable = $pending->get($id);
             $rate = null;
+            $note = null;
             $amountVes = $payable['amount'];
 
             if ($payable['currency'] === 'USD') {
-                $rate = self::rate($ratesByDate[$payable['date']] ?? null);
-
-                if ($rate === null) {
-                    throw new InvalidArgumentException('Indique la tasa BCV del '.CarbonImmutable::parse($payable['date'])->format('d/m/Y').' (factura '.$payable['number'].').');
-                }
-
+                [$rate, $note] = self::resolveRate($payable, $ratesByDate[$payable['date']] ?? null, $official[$payable['date']] ?? null);
                 $amountVes = FiscalAmount::convert($payable['amount'], $rate);
             }
 
-            $rows[] = [$payable, $amountVes, $rate];
+            $rows[] = [$payable, $amountVes, $rate, $note];
         }
 
         return DB::transaction(function () use ($rows, $period, $user): int {
-            foreach ($rows as [$payable, $amountVes, $rate]) {
+            foreach ($rows as [$payable, $amountVes, $rate, $note]) {
                 FiscalBookEntryWriter::create(FiscalBook::Purchases, [
                     'period' => $period->format('Y-m'),
                     'document_date' => $payable['date'],
@@ -130,6 +129,7 @@ final class FiscalPurchasesPayableImport
                     'export_amount' => '0',
                     'taxable_base' => '0',
                     'tax_rate' => FiscalBookLedger::RATE_GENERAL,
+                    'notes' => $note,
                 ], $user, [
                     'source' => FiscalBookEntry::SOURCE_PAYABLE,
                     'source_id' => $payable['id'],
@@ -140,6 +140,42 @@ final class FiscalPurchasesPayableImport
 
             return count($rows);
         });
+    }
+
+    /**
+     * Tasa de una factura en dólares: la escrita por el analista si es válida (queda anotado que se
+     * corrigió) o la oficial BCV de su fecha (anotando la fecha de publicación si fue un día anterior).
+     *
+     * @param  array{date: string, number: string}  $payable
+     * @param  array{rate: string, published: string}|null  $official
+     * @return array{0: string, 1: string|null}
+     */
+    private static function resolveRate(array $payable, mixed $typed, ?array $official): array
+    {
+        $date = CarbonImmutable::parse($payable['date'])->format('d/m/Y');
+        $manual = self::rate($typed);
+        $officialRate = $official !== null ? self::rate($official['rate']) : null;
+
+        if ($manual !== null && ($officialRate === null || bccomp($manual, $officialRate, 4) !== 0)) {
+            return [$manual, 'Tasa BCV corregida a mano: '.self::formatRate($manual).($officialRate !== null
+                ? ' (oficial del '.$date.': '.self::formatRate($officialRate).').'
+                : ' (sin tasa oficial publicada para el '.$date.').')];
+        }
+
+        if ($officialRate === null) {
+            throw new InvalidArgumentException('No hay tasa oficial BCV publicada para el '.$date.' (factura '.$payable['number'].'). Escríbala a mano en «Tasa BCV por fecha de factura».');
+        }
+
+        $published = $official['published'] !== $payable['date']
+            ? 'Tasa oficial BCV publicada el '.CarbonImmutable::parse($official['published'])->format('d/m/Y').' (el '.$date.' no hubo publicación).'
+            : null;
+
+        return [$officialRate, $published];
+    }
+
+    public static function formatRate(mixed $rate): string
+    {
+        return number_format((float) $rate, 4, ',', '.');
     }
 
     private static function currency(mixed $currency): string

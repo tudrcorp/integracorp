@@ -354,3 +354,33 @@ Schedule::command('audit:purge-data-changes')
     ->dailyAt('03:15')
     ->withoutOverlapping()
     ->onOneServer();
+
+/**
+ * Atención WhatsApp: cada minuto reintenta lo que no salió hace poco y avisa de casos sin tomar,
+ * sin respuesta del analista (y al supervisor si siguen así) o con recordatorio vencido.
+ * En el scheduler, no en la cola, para que avise aunque los workers estén caídos.
+ */
+Schedule::command('crm-inbox:watch')
+    ->everyMinute()
+    ->name('crm-inbox-watch')
+    ->withoutOverlapping(5)
+    ->runInBackground();
+
+/**
+ * Tasa oficial BCV por fecha (libro de compras y conversiones): el BCV publica por la tarde la tasa
+ * del día hábil siguiente. Dos pasadas por si la primera llega antes de la publicación.
+ */
+Schedule::command('bcv:sync-rates')
+    ->twiceDaily(7, 18)
+    ->name('bcv-sync-rates')
+    ->withoutOverlapping(10)
+    ->runInBackground();
+
+/**
+ * Atención WhatsApp: borra cada noche los PDF de propuestas calculadas que nunca se enviaron.
+ */
+Schedule::command('crm-inbox:prune-drafts')
+    ->dailyAt('3:50')
+    ->name('crm-inbox-prune-drafts')
+    ->withoutOverlapping(30)
+    ->runInBackground();

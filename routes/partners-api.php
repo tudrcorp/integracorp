@@ -6,6 +6,7 @@ use App\Enums\ApiPartnerAbility;
 use App\Http\Controllers\Api\V1\Partners\FarmadocOrderController;
 use App\Http\Controllers\Api\V1\Partners\NonCoveredMedicationController;
 use App\Http\Controllers\Api\V1\Partners\PartnerProfileController;
+use App\Http\Controllers\Api\V1\Partners\QuoteTariffController;
 use App\Support\ApiPartners\FarmadocOrderFeed;
 use Illuminate\Support\Facades\Route;
 
@@ -56,6 +57,10 @@ Route::prefix('api/v1/aliados')
             ->where('orderNumber', FarmadocOrderFeed::ORDER_NUMBER_PATTERN)
             ->middleware('api.partner:'.ApiPartnerAbility::FarmadocOrdersRead->value)
             ->name('farmadoc-orders.receipt-note');
+
+        Route::get('tarifas', [QuoteTariffController::class, 'index'])
+            ->middleware('api.partner:'.ApiPartnerAbility::QuoteTariffsRead->value)
+            ->name('quote-tariffs.index');
 
         Route::any('{path}', [PartnerProfileController::class, 'notFound'])
             ->where('path', '.*')

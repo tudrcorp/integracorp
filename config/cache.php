@@ -77,6 +77,12 @@ return [
             'lock_connection' => env('REDIS_CACHE_LOCK_CONNECTION', 'default'),
         ],
 
+        'crm-inbox' => [
+            'driver' => 'redis',
+            'connection' => 'crm',
+            'lock_connection' => 'crm',
+        ],
+
         'dynamodb' => [
             'driver' => 'dynamodb',
             'key' => env('AWS_ACCESS_KEY_ID'),
