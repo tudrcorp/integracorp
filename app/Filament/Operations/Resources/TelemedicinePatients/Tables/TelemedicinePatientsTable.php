@@ -256,6 +256,8 @@ class TelemedicinePatientsTable
                 ActionGroup::make([
                     ViewAction::make()
                         ->label('Ver Detalle'),
+                    \App\Filament\Shared\ClinicalRecord\ClinicalRecordAction::make(\App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource::class, \App\Support\Telemedicine\ClinicalRecord\ClinicalRecordAccess::PANEL_OPERATIONS),
+                    \App\Filament\Shared\ClinicalRecord\ClinicalRecordAction::make(\App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource::class, \App\Support\Telemedicine\ClinicalRecord\ClinicalRecordAccess::PANEL_OPERATIONS, \App\Support\Telemedicine\ClinicalRecord\ClinicalRecordAccess::KIND_TECHNICAL),
                     EditAction::make()
                         ->label('Editar')
                         ->hidden(fn (TelemedicinePatient $record) => in_array('ATENMEDI', Auth::user()->departament)),

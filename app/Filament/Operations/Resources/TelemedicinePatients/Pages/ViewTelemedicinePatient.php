@@ -54,6 +54,8 @@ class ViewTelemedicinePatient extends ViewRecord
     {
         return [
             FilamentIosActionsMenu::make([
+                \App\Filament\Shared\ClinicalRecord\ClinicalRecordAction::make(TelemedicinePatientResource::class, \App\Support\Telemedicine\ClinicalRecord\ClinicalRecordAccess::PANEL_OPERATIONS),
+                \App\Filament\Shared\ClinicalRecord\ClinicalRecordAction::make(TelemedicinePatientResource::class, \App\Support\Telemedicine\ClinicalRecord\ClinicalRecordAccess::PANEL_OPERATIONS, \App\Support\Telemedicine\ClinicalRecord\ClinicalRecordAccess::KIND_TECHNICAL),
                 AssignDoctorAction::make(),
                 RegisterTpaRetailServicesAction::make(),
                 PatientCoordinationServicesAction::make(),

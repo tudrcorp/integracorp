@@ -382,6 +382,7 @@ class TelemedicinePatientsTable
                         ->icon(Heroicon::OutlinedEye)
                         ->color('primary')
                         ->url(fn (TelemedicinePatient $record): string => TelemedicinePatientResource::getUrl('view', ['record' => $record])),
+                    \App\Filament\Shared\ClinicalRecord\ClinicalRecordAction::make(TelemedicinePatientResource::class, \App\Support\Telemedicine\ClinicalRecord\ClinicalRecordAccess::PANEL_TELEMEDICINE),
                     Action::make('view_history')
                         ->label('Historia clínica')
                         ->icon('healthicons-f-cardiogram-e')

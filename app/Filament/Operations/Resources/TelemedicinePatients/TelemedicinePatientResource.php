@@ -6,6 +6,8 @@ use App\Filament\Concerns\AuthorizesDepartmentNavigation;
 use App\Filament\Operations\Resources\TelemedicinePatients\Pages\CreateTelemedicinePatient;
 use App\Filament\Operations\Resources\TelemedicinePatients\Pages\EditTelemedicinePatient;
 use App\Filament\Operations\Resources\TelemedicinePatients\Pages\ListTelemedicinePatients;
+use App\Filament\Operations\Resources\TelemedicinePatients\Pages\PatientClinicalRecord;
+use App\Filament\Operations\Resources\TelemedicinePatients\Pages\PatientTechnicalRecord;
 use App\Filament\Operations\Resources\TelemedicinePatients\Pages\PatientCoordinationServices;
 use App\Filament\Operations\Resources\TelemedicinePatients\Pages\RegisterRetailServices;
 use App\Filament\Operations\Resources\TelemedicinePatients\Pages\ViewTelemedicinePatient;
@@ -73,6 +75,8 @@ class TelemedicinePatientResource extends Resource
             'create' => CreateTelemedicinePatient::route('/create'),
             'view' => ViewTelemedicinePatient::route('/{record}'),
             'edit' => EditTelemedicinePatient::route('/{record}/edit'),
+            'clinical-record' => PatientClinicalRecord::route('/{record}/ficha-clinica'),
+            'technical-record' => PatientTechnicalRecord::route('/{record}/ficha-tecnica'),
             'retail' => RegisterRetailServices::route('/{record}/retail'),
             'services' => PatientCoordinationServices::route('/{record}/servicios'),
         ];
