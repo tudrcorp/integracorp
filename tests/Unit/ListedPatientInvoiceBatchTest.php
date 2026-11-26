@@ -6,13 +6,13 @@ use App\Support\Operations\ListedPatientInvoiceBatch;
 use App\Support\Operations\QuoteLinePricing;
 use App\Support\Operations\TelemedicineCaseClaimNumber;
 
-it('el lote trae las 28 órdenes del listado, cada una con un siniestro válido', function (): void {
+it('el lote trae las 9 órdenes del listado, cada una con un siniestro válido', function (): void {
     $rows = ListedPatientInvoiceBatch::rows();
     $orders = array_column($rows, 'order');
 
-    expect($rows)->toHaveCount(28)
+    expect($rows)->toHaveCount(9)
         ->and($orders)->toHaveCount(count(array_unique($orders)))
-        ->and($orders)->toContain('ORD-0601', 'ORD-0827', 'ORD-0649');
+        ->and($orders)->toContain('ORD-0683', 'ORD-0693', 'ORD-0691');
 
     foreach ($rows as $row) {
         expect(TelemedicineCaseClaimNumber::problem(TelemedicineCaseClaimNumber::normalize($row['claim'])))->toBeNull();
@@ -33,12 +33,16 @@ it('elige al paciente correcto cuando el número de orden está repetido y desca
     $juan = ListedPatientInvoiceBatch::pick('JUAN MEDINA', [
         ['id' => 833, 'name' => 'ILVERT IGNACIO GARCIA PEREZ'],
     ]);
+    $janimar = ListedPatientInvoiceBatch::pick('Janimar Figueria', [
+        ['id' => 639, 'name' => 'JANIMAR CHIQUINQUIRA FIGUEROA GRATEROL'],
+    ]);
 
     expect($angel)->toMatchArray(['id' => 671])
         ->and($emma)->toMatchArray(['id' => 818])
         ->and($eloisa)->toBeGreaterThanOrEqual(2)
         ->and($nelo)->toBeGreaterThanOrEqual(2)
-        ->and($juan)->toBeNull();
+        ->and($juan)->toBeNull()
+        ->and($janimar)->toMatchArray(['id' => 639]);
 });
 
 it('no elige cuando dos pacientes empatan', function (): void {

@@ -44,34 +44,15 @@ final class ListedPatientInvoiceBatch
     public static function rows(): array
     {
         return [
-            ['order' => 'ORD-0601', 'claim' => '3150510419591', 'name' => 'BRYANNY PAOLA SALAS PEREZ'],
-            ['order' => 'ORD-0664', 'claim' => '3150510419610', 'name' => 'ELOISA ALVAREZ HERNANDEZ'],
-            ['order' => 'ORD-0604', 'claim' => '3150510419782', 'name' => 'JESUS DAVID BRICEÑO TOVAR'],
-            ['order' => 'ORD-0603', 'claim' => '3150510419784', 'name' => 'Dian Irwin bastidas Aguilar'],
-            ['order' => 'ORD-0607', 'claim' => '3150510419785', 'name' => 'Nohemí margarita montilla de pineda'],
-            ['order' => 'ORD-0625', 'claim' => '3150510419797', 'name' => 'Albanny Victoria Rojas Nelo'],
-            ['order' => 'ORD-0620', 'claim' => '3150510419799', 'name' => 'Yasmina del rosario Briceño baptista'],
-            ['order' => 'ORD-0621', 'claim' => '3150510419804', 'name' => 'MARIA CONCEPCION HERNANDEZ AZUAJE'],
-            ['order' => 'ORD-0670', 'claim' => '3150510419806', 'name' => 'XIOREMAR MARGARITA PEREZ'],
-            ['order' => 'ORD-0662', 'claim' => '3150510419809', 'name' => 'Sara crisney rojas alcantara'],
-            ['order' => 'ORD-0671', 'claim' => '3150510419812', 'name' => 'Angel Custodio Araujo'],
-            ['order' => 'ORD-0643', 'claim' => '3150510420663', 'name' => 'LEONOR DEL VALLE AIZPURUA'],
-            ['order' => 'ORD-0744', 'claim' => '3150510419796', 'name' => 'Asnaldo Jesús Fulcado Arrias.'],
-            ['order' => 'ORD-0863', 'claim' => '3150510420634', 'name' => 'GILBERTO RIVAS'],
-            ['order' => 'ORD-0813', 'claim' => '3150510420633', 'name' => 'Handry Thais Castillo Caruci'],
-            ['order' => 'ORD-0852', 'claim' => '3150510420635', 'name' => 'JOSE GREGORIO BRICEÑO SÚÁREZ'],
-            ['order' => 'ORD-0815', 'claim' => '3150510420641', 'name' => 'julio Enrique Terán'],
-            ['order' => 'ORD-0810', 'claim' => '3150510420642', 'name' => 'VALERIA ANDREINA ROA'],
-            ['order' => 'ORD-0895', 'claim' => '3150510420643', 'name' => 'Eddy Rojas'],
-            ['order' => 'ORD-0818', 'claim' => '3150510420652', 'name' => 'Emma Mosquera'],
-            ['order' => 'ORD-0827', 'claim' => '3150510420657', 'name' => 'JUAN MEDINA'],
-            ['order' => 'ORD-0800', 'claim' => '3150510420660', 'name' => 'JARIELYS ESTHER GIL CASTRO'],
-            ['order' => 'ORD-0610', 'claim' => '3150510420824', 'name' => 'María Victoria Nelo de Rojas'],
-            ['order' => 'ORD-0655', 'claim' => '3150510420840', 'name' => 'Jenny del Carmen Vargas Andrade'],
-            ['order' => 'ORD-0615', 'claim' => '3150510420894', 'name' => 'OSMAR YFRAIN PACHECO'],
-            ['order' => 'ORD-0622', 'claim' => '3150510420847', 'name' => 'ALEJANDRA GABRIELA HERNANDEZ CHIRINOS'],
-            ['order' => 'ORD-0650', 'claim' => '3150510420906', 'name' => 'DISNEY JACKELINE MILLAMIZAR'],
-            ['order' => 'ORD-0649', 'claim' => '3150510420900', 'name' => 'MIGDALIA JOSEFINA GOMEZ MORILLO'],
+            ['order' => 'ORD-0683', 'claim' => '3150510421145', 'name' => 'MARIA DEL CARMEN BARRETO'],
+            ['order' => 'ORD-0693', 'claim' => '3150510421145', 'name' => 'MARIA DEL CARMEN BARRETO'],
+            ['order' => 'ORD-0681', 'claim' => '3150510421152', 'name' => 'Alexis Saavedra'],
+            ['order' => 'ORD-0665', 'claim' => '3150510421154', 'name' => 'Mery Rojas'],
+            ['order' => 'ORD-0667', 'claim' => '3150510421155', 'name' => 'Angel Marquez'],
+            ['order' => 'ORD-0639', 'claim' => '3150510421156', 'name' => 'Janimar Figueria'],
+            ['order' => 'ORD-0689', 'claim' => '3150510421157', 'name' => 'YUDITH CARRUCI'],
+            ['order' => 'ORD-0668', 'claim' => '3150510421159', 'name' => 'NORBERTO OROZCO'],
+            ['order' => 'ORD-0691', 'claim' => '3150510421160', 'name' => 'LESLIE JOSE MOSQUERA'],
         ];
     }
 
@@ -99,7 +80,42 @@ final class ListedPatientInvoiceBatch
 
     public static function matchScore(string $expected, string $actual): int
     {
-        return count(array_intersect(self::tokens($expected), self::tokens($actual)));
+        $expectedTokens = self::tokens($expected);
+        $actualTokens = self::tokens($actual);
+        $used = [];
+        $score = 0;
+
+        foreach ($expectedTokens as $token) {
+            foreach ($actualTokens as $index => $candidate) {
+                if (isset($used[$index]) || ! self::tokensMatch($token, $candidate)) {
+                    continue;
+                }
+
+                $used[$index] = true;
+                $score++;
+
+                break;
+            }
+        }
+
+        return $score;
+    }
+
+    /**
+     * Iguales, o una sola letra de diferencia en palabras de 6 o más caracteres
+     * (Figueria / Figueroa). Las cortas exigen igualdad para no cruzar nombres distintos.
+     */
+    private static function tokensMatch(string $left, string $right): bool
+    {
+        if ($left === $right) {
+            return true;
+        }
+
+        if (strlen($left) < 6 || strlen($right) < 6 || abs(strlen($left) - strlen($right)) > 1) {
+            return false;
+        }
+
+        return levenshtein($left, $right) <= 1;
     }
 
     /**
