@@ -113,6 +113,11 @@ class AdministrationPanelProvider extends PanelProvider
                 Authenticate::class,
                 DuplicatedSession::class,
             ])
+            /** Modal «llegó una conversación» del CRM de WhatsApp, con sonido, en todas las páginas. */
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => view('filament.hooks.crm-incoming-alert')
+            )
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
                 fn (): string => view('filament.hooks.quick-view-head')->render(),

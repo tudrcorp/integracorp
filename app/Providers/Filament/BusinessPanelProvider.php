@@ -181,6 +181,11 @@ class BusinessPanelProvider extends PanelProvider
                             ->directory('backgroundBusenissPanelLogin')
                     ),
             ])
+            /** Modal «llegó una conversación» del CRM de WhatsApp, con sonido, en todas las páginas. */
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => view('filament.hooks.crm-incoming-alert')
+            )
             ->renderHook(
                 PanelsRenderHook::PAGE_START,
                 fn () => view('filament.operations.dashboard.page-start', ['branding' => true, 'brandingLabel' => 'Negocios · Estadísticas del negocio']),

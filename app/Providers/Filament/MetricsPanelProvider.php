@@ -111,6 +111,11 @@ class MetricsPanelProvider extends PanelProvider
                     ->color('danger')
                     ->url(route('internal')),
             ])
+            /** Modal «llegó una conversación» del CRM de WhatsApp, con sonido, en todas las páginas. */
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => view('filament.hooks.crm-incoming-alert')
+            )
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
                 fn () => view('filament.metrics.corporate.topbar-styles')

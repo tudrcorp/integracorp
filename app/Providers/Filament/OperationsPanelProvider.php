@@ -125,6 +125,11 @@ class OperationsPanelProvider extends PanelProvider
             ])
             ->defaultAvatarProvider(BoringAvatarsProvider::class)
             ->navigationGroups(OperationsPanelNavigationGroups::definitions())
+            /** Modal «llegó una conversación» del CRM de WhatsApp, con sonido, en todas las páginas. */
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => view('filament.hooks.crm-incoming-alert')
+            )
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn () => view('filament.panels.internal-quick-nav')

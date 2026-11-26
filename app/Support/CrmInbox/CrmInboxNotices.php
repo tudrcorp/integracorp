@@ -65,6 +65,10 @@ final class CrmInboxNotices
             return;
         }
 
+        if (self::coveredByModal($title)) {
+            return;
+        }
+
         $key = 'crm-notice-shown.'.$handoffId.'.'.$title;
 
         if (session()->get($key)) {
@@ -87,5 +91,16 @@ final class CrmInboxNotices
         }
 
         $notice->send();
+    }
+
+    /**
+     * Conversación nueva, movida o pasada a ti: ya la anuncia la modal con sonido; no se repite como aviso flotante.
+     */
+    private static function coveredByModal(string $title): bool
+    {
+        $covered = array_map(fn (string $notice): string => CrmInboxAlerts::TITLES[$notice], CrmIncomingAlerts::NOTICES);
+        $user = Auth::user();
+
+        return in_array($title, $covered, true) && $user instanceof User && CrmIncomingAlerts::receives($user);
     }
 }
