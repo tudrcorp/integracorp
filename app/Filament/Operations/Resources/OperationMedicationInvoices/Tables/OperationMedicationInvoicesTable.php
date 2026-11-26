@@ -2,10 +2,12 @@
 
 namespace App\Filament\Operations\Resources\OperationMedicationInvoices\Tables;
 
+use App\Filament\Operations\Resources\OperationMedicationInvoices\Actions\ChangeMedicationInvoicesPayerBulkAction;
 use App\Filament\Operations\Resources\OperationMedicationInvoices\Actions\ExportMedicationInvoicesBulkAction;
 use App\Filament\Operations\Resources\OperationMedicationInvoices\Actions\MedicationInvoiceActions;
 use App\Models\OperationMedicationInvoice;
 use App\Support\Operations\MedicationInvoiceLifecycle;
+use App\Support\Operations\MedicationInvoicePayerChange;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\ViewAction;
@@ -56,6 +58,13 @@ class OperationMedicationInvoicesTable
                     ->description(fn (OperationMedicationInvoice $record): ?string => $record->patient_identification)
                     ->searchable(['patient_name', 'patient_identification'])
                     ->wrap(),
+                TextColumn::make('payer_name')
+                    ->label('A nombre de')
+                    ->state(fn (OperationMedicationInvoice $record): string => MedicationInvoicePayerChange::currentName($record))
+                    ->description(fn (OperationMedicationInvoice $record): string => (string) OperationMedicationInvoice::payerLabel(MedicationInvoicePayerChange::currentType($record)))
+                    ->searchable(['payer_name', 'payer_identification'])
+                    ->wrap()
+                    ->toggleable(),
                 TextColumn::make('case_code')
                     ->label('Caso')
                     ->badge()
@@ -99,6 +108,14 @@ class OperationMedicationInvoicesTable
                 SelectFilter::make('invoice_type')
                     ->label('Tipo')
                     ->options(OperationMedicationInvoice::typeOptions()),
+                SelectFilter::make('payer_type')
+                    ->label('A nombre de')
+                    ->options(OperationMedicationInvoice::payerOptions())
+                    ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? null) {
+                        OperationMedicationInvoice::PAYER_CORPORATE => $query->where('payer_type', OperationMedicationInvoice::PAYER_CORPORATE),
+                        OperationMedicationInvoice::PAYER_PATIENT => $query->where(fn (Builder $q): Builder => $q->whereNull('payer_type')->orWhere('payer_type', '!=', OperationMedicationInvoice::PAYER_CORPORATE)),
+                        default => $query,
+                    }),
                 SelectFilter::make('status')
                     ->label('Estado')
                     ->options([
@@ -123,6 +140,7 @@ class OperationMedicationInvoicesTable
                     MedicationInvoiceActions::emailPdf(),
                     MedicationInvoiceActions::whatsAppPdf(),
                     MedicationInvoiceActions::setNumber(),
+                    MedicationInvoiceActions::changePayer(),
                     MedicationInvoiceActions::registerPayment(),
                     MedicationInvoiceActions::annul(),
                 ]),
@@ -130,6 +148,7 @@ class OperationMedicationInvoicesTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     ExportMedicationInvoicesBulkAction::make(),
+                    ChangeMedicationInvoicesPayerBulkAction::make(),
                 ]),
             ])
             ->emptyStateHeading('Aún no hay facturas a pacientes')

@@ -278,7 +278,7 @@ it('el paciente corporativo paga con la razón social, RIF y dirección de su af
     expect($snapshot)->toBe([
         'invoice_payer_type' => OperationMedicationInvoice::PAYER_CORPORATE,
         'invoice_payer_name' => trim((string) $affiliation->name_corporate),
-        'invoice_payer_identification' => 'J-409063704',
+        'invoice_payer_identification' => 'J409063704',
         'invoice_payer_address' => 'Av. Principal de Las Mercedes',
     ]);
 });

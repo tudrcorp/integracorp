@@ -24,6 +24,9 @@ class OperationMedicationInvoiceEvent extends Model
     /** Se completó el N.º de siniestro desde el caso (la factura se emitió sin él). */
     public const EVENT_CLAIM_SET = 'SINIESTRO_REGISTRADO';
 
+    /** El analista cambió a nombre de quién va la factura (paciente o grupo corporativo). */
+    public const EVENT_PAYER_CHANGED = 'RESPONSABLE_CAMBIADO';
+
     public const UPDATED_AT = null;
 
     protected $table = 'operation_medication_invoice_events';

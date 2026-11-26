@@ -53,6 +53,8 @@ class ViewOperationMedicationInvoice extends ViewRecord
                 ActionGroup::make([
                     MedicationInvoiceActions::setNumber()
                         ->after(fn () => $this->refreshInvoice()),
+                    MedicationInvoiceActions::changePayer()
+                        ->after(fn () => $this->refreshInvoice()),
                 ])->dropdown(false),
                 ActionGroup::make([
                     MedicationInvoiceActions::registerPayment()
