@@ -215,5 +215,7 @@ it('el PDF trae el RIF con J, vence el mismo día de la emisión y la tasa va ba
         ->and($html)->toContain('F. Vcto de la factura: '.$updated->issued_at->format('d/m/Y'))
         ->and($updated->dueDate()->format('Y-m-d'))->toBe($updated->issued_at->format('Y-m-d'))
         ->and($html)->toMatch('/<td class="bcv">B\.C\.V:<\/td>/')
-        ->and($html)->toContain('<td class="bcv">'.number_format((float) $updated->bcv_rate, 4, ',', '.').'</td>');
+        ->and($html)->toContain('<td class="bcv">'.number_format((float) $updated->bcv_rate, 4, ',', '.').'</td>')
+        ->and($html)->not->toContain('Emitida por')
+        ->and($html)->not->toContain('Ref. interna');
 });
