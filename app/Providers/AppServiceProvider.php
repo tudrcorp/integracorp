@@ -46,6 +46,8 @@ use App\Observers\OrgStructureRrhhObserver;
 use App\Observers\PlanGeneratorObserver;
 use App\Observers\ProspectAgentTravelAgencyObserver;
 use App\Observers\SupplierReportPdfObserver;
+use App\Support\CrmInbox\CrmInboxNotices;
+use App\Support\CrmInbox\CrmPushSubscriptions;
 use App\Support\Filesystem\WindowsSafeFilesystem;
 use App\Support\LivePresence\LivePresenceRecorder;
 use App\Support\LivePresence\QueueActivityRecorder;
@@ -59,6 +61,7 @@ use App\Support\UserSessionAuditTracker;
 use Filament\Actions\Imports\Events\ImportChunkProcessed;
 use Filament\Actions\Imports\Events\ImportCompleted;
 use Filament\Actions\Imports\Events\ImportStarted;
+use Filament\Facades\Filament;
 use Filament\Support\Colors\Color;
 use Filament\Support\Facades\FilamentColor;
 use Filament\Support\Facades\FilamentTimezone;
@@ -183,6 +186,11 @@ class AppServiceProvider extends ServiceProvider
 
         Event::listen(Login::class, [UserSessionAuditTracker::class, 'onLogin']);
         Event::listen(Logout::class, [UserSessionAuditTracker::class, 'onLogout']);
+        Event::listen(Logout::class, [CrmPushSubscriptions::class, 'onLogout']);
+
+        Filament::serving(function (): void {
+            CrmInboxNotices::flashUnread();
+        });
 
         /** Centro de notificaciones: cada correo pasa por el guardián (puede detenerlo) y queda en la bitácora. */
         Event::listen(MessageSending::class, [OutboundMailListener::class, 'onSending']);

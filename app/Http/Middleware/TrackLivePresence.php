@@ -39,6 +39,8 @@ class TrackLivePresence
         'livewire/preview-file/*',
         'livewire/upload-file',
         'favicon.ico',
+        'api/crm/handoff',
+        'api/crm/handoff/message',
         'sw.js',
         'manifest.json',
         'site.webmanifest',

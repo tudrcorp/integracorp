@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
             require base_path('routes/storefront.php');
             /** API de aliados: sin sesión ni CSRF; autenticación por token propia. */
             require base_path('routes/partners-api.php');
+            require base_path('routes/crm-inbox.php');
         },
     )
     ->withMiddleware(function (Middleware $middleware) {

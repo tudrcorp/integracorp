@@ -2,6 +2,7 @@
 
 namespace App\Filament\Agents\Resources\Affiliations\Schemas;
 
+use App\Filament\Forms\Components\IndividualPreAffiliationSummary;
 use App\Filament\Shared\Affiliations\DocumentTypeSelect;
 use App\Filament\Shared\MedicalQuestionnaires\MedicalQuestionnaireFields;
 use App\Http\Controllers\UtilsController;
@@ -806,6 +807,12 @@ class AffiliationForm
                     Step::make('Acuerdo y condiciones')
                         ->description('Leer y aceptar las condiciones')
                         ->schema([
+                            Section::make('Resumen de montos')
+                                ->description('Tarifa vigente según la edad de cada persona. Es lo que se guardará en la pre-afiliación.')
+                                ->icon('heroicon-m-calculator')
+                                ->schema([IndividualPreAffiliationSummary::make()])
+                                ->hiddenOn('edit')
+                                ->columnSpanFull(),
                             Section::make('Lea detenidamente las siguientes condiciones!')
                                 ->description(function (Get $get) {
                                     if ($get('plan_id') == 1 || $get('plan_id') == 2) {

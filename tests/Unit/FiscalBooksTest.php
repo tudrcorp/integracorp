@@ -331,6 +331,8 @@ it('deduce la letra del RIF de la factura: nueve dígitos es jurídico', functio
 ]);
 
 it('importa de cuentas por pagar convirtiendo con la tasa de cada fecha, todo o nada', function (): void {
+    Illuminate\Support\Facades\Http::fake(['ve.dolarapi.com/*' => Illuminate\Support\Facades\Http::response([], 200)]);
+
     $payable = OperationAccountsPayable::query()->create([
         'invoice_date' => '2027-06-03',
         'invoice_registration_date' => '2027-06-04',
@@ -345,7 +347,7 @@ it('importa de cuentas por pagar convirtiendo con la tasa de cada fecha, todo o 
 
     expect(collect(FiscalPurchasesPayableImport::pending(fiscalTestPeriod()))->pluck('id'))->toContain($payable->getKey())
         ->and(fn () => FiscalPurchasesPayableImport::import(fiscalTestPeriod(), [$payable->getKey()], [], fiscalTestUser()))
-        ->toThrow(InvalidArgumentException::class, 'tasa BCV del 03/06/2027');
+        ->toThrow(InvalidArgumentException::class, 'No hay tasa oficial BCV publicada para el 03/06/2027');
 
     $count = FiscalPurchasesPayableImport::import(fiscalTestPeriod(), [$payable->getKey()], ['2027-06-03' => '233.55786543'], fiscalTestUser());
     $entry = FiscalBookEntry::query()->where('source', FiscalBookEntry::SOURCE_PAYABLE)->where('source_id', $payable->getKey())->firstOrFail();

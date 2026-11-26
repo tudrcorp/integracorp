@@ -14,11 +14,14 @@ enum ApiPartnerAbility: string
 
     case FarmadocOrdersRead = 'farmadoc.orders.read';
 
+    case QuoteTariffsRead = 'quotes.tariffs.read';
+
     public function label(): string
     {
         return match ($this) {
             self::NonCoveredMedicationsRead => 'Consultar medicamentos no cubiertos en gestión',
             self::FarmadocOrdersRead => 'Consultar los pedidos a Farmadoc: recepción en inventario y nota de recibido (solo Farmadoc)',
+            self::QuoteTariffsRead => 'Consultar las tarifas vigentes de los planes Inicial, Ideal y Especial (agente de ventas por WhatsApp)',
         };
     }
 

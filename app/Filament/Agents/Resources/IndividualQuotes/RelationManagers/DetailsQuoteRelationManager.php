@@ -6,16 +6,19 @@ namespace App\Filament\Agents\Resources\IndividualQuotes\RelationManagers;
 
 use App\Models\Agent;
 use App\Models\IndividualQuote;
-use Filament\Actions\BulkAction;
-use Filament\Actions\BulkActionGroup;
+use App\Support\IndividualQuotes\IndividualQuotePurchase;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\HtmlString;
 
 class DetailsQuoteRelationManager extends RelationManager
 {
@@ -27,6 +30,7 @@ class DetailsQuoteRelationManager extends RelationManager
             ->heading('DETALLES DE LA COTIZACIÓN')
             ->description('COBERTURAS, TARIFAS AGRUPADAS POR EL RANGO DE EDAD')
             ->recordTitleAttribute('individual_quote_id')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['plan:id,description', 'coverage:id,price', 'ageRange:id,range']))
             ->columns([
                 TextColumn::make('plan.description')
                     ->label('Plan')
@@ -90,71 +94,62 @@ class DetailsQuoteRelationManager extends RelationManager
                     ->attribute('sucursal_id'),
             ])
             ->headerActions([
-                // CreateAction::make(),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    BulkAction::make('quote_multiple')
-                        ->label('Pre Afiliación')
-                        ->color('warning')
-                        ->icon('heroicon-o-pencil-square')
-                        ->requiresConfirmation()
-                        ->modalHeading('PREAFILIACIÓN')
-                        ->modalDescription('El sistema te redirigirá a la pantalla donde se encuentra el formulario de pre-afiliación.')
-                        ->modalIcon('heroicon-o-pencil-square')
-                        ->deselectRecordsAfterCompletion()
-                        ->action(function (Collection $records, RelationManager $livewire) {
-                            try {
-                                if ($records->count() > 1) {
-                                    Notification::make()
-                                        ->title('Acción no permitida')
-                                        ->body('Solo se puede procesar una cotización a la vez para generar la afiliación.')
-                                        ->warning()
-                                        ->send();
+                Action::make('buy_plan')
+                    ->label('Comprar plan')
+                    ->icon('heroicon-s-shopping-cart')
+                    ->color('success')
+                    ->hidden(fn (): bool => ! IndividualQuotePurchase::canPurchase($this->getOwnerRecord()))
+                    ->requiresConfirmation()
+                    ->modalHeading('COMPRAR PLAN')
+                    ->modalIcon('heroicon-s-shopping-cart')
+                    ->modalWidth(Width::ExtraLarge)
+                    ->modalDescription(new HtmlString(Blade::render(<<<'BLADE'
+                                <div class="fi-section-header-description mt-5 mb-5">
+                                    Felicitaciones!.
+                                    <br>
+                                Solo falta completar el formulario de pre-afiliación
+                                </div>
+                        BLADE)))
+                    ->action(function () {
+                        /** @var IndividualQuote $quote */
+                        $quote = $this->getOwnerRecord();
 
-                                    return;
-                                }
+                        try {
+                            $url = IndividualQuotePurchase::start($quote, 'agents');
 
-                                $record = $records->first();
-                                if ($record === null) {
-                                    Notification::make()
-                                        ->title('Sin selección')
-                                        ->body('Debes seleccionar un detalle para continuar.')
-                                        ->warning()
-                                        ->send();
+                            Notification::make()
+                                ->title('COTIZACION INDIVIDUAL APROBADA')
+                                ->body('Nro.'.$quote->code.', puede proceder a realizar la pre-afiliación')
+                                ->icon('heroicon-s-user-group')
+                                ->iconColor('success')
+                                ->persistent()
+                                ->success()
+                                ->send();
 
-                                    return;
-                                }
+                            return redirect()->to($url);
+                        } catch (\RuntimeException $exception) {
+                            Notification::make()
+                                ->title('No se puede comprar este plan')
+                                ->body($exception->getMessage())
+                                ->warning()
+                                ->send();
+                        } catch (\Throwable $th) {
+                            Log::error('AGENTS: falla al comprar plan desde la tabla de montos de la cotización individual', [
+                                'individual_quote_id' => $quote->getKey(),
+                                'exception' => $th,
+                            ]);
 
-                                session()->forget('data_records');
-                                session()->put('data_records', $records->toArray());
-                                session()->put('persons', max(1, (int) ($record->total_persons ?? 1)));
+                            Notification::make()
+                                ->title('ERROR')
+                                ->body('Ocurrió un error inesperado. Intenta nuevamente o contacta a soporte.')
+                                ->icon('heroicon-s-x-circle')
+                                ->iconColor('danger')
+                                ->danger()
+                                ->send();
+                        }
 
-                                $individualQuote = IndividualQuote::query()->find($livewire->ownerRecord->id);
-                                if ($individualQuote !== null) {
-                                    $individualQuote->status = 'APROBADA';
-                                    $individualQuote->save();
-                                }
-
-                                return redirect()->route('filament.agents.resources.affiliations.create', [
-                                    'id' => $livewire->ownerRecord->id,
-                                    'plan_id' => $record->plan_id,
-                                    'coverage_id' => $record->coverage_id,
-                                ]);
-                            } catch (\Throwable $th) {
-                                Log::error('AGENTS: Falla al generar preafiliación desde detalle de cotización individual', [
-                                    'individual_quote_id' => $livewire->ownerRecord->id,
-                                    'error' => $th->getMessage(),
-                                ]);
-
-                                Notification::make()
-                                    ->title('No se pudo procesar la preafiliación')
-                                    ->body('Ocurrió un error inesperado. Intenta nuevamente o contacta a soporte.')
-                                    ->danger()
-                                    ->send();
-                            }
-                        }),
-                ]),
+                        return null;
+                    }),
             ]);
     }
 }

@@ -3,8 +3,8 @@
 namespace App\Filament\General\Resources\Affiliations\Pages;
 
 use App\Filament\General\Resources\Affiliations\AffiliationResource;
+use App\Filament\Concerns\PricesIndividualPreAffiliation;
 use App\Http\Controllers\AffiliationController;
-use App\Http\Controllers\PdfController;
 use App\Models\Affiliate;
 use App\Models\DetailIndividualQuote;
 use App\Models\IndividualQuote;
@@ -15,10 +15,13 @@ use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Support\Exceptions\Halt;
 use Illuminate\Support\Facades\Auth;
 
 class CreateAffiliation extends CreateRecord
 {
+    use PricesIndividualPreAffiliation;
+
     protected static string $resource = AffiliationResource::class;
 
     protected static ?string $title = 'Formulario de preafiliación';
@@ -54,6 +57,9 @@ class CreateAffiliation extends CreateRecord
             $data['email_payer'] = $data['email_ti'];
             $data['phone_payer'] = $data['phone_ti'];
         }
+
+        /** Montos por edad, calculados en el servidor: reemplazan los que vengan del formulario. */
+        $data = $this->priceIndividualPreAffiliationData($data);
 
         return $data;
     }
@@ -121,33 +127,10 @@ class CreateAffiliation extends CreateRecord
                 // dd($affiliates);
 
                 /**
-                 * Validamos si el numeros de personas en la cotizacion es el mismo numero de personas
-                 * afiliadas en el formulario
-                 * Si el numero es diferente mostramos actualizamos la cotizacion para que el cliente pueda volver a pre-afiliarse
-                 * -----------------------------------------------------------------------------------------------------------------------------
+                 * La cotización no se modifica aunque cambien las personas o sus edades: es la propuesta
+                 * que recibió el cliente. Los montos reales salen de las edades (más abajo) y la diferencia
+                 * con lo cotizado queda en la bitácora de la afiliación.
                  */
-
-                /** NUmero de personas en la cotizacion */
-                $persons = session()->get('persons');
-                // dd($persons, count($affiliates));
-
-                /**Actualizo el calculo de la cotizacion */
-                if (count($affiliates) != $persons) {
-                    // dd(count($affiliates));
-                    $quote = DetailIndividualQuote::where('individual_quote_id', $record->individual_quote_id)->get();
-                    foreach ($quote as $item) {
-                        $item->total_persons = count($affiliates);
-                        $item->subtotal_anual = count($affiliates) * $item->fee;
-                        $item->subtotal_quarterly = $item->subtotal_anual / 4;
-                        $item->subtotal_biannual = $item->subtotal_anual / 2;
-                        $item->subtotal_monthly = $item->subtotal_anual / 12;
-                        $item->save();
-                    }
-
-                    /** Actualizo el PDF de la cotizacion */
-                    $individual_quote = IndividualQuote::where('id', $record->individual_quote_id)->first();
-                    $update_pdf = PdfController::generatePdfIndividualQuote($individual_quote);
-                }
 
                 /**----------------------------------------------------------------------------------------------------------------------------- */
 
@@ -174,6 +157,9 @@ class CreateAffiliation extends CreateRecord
                     ]);
                 }
 
+                /** Plan, cobertura, rango y tarifa de cada afiliado, y la suma real en la afiliación. */
+                $this->priceIndividualPreAffiliation($record);
+
                 /**
                  * Actualizamos el estatus de la cotizacion a EJECUTADA
                  * para evitar que pueda volverse a pre-afiliarse
@@ -194,6 +180,7 @@ class CreateAffiliation extends CreateRecord
                  */
                 $quote_detail = DetailIndividualQuote::select('coverage_id', 'status', 'id')
                     ->where('individual_quote_id', $record->individual_quote_id)
+                    ->where('plan_id', $record->plan_id)
                     ->where('coverage_id', $record->coverage_id)
                     ->firstOrFail();
                 $quote_detail->status = 'APROBADA';
@@ -268,6 +255,9 @@ class CreateAffiliation extends CreateRecord
                     'relationship' => 'TITULAR',
                 ]);
 
+                /** Plan, cobertura, rango y tarifa del titular, y la suma real en la afiliación. */
+                $this->priceIndividualPreAffiliation($record);
+
                 /**
                  * Actualizamos el estatus de la cotizacion a EJECUTADA
                  * para evitar que pueda volverse a pre-afiliarse
@@ -288,6 +278,7 @@ class CreateAffiliation extends CreateRecord
                  */
                 $quote_detail = DetailIndividualQuote::select('coverage_id', 'status', 'id')
                     ->where('individual_quote_id', $record->individual_quote_id)
+                    ->where('plan_id', $record->plan_id)
                     ->where('coverage_id', $record->coverage_id)
                     ->firstOrFail();
                 $quote_detail->status = 'APROBADA';
@@ -318,8 +309,10 @@ class CreateAffiliation extends CreateRecord
             }
         } catch (DuplicatePersonIdentityException $duplicatePerson) {
             throw $duplicatePerson;
+        } catch (Halt $halt) {
+            throw $halt;
         } catch (\Throwable $th) {
-            dd($th);
+            $this->failIndividualPreAffiliation($th);
         }
     }
 

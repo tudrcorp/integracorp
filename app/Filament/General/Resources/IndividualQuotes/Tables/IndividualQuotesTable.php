@@ -12,6 +12,7 @@ use App\Mail\SendMailPropuestaPlanIdeal;
 use App\Mail\SendMailPropuestaPlanInicial;
 use App\Models\Bitacora;
 use App\Models\IndividualQuote;
+use App\Support\IndividualQuotes\IndividualQuotePurchase;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -170,7 +171,7 @@ class IndividualQuotesTable
                                 $record->save();
 
                                 /**Creamos una variable de session con la cantidad dde personas en la cotizacion */
-                                session()->put('persons', $record->detailsQuote()->first()->total_persons);
+                                IndividualQuotePurchase::prepareSession($record);
 
                                 Notification::make()
                                     ->title('COTIZACION INDIVIDUAL APROBADA')
