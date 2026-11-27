@@ -13,18 +13,16 @@ use App\Support\Operations\CoordinationServiceItemsManager;
 use App\Support\Operations\ManageQuoteSupplierCreator;
 use App\Support\Operations\MedicalAppointmentManager;
 use App\Support\Operations\MedicationInvoiceWizard;
-use App\Support\Operations\MedicationQuoteLineStock;
 use App\Support\Operations\OperationServiceOrderCoveredPricingFormFields;
 use App\Support\Operations\OperationServiceOrderProviderContacts;
 use App\Support\Operations\OperationServiceOrderProviderFormFields;
 use App\Support\Operations\OperationServiceOrderUnregisteredProviderFormFields;
 use App\Support\Operations\QuoteInvoiceFormFields;
-use App\Support\Operations\QuoteLineProfitField;
+use App\Support\Operations\QuoteLineItemsTable;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -93,6 +91,14 @@ final class ManageCoordinationServiceItemsForm
         return 1;
     }
 
+    public static function hasNoItemSelected(Get $get): bool
+    {
+        return array_filter(
+            (array) ($get('managed_service_item_keys') ?? []),
+            fn (mixed $key): bool => is_string($key) && $key !== '',
+        ) === [];
+    }
+
     /**
      * @return array<Step>
      */
@@ -101,6 +107,16 @@ final class ManageCoordinationServiceItemsForm
         return [Step::make('Selección de ítems')
             ->description('Revise cobertura y seleccione ítems')
             ->icon(Heroicon::OutlinedClipboardDocumentList)
+            ->beforeValidation(function (Get $get): void {
+                // «Continuar» se ve siempre: sin selección se detiene aquí con un aviso claro.
+                if (self::hasNoItemSelected($get)) {
+                    \Filament\Notifications\Notification::make()
+                        ->title('Seleccione los ítems a gestionar')
+                        ->body('Debe seleccionar al menos un ítem para su gestión.')
+                        ->warning()
+                        ->send();
+                }
+            })
             ->schema([
                 Placeholder::make('manage_service_items_context')
                     ->hiddenLabel()
@@ -136,6 +152,9 @@ final class ManageCoordinationServiceItemsForm
                             })
                             ->columns(1)
                             ->required()
+                            ->validationMessages([
+                                'required' => 'Seleccione al menos un ítem para gestionar.',
+                            ])
                             ->helperText('Use la búsqueda para filtrar por nombre. Puede seleccionar varios ítems a la vez.')
                             ->extraAttributes([
                                 'class' => 'fi-manage-service-items-checkbox-list',
@@ -154,7 +173,10 @@ final class ManageCoordinationServiceItemsForm
                     ? 'Para ítems cubiertos y los no cubiertos que se facturan al paciente'
                     : 'Creación automática para ítems cubiertos')
                 ->icon(Heroicon::OutlinedDocumentPlus)
-                ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::serviceOrderStepKeys($livewire->getRecord(), $get) !== [])
+                // Sin selección también queda visible: así «Continuar» aparece desde el inicio, sin
+                // esperar la respuesta del servidor al marcar. El paso 1 no deja avanzar sin ítems.
+                ->visible(fn (ManageCoordinationServiceItems $livewire, Get $get): bool => CoordinationServiceItemsManager::serviceOrderStepKeys($livewire->getRecord(), $get) !== []
+                    || (self::hasNoItemSelected($get) && CoordinationServiceItemsManager::hasManageServiceItems($livewire->getRecord())))
                 ->afterValidation(function (ManageCoordinationServiceItems $livewire, Get $get): void {
                     // Lo facturado al paciente necesita su orden: sin proveedor no se puede seguir.
                     $message = CoordinationServiceItemsManager::invoicedServiceOrderProviderError($livewire->getRecord(), $get);
@@ -466,12 +488,11 @@ final class ManageCoordinationServiceItemsForm
                                         ->helperText('Referencia automática desde API BCV.')
                                         ->extraAttributes(['class' => 'fi-manage-quote-readonly-field'])
                                         ->columnSpanFull(),
-                                    Repeater::make('manage_quote_line_items')
-                                        ->label('Precios unitarios por ítem')
-                                        ->addable(false)
-                                        ->deletable(false)
-                                        ->reorderable(false)
-                                        ->columns(['default' => 1, 'md' => 2, 'xl' => 4])
+                                    QuoteLineItemsTable::make(
+                                        'manage_quote_line_items',
+                                        '../../manage_quote_bcv_rate',
+                                        fn (Get $get, Set $set) => CoordinationServiceItemsManager::syncManageQuoteAggregates($get, $set),
+                                    )
                                         ->afterStateHydrated(function (
                                             mixed $state,
                                             ManageCoordinationServiceItems $livewire,
@@ -479,48 +500,7 @@ final class ManageCoordinationServiceItemsForm
                                             Set $set
                                         ): void {
                                             CoordinationServiceItemsManager::ensureManageQuoteLineItemsPopulated($livewire->getRecord(), $get, $set, $state);
-                                        })
-                                        ->schema([
-                                            Hidden::make('key')
-                                                ->dehydrated(),
-                                            Hidden::make('category')
-                                                ->dehydrated(),
-                                            TextInput::make('label')
-                                                ->label('Ítem')
-                                                ->disabled()
-                                                ->dehydrated()
-                                                ->helperText(fn (Get $get): ?string => MedicationQuoteLineStock::hint(
-                                                    is_string($get('category')) ? $get('category') : null,
-                                                    is_string($get('label')) ? $get('label') : null,
-                                                )),
-                                            TextInput::make('unit_price_usd')
-                                                ->label('Precio del proveedor (USD)')
-                                                ->prefix('US$')
-                                                ->numeric()
-                                                ->required()
-                                                ->minValue(0.01)
-                                                ->live(debounce: 400)
-                                                ->afterStateUpdated(function (Get $get, Set $set, mixed $state): void {
-                                                    $rate = OperationCoordinationServicesTable::decimalOrNull($get('../../manage_quote_bcv_rate'));
-                                                    $usd = OperationCoordinationServicesTable::decimalOrNull($state);
-                                                    $set(
-                                                        'unit_price_ves',
-                                                        ($rate !== null && $usd !== null)
-                                                            ? round($usd * $rate, 2)
-                                                            : null
-                                                    );
-                                                    CoordinationServiceItemsManager::syncManageQuoteAggregates($get, $set);
-                                                }),
-                                            QuoteLineProfitField::make(),
-                                            TextInput::make('unit_price_ves')
-                                                ->label('Precio del proveedor (Bs.)')
-                                                ->prefix('Bs.')
-                                                ->numeric()
-                                                ->readOnly()
-                                                ->dehydrated()
-                                                ->extraAttributes(['class' => 'fi-manage-quote-readonly-field']),
-                                        ])
-                                        ->columnSpanFull(),
+                                        }),
                                     Hidden::make('manage_quote_costo_dolares')
                                         ->dehydrated(),
                                     Hidden::make('manage_quote_costo_bolivares')

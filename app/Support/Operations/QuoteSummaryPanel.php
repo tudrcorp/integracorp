@@ -14,7 +14,7 @@ use Illuminate\Support\HtmlString;
 final class QuoteSummaryPanel
 {
     /**
-     * @param  array<int|string, mixed>  $lineItems  filas con key, label, unit_price_usd y profit_percentage
+     * @param  array<int|string, mixed>  $lineItems  filas con key, label, quantity, unit_price_usd y profit_percentage
      */
     public static function render(array $lineItems, ?float $bcvRate): HtmlString
     {
@@ -28,7 +28,12 @@ final class QuoteSummaryPanel
         foreach ($totals['lines'] as $line) {
             $rows .= '<tr class="align-top">'
                 .'<td class="px-3 py-2.5 font-medium text-gray-900 dark:text-white">'.e($line['label']).'</td>'
-                .'<td class="px-3 py-2.5 text-right tabular-nums text-gray-700 dark:text-gray-200">'.e($usd($line['cost'])).'</td>'
+                .'<td class="px-3 py-2.5 text-right tabular-nums '.($line['quantity'] === null ? 'text-amber-700 dark:text-amber-300' : 'text-gray-700 dark:text-gray-200').'">'.e($line['quantity'] === null ? 'Falta' : (string) $line['quantity']).'</td>'
+                .'<td class="px-3 py-2.5 text-right tabular-nums text-gray-700 dark:text-gray-200">'.e($usd($line['cost']))
+                .(($line['quantity'] ?? 1) > 1 && $line['unit_cost'] !== null
+                    ? '<div class="text-[11px] font-normal text-gray-500 dark:text-gray-400">'.e($usd($line['unit_cost']).' c/u').'</div>'
+                    : '')
+                .'</td>'
                 .'<td class="px-3 py-2.5 text-right tabular-nums '.($line['percentage'] === null ? 'text-gray-400 dark:text-gray-500' : 'text-amber-700 dark:text-amber-300').'">'.e($pct($line['percentage'])).'</td>'
                 .'<td class="px-3 py-2.5 text-right tabular-nums text-amber-700 dark:text-amber-300">'.e($usd($line['profit'])).'</td>'
                 .'<td class="px-3 py-2.5 text-right font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">'.e($usd($line['price']))
@@ -37,7 +42,7 @@ final class QuoteSummaryPanel
         }
 
         if ($rows === '') {
-            $rows = '<tr><td colspan="5" class="px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400">Seleccione ítems para cotizar.</td></tr>';
+            $rows = '<tr><td colspan="6" class="px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400">Seleccione ítems para cotizar.</td></tr>';
         }
 
         $pending = $totals['count'] - $totals['priced'];
@@ -54,13 +59,14 @@ final class QuoteSummaryPanel
             .'<div class="flex flex-wrap items-baseline justify-between gap-2">'
             .'<p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-800/80 dark:text-amber-200/70">Resumen de cotización</p>'
             .($pending > 0
-                ? '<p class="text-xs font-medium text-amber-700 dark:text-amber-300">'.e($pending === 1 ? 'Falta el precio de 1 ítem' : 'Falta el precio de '.$pending.' ítems').'</p>'
+                ? '<p class="text-xs font-medium text-amber-700 dark:text-amber-300">'.e($pending === 1 ? 'Falta el precio o la cantidad de 1 ítem' : 'Falta el precio o la cantidad de '.$pending.' ítems').'</p>'
                 : '')
             .'</div>'
             .'<div class="mt-3 overflow-x-auto rounded-xl border border-black/[0.06] bg-white/70 dark:border-white/10 dark:bg-zinc-900/50">'
             .'<table class="min-w-full divide-y divide-gray-100 text-sm dark:divide-white/10">'
             .'<thead class="bg-gray-50/90 text-xs text-gray-600 dark:bg-white/5 dark:text-gray-300"><tr>'
             .'<th class="px-3 py-2 text-left font-semibold">Ítem</th>'
+            .'<th class="px-3 py-2 text-right font-semibold">Cant.</th>'
             .'<th class="px-3 py-2 text-right font-semibold">Costo</th>'
             .'<th class="px-3 py-2 text-right font-semibold">% utilidad</th>'
             .'<th class="px-3 py-2 text-right font-semibold">Ganancia</th>'
@@ -78,7 +84,7 @@ final class QuoteSummaryPanel
             )
             .$card('Total cotización', $usd($totals['total']), $ves($totals['total']), 'border-emerald-200/90 bg-emerald-50/80 text-emerald-950 dark:border-emerald-500/30 dark:bg-emerald-950/30 dark:text-emerald-50')
             .'</div>'
-            .'<p class="mt-2 text-[11px] leading-relaxed text-gray-500 dark:text-gray-400">Precio de venta = costo del proveedor + su % de utilidad. Bolívares a la tasa BCV '
+            .'<p class="mt-2 text-[11px] leading-relaxed text-gray-500 dark:text-gray-400">Costo = precio unitario del proveedor × cantidad. Precio de venta = costo + su % de utilidad. Bolívares a la tasa BCV '
             .e($bcvRate !== null ? number_format($bcvRate, 2, ',', '.') : '—').'.</p>'
             .'</div>'
         );

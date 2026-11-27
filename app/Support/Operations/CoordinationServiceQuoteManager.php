@@ -675,6 +675,7 @@ final class CoordinationServiceQuoteManager
                     ?? ($unitUsd !== null ? round($unitUsd * $bcvRate, 2) : null);
 
                 return array_merge(is_array($orig) ? $orig : [], [
+                    QuoteLinePricing::QUANTITY_KEY => QuoteLinePricing::storedQuantity(['key' => $key, QuoteLinePricing::QUANTITY_KEY => $line[QuoteLinePricing::QUANTITY_KEY] ?? null]),
                     'unit_price_usd' => $unitUsd,
                     'unit_price_ves' => $unitVes,
                     'profit_percentage' => QuoteLinePricing::percentage($line['profit_percentage'] ?? null),
@@ -682,6 +683,31 @@ final class CoordinationServiceQuoteManager
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * Cantidad cotizada por medicamento (id de `telemedicine_patient_medications` => unidades).
+     *
+     * @return array<int, int>
+     */
+    public static function quotedMedicationQuantities(OperationQuoteGenerator $quote): array
+    {
+        $quantities = [];
+
+        foreach ((array) $quote->items as $item) {
+            if (! is_array($item) || ! QuoteLinePricing::quantityApplies($item['key'] ?? null)) {
+                continue;
+            }
+
+            $id = ClinicalServiceCatalog::idFromKey((string) $item['key']);
+            $quantity = QuoteLinePricing::quantity($item);
+
+            if ($id > 0 && $quantity !== null) {
+                $quantities[$id] = $quantity;
+            }
+        }
+
+        return $quantities;
     }
 
     public static function isQuotePendingForApproval(OperationQuoteGenerator $quote): bool
@@ -1505,8 +1531,10 @@ final class CoordinationServiceQuoteManager
         $payload[OperationServiceOrderController::FROM_APPROVED_QUOTE] = (int) $quote->getKey();
 
         if ($quote->type_service === 'MEDICAMENTOS') {
+            $quotedQuantities = self::quotedMedicationQuantities($quote);
             $payload['medications_list'] = $records->map(fn (TelemedicinePatientMedications $item): array => [
-                'quantity' => 1,
+                // La cantidad que cotizó el analista; 1 en cotizaciones anteriores a la cantidad.
+                'quantity' => $quotedQuantities[(int) $item->getKey()] ?? 1,
                 'indications' => $item->indications ?? null,
             ])->values()->all();
         }

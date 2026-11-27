@@ -495,8 +495,11 @@ it('el paso de facturación directa desde inventario quedó retirado de Gestiona
 
     expect($form)
         ->not->toContain("TextInput::make('manage_quote_porcentaje_ganancia')")
-        ->toContain('QuoteLineProfitField::make()')
+        ->toContain('QuoteLineItemsTable::make(')
         ->toContain("QuoteInvoiceFormFields::make(\n");
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/QuoteLineItemsTable.php'))
+        ->toContain('QuoteLineProfitField::make()');
 });
 
 it('la pantalla Gestionar servicio muestra el % por ítem, el resumen y la pregunta de factura con su responsable', function (): void {

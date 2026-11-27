@@ -101,7 +101,7 @@ final class QuoteInvoiceIssuer
 
         $record->loadMissing(['telemedicinePatient', 'telemedicineCase']);
         $patient = $record->telemedicinePatient;
-        $totalUsd = round(array_sum(array_column($lines, 'price')), 2);
+        $totalUsd = round(array_sum(array_column($lines, 'line_total')), 2);
 
         $invoice = OperationMedicationInvoice::query()->create([
             'operation_coordination_service_id' => $record->getKey(),
@@ -140,11 +140,11 @@ final class QuoteInvoiceIssuer
                 'prescribed_name' => $line['label'],
                 'product_name' => $line['label'],
                 'category_name' => $line['category'],
-                'quantity' => 1,
+                'quantity' => $line['quantity'],
                 'unit_cost_usd' => $line['cost'],
                 'profit_percentage' => $line['percentage'] ?? 0,
                 'unit_price_usd' => $line['price'],
-                'line_total_usd' => $line['price'],
+                'line_total_usd' => $line['line_total'],
             ]);
         }
 
@@ -177,7 +177,7 @@ final class QuoteInvoiceIssuer
             .'Responsable de pago: '.mb_strtolower($payerLabel).' ('.$quote->invoice_payer_name
             .(filled($quote->invoice_payer_identification) ? ', '.$quote->invoice_payer_identification : '').'). '
             .implode('; ', array_map(
-                fn (array $line): string => $line['label'].' — US$ '.number_format($line['price'], 2, '.', ',')
+                fn (array $line): string => $line['label'].($line['quantity'] > 1 ? ' × '.$line['quantity'] : '').' — US$ '.number_format($line['line_total'], 2, '.', ',')
                     .($line['percentage'] !== null ? ' ('.number_format($line['percentage'], 2, ',', '.').' %)' : ' (sin utilidad)'),
                 $lines,
             ))
@@ -222,7 +222,9 @@ final class QuoteInvoiceIssuer
     /**
      * Líneas cobrables de la cotización (sin las de cortesía), validadas.
      *
-     * @return list<array{item_id: int, label: string, category: string, cost: float, percentage: float|null, price: float}>
+     * `cost` y `price` son unitarios; `line_total` = precio unitario × cantidad (solo medicamentos > 1).
+     *
+     * @return list<array{item_id: int, label: string, category: string, quantity: int, cost: float, percentage: float|null, price: float, line_total: float}>
      *
      * @throws MedicationInvoiceException
      */
@@ -266,13 +268,21 @@ final class QuoteInvoiceIssuer
                 throw new MedicationInvoiceException('«'.$label.'» ya tiene la factura vigente '.($activeInvoice->invoice?->displayNumber() ?? '').'. Anúlela o quite el ítem antes de aprobar.');
             }
 
+            $quantity = QuoteLinePricing::quantity($item);
+
+            if ($quantity === null) {
+                throw new MedicationInvoiceException('«'.$label.'» no tiene una cantidad válida en la cotización '.$quoteLabel.'. Edítela antes de aprobarla.');
+            }
+
             $lines[] = [
                 'item_id' => $itemId,
                 'label' => $label,
                 'category' => (string) ($item['category'] ?? ''),
+                'quantity' => $quantity,
                 'cost' => $cost,
                 'percentage' => $percentage,
                 'price' => (float) QuoteLinePricing::salePrice($cost, $percentage),
+                'line_total' => (float) QuoteLinePricing::lineSalePrice($item),
             ];
         }
 

@@ -7407,6 +7407,28 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* «Precios unitarios por ítem» en tabla (QuoteLineItemsTable) */
+  .fi-quote-line-items-table .fi-fo-table-repeater > table > tbody > tr > td {
+    vertical-align: top;
+  }
+
+  .fi-quote-line-items-table .fi-quote-line-total {
+    @apply flex flex-col items-end gap-0.5 pt-2 text-right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .fi-quote-line-items-table .fi-quote-line-total-price {
+    @apply text-sm font-semibold text-emerald-700 dark:text-emerald-300;
+  }
+
+  .fi-quote-line-items-table .fi-quote-line-total-cost {
+    @apply text-xs text-gray-500 dark:text-gray-400;
+  }
+
+  .fi-quote-line-items-table .fi-quote-line-total-pending {
+    @apply block pt-2 text-right text-xs font-medium text-amber-700 dark:text-amber-300;
+  }
+
   /* Estatus del caso — bloque destacado tipo aviso iOS (seguimiento / alta) */
   .fi-telemedicine-consultation-wizard .fi-telemedicine-case-status-section .fi-section {
     @apply border-l-[3px] border-l-amber-400 bg-gradient-to-br from-amber-50/95 via-white to-white shadow-[0_2px_16px_-4px_rgba(245,158,11,0.2)] dark:border-l-amber-500/90 dark:from-amber-950/35 dark:via-zinc-900/95 dark:to-zinc-900/90 dark:shadow-[0_2px_20px_-4px_rgba(0,0,0,0.45)];

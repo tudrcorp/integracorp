@@ -9,7 +9,6 @@ use App\Models\OperationQuoteGenerator;
 use App\Models\Supplier;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -87,50 +86,7 @@ final class CoordinationServiceQuoteEditForm
                         ->helperText('Referencia usada al crear la cotización.')
                         ->extraAttributes(['class' => 'fi-manage-quote-readonly-field'])
                         ->columnSpanFull(),
-                    Repeater::make('edit_quote_line_items')
-                        ->label('Precios unitarios por ítem')
-                        ->addable(false)
-                        ->deletable(false)
-                        ->reorderable(false)
-                        ->columns(['default' => 1, 'md' => 2, 'xl' => 4])
-                        ->schema([
-                            Hidden::make('key')->dehydrated(),
-                            Hidden::make('category')->dehydrated(),
-                            TextInput::make('label')
-                                ->label('Ítem')
-                                ->disabled()
-                                ->dehydrated()
-                                ->helperText(fn (Get $get): ?string => MedicationQuoteLineStock::hint(
-                                    is_string($get('category')) ? $get('category') : null,
-                                    is_string($get('label')) ? $get('label') : null,
-                                )),
-                            TextInput::make('unit_price_usd')
-                                ->label('Precio del proveedor (USD)')
-                                ->prefix('US$')
-                                ->numeric()
-                                ->required()
-                                ->minValue(0.01)
-                                ->live(debounce: 400)
-                                ->afterStateUpdated(function (Get $get, Set $set, mixed $state): void {
-                                    $rate = OperationCoordinationServicesTable::decimalOrNull($get('../../edit_quote_bcv_rate'));
-                                    $usd = OperationCoordinationServicesTable::decimalOrNull($state);
-                                    $set(
-                                        'unit_price_ves',
-                                        ($rate !== null && $usd !== null)
-                                            ? round($usd * $rate, 2)
-                                            : null
-                                    );
-                                }),
-                            QuoteLineProfitField::make(),
-                            TextInput::make('unit_price_ves')
-                                ->label('Precio del proveedor (Bs.)')
-                                ->prefix('Bs.')
-                                ->numeric()
-                                ->readOnly()
-                                ->dehydrated()
-                                ->extraAttributes(['class' => 'fi-manage-quote-readonly-field']),
-                        ])
-                        ->columnSpanFull(),
+                    QuoteLineItemsTable::make('edit_quote_line_items', '../../edit_quote_bcv_rate'),
                     Hidden::make('edit_quote_is_courtesy')->dehydrated(false),
                     Placeholder::make('edit_quote_summary_panel')
                         ->hiddenLabel()
@@ -171,6 +127,10 @@ final class CoordinationServiceQuoteEditForm
                     'key' => $item['key'] ?? null,
                     'category' => $item['category'] ?? null,
                     'label' => $item['label'] ?? '—',
+                    // Un medicamento de una cotización anterior a la cantidad abre con 1, así su total no cambia.
+                    QuoteLinePricing::QUANTITY_KEY => QuoteLinePricing::quantityApplies($item['key'] ?? null)
+                        ? (QuoteLinePricing::quantity($item) ?? (array_key_exists(QuoteLinePricing::QUANTITY_KEY, $item) ? null : 1))
+                        : 1,
                     'unit_price_usd' => OperationCoordinationServicesTable::decimalOrNull($item['unit_price_usd'] ?? null),
                     'unit_price_ves' => OperationCoordinationServicesTable::decimalOrNull($item['unit_price_ves'] ?? null),
                     // Una cotización anterior al % por ítem aplicaba un % global: se reparte igual en

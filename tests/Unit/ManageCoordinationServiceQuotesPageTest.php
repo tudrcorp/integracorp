@@ -114,9 +114,8 @@ it('ofrece selección múltiple y edición modal de cotizaciones pendientes', fu
 it('define el formulario y la acción modal para editar cotizaciones pendientes', function (): void {
     expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/CoordinationServiceQuoteEditForm.php'))
         ->toContain('edit_quote_supplier_id')
-        ->toContain('edit_quote_line_items')
-        ->toContain('MedicationQuoteLineStock::hint')
-        ->toContain('QuoteLineProfitField::make()')
+        ->toContain("QuoteLineItemsTable::make('edit_quote_line_items', '../../edit_quote_bcv_rate')")
+        ->toContain('QuoteLinePricing::QUANTITY_KEY')
         ->toContain('QuoteInvoiceFormFields::make(')
         ->toContain('edit_quote_observations');
 
