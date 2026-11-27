@@ -10,6 +10,7 @@ use App\Models\OperationCoordinationService;
 use App\Models\TelemedicineCase;
 use App\Models\TelemedicinePatient;
 use App\Models\TelemedicinePatientSpecialty;
+use App\Support\Operations\RetailMainServiceCatalog;
 use Filament\Actions\Action;
 use Illuminate\Support\Facades\Auth;
 
@@ -30,7 +31,12 @@ class RegisterTpaRetailServicesAction
      *
      * @var list<string>
      */
-    private const STANDALONE_SPECIFIC_SERVICES = [
+    /**
+     * Lista histórica de servicios principales. La lista vigente vive en la tabla `retail_main_services`
+     * ({@see RetailMainServiceCatalog}); esta solo se usa si la tabla aún no existe y para reconocer
+     * coordinaciones viejas.
+     */
+    public const LEGACY_SERVICES = [
         'TELEMEDICINA',
         'AMD (ASISTENCIA MEDICA DOMICILIARIA)',
         'TRASLADO EN AMBULANCIA',
@@ -90,7 +96,7 @@ class RegisterTpaRetailServicesAction
      */
     public static function standaloneSpecificServices(): array
     {
-        return self::STANDALONE_SPECIFIC_SERVICES;
+        return RetailMainServiceCatalog::active();
     }
 
     /**
@@ -98,7 +104,7 @@ class RegisterTpaRetailServicesAction
      */
     public static function standaloneServiceOptions(): array
     {
-        return collect(self::STANDALONE_SPECIFIC_SERVICES)
+        return collect(RetailMainServiceCatalog::active())
             ->mapWithKeys(static fn (string $service): array => [$service => $service])
             ->all();
     }
@@ -108,7 +114,7 @@ class RegisterTpaRetailServicesAction
         $specificService = trim((string) $specificService);
 
         return $specificService !== ''
-            && in_array($specificService, self::STANDALONE_SPECIFIC_SERVICES, true);
+            && in_array($specificService, RetailMainServiceCatalog::known(), true);
     }
 
     /**

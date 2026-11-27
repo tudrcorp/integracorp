@@ -8,9 +8,12 @@ use App\Filament\Operations\Resources\TelemedicinePatients\Actions\RegisterTpaRe
 use App\Filament\Operations\Resources\TelemedicinePatients\TelemedicinePatientResource;
 use App\Models\TelemedicinePatient;
 use App\Models\User;
+use App\Support\Filament\BusinessFilamentActionAccess;
+use App\Support\Filament\BusinessFilamentActionPermissionRegistry;
 use App\Support\Filament\FilamentIosButton;
 use App\Support\Filament\Operations\OperationsSupplierScope;
 use App\Support\Filament\TelemedicinePatientPageHeader;
+use App\Support\Operations\RetailMainServiceCatalog;
 use App\Support\Operations\RetailServiceProviderCatalog;
 use App\Support\Operations\RetailServiceRegistration;
 use App\Support\Operations\RetailServiceRegistrationException;
@@ -176,13 +179,15 @@ class RegisterRetailServices extends Page
         }
 
         return Section::make('Servicios principales')
+            ->key('mainServices')
             ->description('Marque uno o varios. Debajo aparece el selector de proveedor de cada servicio marcado.')
             ->icon(Heroicon::OutlinedSquares2x2)
+            ->afterHeader([$this->addMainServiceAction(), $this->removeMainServiceAction()])
             ->columnSpanFull()
             ->schema([
                 CheckboxList::make('services')
                     ->hiddenLabel()
-                    ->options(collect(RetailServiceRegistration::mainServices())->mapWithKeys(fn (string $service): array => [$service => $this->serviceTitle($service)])->all())
+                    ->options(fn (): array => collect(RetailServiceRegistration::mainServices())->mapWithKeys(fn (string $service): array => [$service => $this->serviceTitle($service)])->all())
                     ->descriptions([
                         'TELEMEDICINA' => 'Llega al médico de guardia si asigna un equipo médico.',
                         'AMD (ASISTENCIA MEDICA DOMICILIARIA)' => 'Llega al médico de guardia si asigna un equipo médico.',
@@ -387,15 +392,96 @@ class RegisterRetailServices extends Page
 
     private function serviceTitle(string $service): string
     {
-        return match ($service) {
-            'AMD (ASISTENCIA MEDICA DOMICILIARIA)' => 'AMD · Asistencia médica domiciliaria',
-            'CONSULTA ONLINE CON MEDICO ESPECIALISTA' => 'Consulta online con especialista',
-            'LECTURA DE RESULTADOS (LABORATORIO(S))' => 'Lectura de resultados · Laboratorio',
-            'LECTURA DE RESULTADOS (IMAGENOLOGIA)' => 'Lectura de resultados · Imagenología',
-            'URGEN CARE' => 'Urgent care',
-            'APS' => 'APS · Atención primaria',
-            default => mb_convert_case(mb_strtolower($service), MB_CASE_TITLE),
-        };
+        return RetailMainServiceCatalog::label($service);
+    }
+
+    public static function canManageMainServices(): bool
+    {
+        return BusinessFilamentActionAccess::userCan(BusinessFilamentActionPermissionRegistry::MANAGE_RETAIL_MAIN_SERVICES);
+    }
+
+    private function addMainServiceAction(): Action
+    {
+        return Action::make('addMainService')
+            ->label('Agregar servicio')
+            ->icon(Heroicon::OutlinedPlus)
+            ->link()
+            ->visible(fn (): bool => self::canManageMainServices())
+            ->modalHeading('Agregar servicio principal')
+            ->modalDescription('Queda disponible de inmediato para todos los analistas en el registro RETAIL. El proveedor se elige con búsqueda libre.')
+            ->modalSubmitActionLabel('Agregar')
+            ->modalWidth('md')
+            ->schema([
+                TextInput::make('label')
+                    ->label('Nombre del servicio')
+                    ->placeholder('Ej.: Sesión de fisioterapia')
+                    ->required()
+                    ->minLength(RetailMainServiceCatalog::LABEL_MIN)
+                    ->maxLength(RetailMainServiceCatalog::LABEL_MAX)
+                    ->autofocus(),
+            ])
+            ->action(function (array $data, Action $action): void {
+                abort_unless(self::canManageMainServices(), 403);
+
+                $user = Auth::user();
+                $result = RetailMainServiceCatalog::add((string) ($data['label'] ?? ''), $user instanceof User ? $user : null);
+
+                if ($result['ok'] !== true) {
+                    Notification::make()->title('No se agregó el servicio')->body($result['message'])->danger()->send();
+                    $action->halt();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title($result['reactivated'] ? 'Servicio activado de nuevo' : 'Servicio agregado')
+                    ->body('«'.$result['label'].'» ya aparece en Servicios principales.')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    private function removeMainServiceAction(): Action
+    {
+        return Action::make('removeMainService')
+            ->label('Quitar servicio')
+            ->icon(Heroicon::OutlinedMinus)
+            ->color('danger')
+            ->link()
+            ->visible(fn (): bool => self::canManageMainServices() && RetailMainServiceCatalog::removable() !== [])
+            ->modalHeading('Quitar servicio principal')
+            ->modalDescription('Deja de ofrecerse en el registro RETAIL. Las coordinaciones ya creadas con ese servicio no cambian, y se puede volver a agregar cuando haga falta. Telemedicina y AMD no se pueden quitar.')
+            ->modalSubmitActionLabel('Quitar')
+            ->modalWidth('md')
+            ->schema([
+                Select::make('service_id')
+                    ->label('Servicio')
+                    ->options(fn (): array => RetailMainServiceCatalog::removable())
+                    ->required()
+                    ->native(false),
+            ])
+            ->action(function (array $data, Action $action): void {
+                abort_unless(self::canManageMainServices(), 403);
+
+                $user = Auth::user();
+                $result = RetailMainServiceCatalog::remove((int) ($data['service_id'] ?? 0), $user instanceof User ? $user : null);
+
+                if ($result['ok'] !== true) {
+                    Notification::make()->title('No se quitó el servicio')->body($result['message'])->danger()->send();
+                    $action->halt();
+
+                    return;
+                }
+
+                $active = RetailMainServiceCatalog::active();
+                $this->data['services'] = array_values(array_filter((array) ($this->data['services'] ?? []), fn (mixed $service): bool => in_array($service, $active, true)));
+
+                Notification::make()
+                    ->title('Servicio quitado')
+                    ->body('«'.$result['label'].'» ya no aparece en Servicios principales.')
+                    ->success()
+                    ->send();
+            });
     }
 
     private function providerLabel(mixed $key): ?string

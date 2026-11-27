@@ -65,7 +65,8 @@ it('permite seleccionar uno o varios servicios principales sin catálogo de íte
     expect(App\Support\Operations\RetailServiceRegistration::mainServices())->toBe(RegisterTpaRetailServicesAction::standaloneSpecificServices());
 
     expect($options)
-        ->toHaveCount(9)
+        ->toHaveKey('EQUIPOS MEDICOS')
+        ->toHaveKey('SESION DE FISIOTERAPIA')
         ->toHaveKey('TELEMEDICINA')
         ->toHaveKey('AMD (ASISTENCIA MEDICA DOMICILIARIA)')
         ->toHaveKey('TRASLADO EN AMBULANCIA')
