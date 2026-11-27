@@ -1040,11 +1040,12 @@
             }
         "
     >
-        {{-- Sondeo por huella: si la cola y el hilo no cambiaron, el servidor no repinta. 3 s solo con un caso en atención. --}}
+        {{-- Sondeo por huella: si la cola y el hilo no cambiaron, el servidor solo lee un contador en Redis y no repinta.
+             2 s con un caso en atención (el analista conversa en tiempo real); 4 s en la bandeja. --}}
         @if ($case !== null && $case['taken'])
-            <span wire:key="crm-poll-fast" wire:poll.3s="heartbeat" hidden></span>
+            <span wire:key="crm-poll-fast" wire:poll.2s="heartbeat" hidden></span>
         @else
-            <span wire:key="crm-poll-slow" wire:poll.10s="heartbeat" hidden></span>
+            <span wire:key="crm-poll-slow" wire:poll.4s="heartbeat" hidden></span>
         @endif
 
         <div class="crm-board {{ $case ? 'has-case' : '' }}">

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Support\CrmInbox;
 
 use Illuminate\Contracts\Cache\Repository;
+use Illuminate\Support\Facades\DB;
+use Throwable;
 
 /**
  * Contador que sube con cada escritura del CRM. El sondeo de cada bandeja lee solo este número
@@ -14,11 +16,18 @@ final class CrmInboxPulse
 {
     private const KEY = 'crm-inbox:pulse';
 
+    /**
+     * Dentro de una transacción el pulso vuelve a subir al confirmarse: si solo subiera antes, una bandeja
+     * que sondea en ese instante vería el pulso nuevo con los datos viejos, lo daría por visto y no
+     * repintaría hasta la revisión completa (30 s).
+     */
     public static function bump(): void
     {
-        CrmInboxCache::attempt(static function (Repository $store): void {
-            $store->add(self::KEY, 0, now()->addDays(7));
-            $store->increment(self::KEY);
+        self::afterCommit(static function (): void {
+            CrmInboxCache::attempt(static function (Repository $store): void {
+                $store->add(self::KEY, 0, now()->addDays(7));
+                $store->increment(self::KEY);
+            });
         });
     }
 
@@ -32,11 +41,29 @@ final class CrmInboxPulse
             return;
         }
 
-        CrmInboxCache::attempt(static function (Repository $store) use ($handoffId): void {
-            $key = self::KEY.':thread:'.$handoffId;
-            $store->add($key, 0, now()->addDays(2));
-            $store->increment($key);
+        self::afterCommit(static function () use ($handoffId): void {
+            CrmInboxCache::attempt(static function (Repository $store) use ($handoffId): void {
+                $key = self::KEY.':thread:'.$handoffId;
+                $store->add($key, 0, now()->addDays(2));
+                $store->increment($key);
+            });
         });
+    }
+
+    /**
+     * Sube ahora y, si hay una transacción abierta, otra vez al confirmarse. La segunda es la que importa:
+     * garantiza que la bandeja vea un pulso nuevo cuando los datos ya son visibles.
+     */
+    private static function afterCommit(callable $callback): void
+    {
+        $callback();
+
+        try {
+            if (DB::transactionLevel() > 0) {
+                DB::afterCommit($callback);
+            }
+        } catch (Throwable) {
+        }
     }
 
     public static function currentThread(?string $handoffId): string
