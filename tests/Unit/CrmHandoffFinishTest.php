@@ -174,7 +174,7 @@ it('la bandeja tiene el botón, la tecla F y la acción en los tres paneles', fu
     $page = (string) file_get_contents($root.'/app/Filament/Business/Pages/AtencionWhatsapp.php');
 
     expect($view)->toContain('data-finish')
-        ->and($view)->toContain("if (action === 'finish') this.\$wire.finish(picked, note);")
+        ->and($view)->toContain("if (action === 'finish') this.\$wire.finish(picked, note, filing);")
         ->and($view)->toContain("key === 'f'")
         ->and($view)->toContain('Finalizar conversación…')
         ->and($page)->toContain('public function finish(string $outcome')

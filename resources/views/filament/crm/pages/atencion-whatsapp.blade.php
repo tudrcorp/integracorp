@@ -570,6 +570,20 @@
         .crm-dialog h3 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -0.01em; }
         .crm-dialog p { margin: 0; color: var(--crm-muted); line-height: 1.55; }
         .crm-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+        .crm-dialog { max-height: calc(100vh - 2rem); overflow-y: auto; }
+        .crm-filing { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--crm-line); border-radius: 12px; background: var(--crm-soft); font-size: 13px; }
+        .crm-filing-files { margin: 0; padding-left: 18px; display: grid; gap: 2px; max-height: 7rem; overflow-y: auto; }
+        .crm-filing-files li { overflow-wrap: anywhere; }
+        .crm-filing-pick { display: grid; gap: 6px; }
+        .crm-filing-pick input { border: 1px solid var(--crm-line-strong); background: var(--crm-panel); color: inherit; border-radius: 8px; padding: 7px 8px; font: inherit; font-size: 13px; }
+        .crm-filing-list { display: grid; gap: 4px; max-height: 12rem; overflow-y: auto; }
+        .crm-filing-list button { display: grid; gap: 1px; text-align: start; border: 1px solid var(--crm-line); background: var(--crm-panel); color: var(--crm-text); border-radius: 8px; padding: 6px 9px; cursor: pointer; font: inherit; }
+        .crm-filing-list button:hover, .crm-filing-list button:focus-visible { border-color: var(--crm-accent-2); }
+        .crm-filing-list b { font-size: 12.5px; }
+        .crm-filing-list small { font-size: 11.5px; color: var(--crm-muted); }
+        .crm-filing-list em { font-style: normal; font-size: 11px; color: var(--crm-accent-2); }
+        .crm-filing-choice { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 7px 9px; border-radius: 8px; background: var(--crm-accent-soft); font-weight: 600; }
+        .crm-filing-error { color: var(--crm-fail) !important; }
 
         /* Propuesta D: cola */
         .crm-q-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; }
@@ -786,6 +800,18 @@
         .crm-doc-item b { font-size: 12.5px; }
         .crm-doc-item span { font-size: 11.5px; color: var(--crm-muted); }
         .crm-libcard { display: flex; gap: 10px; align-items: center; }
+        .crm-media { display: grid; gap: 6px; margin-bottom: 4px; }
+        .crm-media-img { display: block; max-width: min(18rem, 100%); max-height: 16rem; border-radius: 10px; object-fit: cover; background: var(--crm-soft); }
+        .crm-media audio { width: min(18rem, 100%); height: 36px; }
+        .crm-media-file { display: flex; gap: 10px; align-items: center; min-width: 0; padding: 8px 10px; border: 1px solid var(--crm-line); border-radius: 10px; background: var(--crm-panel); color: var(--crm-text); text-decoration: none; }
+        .crm-media-file:hover { border-color: var(--crm-line-strong); }
+        .crm-media-ext { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; background: var(--crm-accent-soft); color: var(--crm-accent-2); font-size: 10px; font-weight: 700; text-transform: uppercase; }
+        .crm-media-name { min-width: 0; display: grid; }
+        .crm-media-name b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .crm-media-actions { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; }
+        .crm-media-actions a { color: var(--crm-accent-2); text-decoration: none; font-weight: 600; }
+        .crm-media-actions a:hover { text-decoration: underline; }
+        .crm-media-tag { font-size: 11px; color: var(--crm-muted); }
         .crm-libcard b { font-size: 13px; }
         .crm-outcome { display: grid; gap: 8px; }
         .crm-outcome-list { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -843,6 +869,7 @@
             me: null,
             taking: false,
             confirm: { open: false, title: '', body: '', label: '', danger: true, run: null, outcome: false, picked: '', note: '' },
+            filing: { loading: false, failed: false, files: [], suggestions: [], results: [], term: '', searching: false, choice: '', choiceLabel: '', seq: 0 },
             timer: null,
             ticks: 0,
             alerted: {},
@@ -965,8 +992,44 @@
             },
             ask(options) {
                 this.confirm = { open: true, danger: true, action: '', outcome: false, picked: '', note: '', ...options };
+                this.filing = { loading: false, failed: false, files: [], suggestions: [], results: [], term: '', searching: false, choice: '', choiceLabel: '', seq: this.filing.seq + 1 };
+                if (['finish', 'release', 'close'].includes(this.confirm.action)) this.loadFiling();
+            },
+            async loadFiling() {
+                const seq = this.filing.seq;
+                this.filing.loading = true;
+                try {
+                    const context = await this.$wire.filingContext();
+                    if (seq !== this.filing.seq) return;
+                    this.filing.files = Array.isArray(context?.files) ? context.files : [];
+                    this.filing.suggestions = Array.isArray(context?.suggestions) ? context.suggestions : [];
+                } catch (error) {
+                    if (seq === this.filing.seq) this.filing.failed = true;
+                } finally {
+                    if (seq === this.filing.seq) this.filing.loading = false;
+                }
+            },
+            async searchCases() {
+                const term = this.filing.term.trim();
+                const seq = this.filing.seq;
+                if (term.length < 3) { this.filing.results = []; return; }
+                this.filing.searching = true;
+                try {
+                    const results = await this.$wire.searchTelemedicineCases(term);
+                    if (seq === this.filing.seq && term === this.filing.term.trim()) this.filing.results = Array.isArray(results) ? results : [];
+                } catch (error) {
+                    if (seq === this.filing.seq) this.filing.results = [];
+                } finally {
+                    if (seq === this.filing.seq) this.filing.searching = false;
+                }
+            },
+            pickCase(option) {
+                this.filing.choice = option ? String(option.id) : 'none';
+                this.filing.choiceLabel = option ? option.label + (option.detail ? ' · ' + option.detail : '') : 'No corresponden a ningún caso';
             },
             canAccept() {
+                if (this.filing.loading || this.filing.failed) return false;
+                if (this.filing.files.length > 0 && this.filing.choice === '') return false;
                 if (!this.confirm.outcome) return true;
                 if (this.confirm.picked === '') return false;
                 return this.confirm.picked !== 'otro' || this.confirm.note.trim() !== '';
@@ -977,10 +1040,11 @@
                 const run = this.confirm.run;
                 const picked = this.confirm.picked;
                 const note = this.confirm.note.trim();
+                const filing = this.filing.files.length > 0 ? this.filing.choice : '';
                 this.confirm.open = false;
-                if (action === 'finish') this.$wire.finish(picked, note);
-                else if (action === 'release') this.$wire.release(picked, note);
-                else if (action === 'close') this.$wire.close(picked, note);
+                if (action === 'finish') this.$wire.finish(picked, note, filing);
+                else if (action === 'release') this.$wire.release(picked, note, filing);
+                else if (action === 'close') this.$wire.close(picked, note, filing);
                 else if (typeof run === 'function') run();
             },
             async take() {
@@ -1744,7 +1808,12 @@
                                         @if ($message['document'] || ($message['library'] ?? null))
                                             <span class="crm-doc">PDF</span>
                                         @endif
-                                        @if ($message['library'] ?? null)
+                                        @if ($message['media'] ?? null)
+                                            @include('filament.crm.partials.media-bubble', ['media' => $message['media']])
+                                            @if (trim($message['text']) !== '')
+                                                <p>{{ $message['text'] }}</p>
+                                            @endif
+                                        @elseif ($message['library'] ?? null)
                                             <p class="crm-libcard"><span><b>{{ $message['library']['title'] }}</b>@if ($message['library']['filename'] !== '')<br><small class="crm-hint">{{ $message['library']['filename'] }}</small>@endif</span></p>
                                         @else
                                             <p>{{ $message['text'] }}</p>
@@ -2429,6 +2498,45 @@
                         @endforeach
                     </div>
                     <input type="text" maxlength="255" x-model="confirm.note" x-bind:placeholder="confirm.picked === 'otro' ? 'Cuenta en una línea qué pasó (obligatorio)' : 'Nota (opcional)'" aria-label="Nota del cierre" x-on:keydown.enter.prevent="accept()">
+                </div>
+                <p class="crm-hint" x-show="filing.loading">Revisando si el cliente envió archivos…</p>
+                <p class="crm-filing-error" x-show="filing.failed">No se pudo revisar si hay archivos del cliente. <button type="button" class="crm-link" x-on:click="filing.failed = false; loadFiling()">Reintentar</button></p>
+                <div class="crm-filing" x-show="filing.files.length > 0">
+                    <b x-text="filing.files.length === 1 ? 'El cliente envió 1 archivo' : 'El cliente envió ' + filing.files.length + ' archivos'"></b>
+                    <ul class="crm-filing-files">
+                        <template x-for="file in filing.files" x-bind:key="file.id">
+                            <li><span x-text="file.type_label"></span> · <span x-text="file.name"></span> <small class="crm-hint" x-text="file.size + ' · ' + file.time"></small></li>
+                        </template>
+                    </ul>
+                    <span>¿A qué caso de telemedicina corresponden? <small class="crm-hint">Se agregan a sus documentos.</small></span>
+                    <template x-if="filing.choice !== ''">
+                        <div class="crm-filing-choice">
+                            <span x-text="filing.choiceLabel"></span>
+                            <button type="button" class="crm-link" x-on:click="filing.choice = ''; filing.choiceLabel = ''">Cambiar</button>
+                        </div>
+                    </template>
+                    <div x-show="filing.choice === ''" class="crm-filing-pick">
+                        <template x-if="filing.suggestions.length > 0">
+                            <div class="crm-filing-list" role="listbox" aria-label="Casos sugeridos">
+                                <template x-for="option in filing.suggestions" x-bind:key="'s' + option.id">
+                                    <button type="button" role="option" x-on:click="pickCase(option)">
+                                        <b x-text="option.label"></b><small x-text="option.detail"></small><em x-show="option.hint" x-text="option.hint"></em>
+                                    </button>
+                                </template>
+                            </div>
+                        </template>
+                        <input type="search" maxlength="80" x-model="filing.term" x-on:input.debounce.350ms="searchCases()" x-on:keydown.enter.prevent placeholder="Buscar por número de caso, paciente o teléfono" aria-label="Buscar caso de telemedicina">
+                        <p class="crm-hint" x-show="filing.searching">Buscando…</p>
+                        <p class="crm-hint" x-show="!filing.searching && filing.term.trim().length >= 3 && filing.results.length === 0">No hay casos con ese dato.</p>
+                        <div class="crm-filing-list" x-show="filing.results.length > 0" role="listbox" aria-label="Resultados de la búsqueda">
+                            <template x-for="option in filing.results" x-bind:key="'r' + option.id">
+                                <button type="button" role="option" x-on:click="pickCase(option)">
+                                    <b x-text="option.label"></b><small x-text="option.detail"></small>
+                                </button>
+                            </template>
+                        </div>
+                        <button type="button" class="crm-link" x-on:click="pickCase(null)">No corresponden a ningún caso</button>
+                    </div>
                 </div>
                 <div class="crm-dialog-actions">
                     <button type="button" class="crm-btn" x-on:click="confirm.open = false">Cancelar</button>

@@ -384,3 +384,13 @@ Schedule::command('crm-inbox:prune-drafts')
     ->name('crm-inbox-prune-drafts')
     ->withoutOverlapping(30)
     ->runInBackground();
+
+/**
+ * Atención WhatsApp: borra cada noche los archivos de clientes con más días que el resguardo (180 por defecto).
+ * Las copias agregadas a un caso de telemedicina se conservan.
+ */
+Schedule::command('crm-inbox:prune-attachments')
+    ->dailyAt('4:05')
+    ->name('crm-inbox-prune-attachments')
+    ->withoutOverlapping(60)
+    ->runInBackground();

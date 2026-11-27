@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\CrmHandoffDeliveryController;
+use App\Http\Controllers\CrmHandoffMediaController;
 use App\Http\Controllers\CrmHandoffMessageController;
 use App\Http\Controllers\CrmHandoffWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -19,3 +20,6 @@ Route::post('/api/crm/handoff/message', CrmHandoffMessageController::class)
 
 Route::post('/api/crm/handoff/status', CrmHandoffDeliveryController::class)
     ->name('crm.handoff.status');
+
+Route::post('/api/crm/handoff/media', CrmHandoffMediaController::class)
+    ->name('crm.handoff.media');

@@ -300,7 +300,7 @@ final class TelemedicineCaseDocumentsCatalog
                     referenceDetail: $doctor !== '' ? $caseLabel.' · Cargado por '.$doctor : $caseLabel,
                     documentName: (string) $attachment->original_name,
                     types: array_filter([
-                        'Cargado por el médico',
+                        $attachment->stage->uploaderLabel(),
                         (string) ($attachment->description ?? ''),
                     ]),
                     filePath: (string) $attachment->file_path,
