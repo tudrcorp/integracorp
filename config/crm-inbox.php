@@ -85,6 +85,45 @@ return [
         'instance' => env('CRM_EVOLUTION_INSTANCE', 'sol'),
     ],
 
+    /**
+     * Archivos que el cliente envía por WhatsApp (POST /api/crm/handoff/media). n8n los descarga de
+     * Evolution y los manda en base64, firmados como el resto. Se guardan en el disco privado y, al
+     * cerrar la conversación, el analista los agrega al caso de telemedicina del paciente.
+     * Videos: no se reciben (el bot avisa al cliente que no los procesa).
+     */
+    'media' => [
+        'max_mb' => (int) env('CRM_MEDIA_MAX_MB', 16),
+
+        /** Días que se guarda un archivo después de cerrada su conversación (o de recibido, si nunca tuvo caso). */
+        'retention_days' => (int) env('CRM_MEDIA_RETENTION_DAYS', 180),
+
+        'disk' => env('CRM_MEDIA_DISK', 'local'),
+
+        'directory' => 'crm/attachments',
+
+        /** Minutos que vale el enlace firmado de descarga que ve el analista. */
+        'link_minutes' => 30,
+
+        /** Tipo real del archivo (leído del contenido) => [tipo para la pantalla, extensión]. */
+        'allowed' => [
+            'application/pdf' => ['document', 'pdf'],
+            'image/jpeg' => ['image', 'jpg'],
+            'image/png' => ['image', 'png'],
+            'image/webp' => ['image', 'webp'],
+            'image/heic' => ['image', 'heic'],
+            'image/heif' => ['image', 'heif'],
+            'audio/ogg' => ['audio', 'ogg'],
+            'audio/mpeg' => ['audio', 'mp3'],
+            'audio/mp4' => ['audio', 'm4a'],
+            'audio/aac' => ['audio', 'aac'],
+            'audio/amr' => ['audio', 'amr'],
+            'application/msword' => ['document', 'doc'],
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => ['document', 'docx'],
+            'application/vnd.ms-excel' => ['document', 'xls'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => ['document', 'xlsx'],
+        ],
+    ],
+
     /** Minutos seguidos caído antes de avisar a los SUPERADMIN por la campanita y por correo. */
     'health_alert_minutes' => (int) env('CRM_HEALTH_ALERT_MINUTES', 2),
 

@@ -76,6 +76,20 @@ return [
             'after_commit' => false,
         ],
 
+        /*
+         * Mismo Redis y misma cola que `redis`, con lectura bloqueante: el worker de la bandeja del CRM
+         * (`queue:work redis-crm --queue=inbox`) toma un mensaje del cliente en milisegundos en vez de
+         * sondear cada `--sleep`. Lo despachado por `redis` lo procesa igual (misma lista en Redis).
+         */
+        'redis-crm' => [
+            'driver' => 'redis',
+            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => env('REDIS_QUEUE', 'default'),
+            'retry_after' => (int) env('REDIS_QUEUE_RETRY_AFTER', 900),
+            'block_for' => (int) env('CRM_QUEUE_BLOCK_FOR', 5),
+            'after_commit' => false,
+        ],
+
     ],
 
     /*
