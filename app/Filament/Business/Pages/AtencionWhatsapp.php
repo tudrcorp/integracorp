@@ -10,8 +10,10 @@ use App\Models\CrmHandoffEnvelope;
 use App\Models\User;
 use App\Support\CrmInbox\CrmAnalystName;
 use App\Support\CrmInbox\CrmHandoffAssign;
+use App\Support\CrmInbox\CrmHandoffAttachmentFiling;
 use App\Support\CrmInbox\CrmHandoffClose;
 use App\Support\CrmInbox\CrmHandoffFollowUp;
+use App\Support\CrmInbox\CrmHandoffMedia;
 use App\Support\CrmInbox\CrmHandoffMove;
 use App\Support\CrmInbox\CrmHandoffOutcome;
 use App\Support\CrmInbox\CrmHandoffRelay;
@@ -42,6 +44,7 @@ use Filament\Pages\Page;
 use Filament\Support\Enums\Width;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Url;
 
 /**
@@ -889,7 +892,7 @@ class AtencionWhatsapp extends Page
      */
     protected ?bool $supervisorMemo = null;
 
-    public function close(string $outcome = '', string $note = ''): void
+    public function close(string $outcome = '', string $note = '', string $filing = ''): void
     {
         $envelope = $this->selectedEnvelope();
 
@@ -900,6 +903,10 @@ class AtencionWhatsapp extends Page
         $parsed = $this->outcomeOrNotify($outcome, $note);
 
         if ($parsed === null) {
+            return;
+        }
+
+        if (! $this->fileAttachmentsOrNotify($envelope, $filing)) {
             return;
         }
 
@@ -924,7 +931,7 @@ class AtencionWhatsapp extends Page
             ->send();
     }
 
-    public function release(string $outcome = '', string $note = ''): void
+    public function release(string $outcome = '', string $note = '', string $filing = ''): void
     {
         $envelope = $this->selectedEnvelope();
 
@@ -945,6 +952,10 @@ class AtencionWhatsapp extends Page
         $parsed = $this->outcomeOrNotify($outcome, $note);
 
         if ($parsed === null) {
+            return;
+        }
+
+        if (! $this->fileAttachmentsOrNotify($envelope, $filing)) {
             return;
         }
 
@@ -989,7 +1000,7 @@ class AtencionWhatsapp extends Page
      * Finaliza la conversación atendida: mensaje de cierre al cliente, el bot confirma que la próxima
      * vez empieza una conversación nueva, y el caso sale de la bandeja con su resultado.
      */
-    public function finish(string $outcome = '', string $note = ''): void
+    public function finish(string $outcome = '', string $note = '', string $filing = ''): void
     {
         $envelope = $this->selectedEnvelope();
         $userId = $this->analystId();
@@ -1011,6 +1022,10 @@ class AtencionWhatsapp extends Page
         $parsed = $this->outcomeOrNotify($outcome, $note);
 
         if ($parsed === null) {
+            return;
+        }
+
+        if (! $this->fileAttachmentsOrNotify($envelope, $filing)) {
             return;
         }
 
@@ -1038,6 +1053,72 @@ class AtencionWhatsapp extends Page
             ->body('El cliente recibió el mensaje de cierre. Si vuelve a escribir, SolIA empieza una conversación nueva.')
             ->success()
             ->send();
+    }
+
+    /**
+     * Archivos del cliente pendientes de este caso y casos de telemedicina sugeridos, para el diálogo de cierre.
+     *
+     * @return array{files: list<array<string, mixed>>, suggestions: list<array<string, mixed>>}
+     */
+    #[Renderless]
+    public function filingContext(): array
+    {
+        $envelope = $this->selectedEnvelope();
+
+        if ($envelope === null) {
+            return ['files' => [], 'suggestions' => []];
+        }
+
+        $files = CrmHandoffMedia::pendingFor($envelope);
+
+        return [
+            'files' => $files,
+            'suggestions' => $files === [] ? [] : CrmHandoffAttachmentFiling::suggestions($envelope),
+        ];
+    }
+
+    /**
+     * @return list<array{id: int, label: string, detail: string, hint: ?string}>
+     */
+    #[Renderless]
+    public function searchTelemedicineCases(string $term): array
+    {
+        if ($this->selectedEnvelope() === null) {
+            return [];
+        }
+
+        return CrmHandoffAttachmentFiling::search(mb_substr($term, 0, 80));
+    }
+
+    /**
+     * Antes de cerrar, los archivos del cliente van al caso que eligió el analista o se marcan «sin caso».
+     * Si no se pudieron guardar, la conversación no se cierra: así ningún archivo queda sin decidir.
+     */
+    private function fileAttachmentsOrNotify(CrmHandoffEnvelope $envelope, string $filing): bool
+    {
+        $result = app(CrmHandoffAttachmentFiling::class)->file($envelope, $filing, $this->analystId());
+
+        if ($result['ok'] === true) {
+            if ($result['filed'] > 0) {
+                Notification::make()
+                    ->title($result['filed'] === 1 ? 'Archivo agregado al caso' : $result['filed'].' archivos agregados al caso')
+                    ->body('Quedaron en los documentos del caso '.$result['case_code'].' de telemedicina.')
+                    ->success()
+                    ->send();
+            }
+
+            return true;
+        }
+
+        [$title, $body] = match ($result['reason']) {
+            'choose' => ['Elige el caso de los archivos', 'El cliente envió archivos en esta conversación. Indica a qué caso de telemedicina corresponden, o marca que no corresponden a ningún caso.'],
+            'case' => ['No se encontró ese caso', 'Puede que se haya eliminado. Búscalo de nuevo y vuelve a intentarlo.'],
+            default => ['No se pudieron guardar los archivos', 'La conversación sigue abierta y los archivos siguen aquí. Vuelve a intentarlo en unos segundos.'],
+        };
+
+        Notification::make()->title($title)->body($body)->danger()->persistent()->send();
+
+        return false;
     }
 
     public function openQuote(): void

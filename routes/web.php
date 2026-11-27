@@ -2483,3 +2483,9 @@ Route::get('ficha-clinica/pdf/{file}', App\Http\Controllers\ClinicalRecordPdfCon
     ->middleware(['web', 'auth', 'signed'])
     ->where('file', '[0-9a-z\-]+\.pdf')
     ->name('clinical-record.pdf');
+
+/** Atención WhatsApp: archivo que envió el cliente. Solo quien atiende la bandeja del área del caso. */
+Route::get('crm/archivos/{attachment}', App\Http\Controllers\CrmHandoffAttachmentController::class)
+    ->middleware(['auth', 'throttle:120,1'])
+    ->whereNumber('attachment')
+    ->name('crm.attachments.show');

@@ -94,7 +94,7 @@ return [
     'media' => [
         'max_mb' => (int) env('CRM_MEDIA_MAX_MB', 16),
 
-        /** Días que se guarda un archivo después de cerrada su conversación (o de recibido, si nunca tuvo caso). */
+        /** Días que se guarda el archivo en el disco del CRM desde que llegó. La copia agregada al caso de telemedicina no se borra. */
         'retention_days' => (int) env('CRM_MEDIA_RETENTION_DAYS', 180),
 
         'disk' => env('CRM_MEDIA_DISK', 'local'),

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\CrmInbox;
 
+use App\Models\CrmHandoffAttachment;
 use App\Models\CrmHandoffEnvelope;
 use App\Models\CrmHandoffMessage;
 use Carbon\CarbonInterface;
@@ -192,7 +193,7 @@ final class CrmInboxCase
      */
     private static function attention(CrmHandoffEnvelope $envelope): array
     {
-        return CrmHandoffMessage::query()
+        $messages = CrmHandoffMessage::query()
             ->where(function ($query) use ($envelope): void {
                 $query->where('handoff_id', $envelope->handoff_id)
                     ->orWhere(function ($query) use ($envelope): void {
@@ -203,15 +204,54 @@ final class CrmInboxCase
             ->limit(self::THREAD_LIMIT)
             ->get(['id', 'message_id', 'body', 'received_at', 'direction', 'kind', 'status', 'meta', 'delivered_at', 'read_at'])
             ->reverse()
+            ->values();
+
+        $attachmentIds = $messages
+            ->filter(fn (CrmHandoffMessage $message): bool => $message->kind === CrmHandoffMedia::MESSAGE_KIND && is_array($message->meta))
+            ->map(fn (CrmHandoffMessage $message): int => (int) ($message->meta['attachment_id'] ?? 0))
+            ->filter()
             ->values()
-            ->map(fn (CrmHandoffMessage $message): array => self::attentionItem($message))
             ->all();
+        $attachments = $attachmentIds === [] ? collect() : CrmHandoffAttachment::query()
+            ->whereIn('id', $attachmentIds)
+            ->get(['id', 'media_type', 'mime_type', 'original_name', 'size_bytes', 'telemedicine_case_id', 'filed_at', 'filing_skipped', 'purged_at'])
+            ->keyBy('id');
+
+        return $messages
+            ->map(fn (CrmHandoffMessage $message): array => self::attentionItem($message, $attachments->get((int) (is_array($message->meta) ? ($message->meta['attachment_id'] ?? 0) : 0))))
+            ->all();
+    }
+
+    /**
+     * @return array{id: int, type: string, type_label: string, name: string, size: string, previewable: bool, audio: bool, url: string, download_url: string, purged: bool, filed: ?string}
+     */
+    private static function mediaItem(CrmHandoffAttachment $attachment): array
+    {
+        $url = route('crm.attachments.show', ['attachment' => $attachment->id]);
+
+        return [
+            'id' => (int) $attachment->id,
+            'type' => (string) $attachment->media_type,
+            'type_label' => CrmHandoffMedia::typeLabel((string) $attachment->media_type),
+            'name' => (string) $attachment->original_name,
+            'size' => $attachment->sizeLabel(),
+            'previewable' => $attachment->isPreviewableImage(),
+            'audio' => $attachment->media_type === CrmHandoffAttachment::TYPE_AUDIO && $attachment->mime_type !== 'audio/amr',
+            'url' => $url,
+            'download_url' => $url.'?descargar=1',
+            'purged' => $attachment->isPurged(),
+            'filed' => match (true) {
+                $attachment->filed_at !== null => 'Agregado al caso de telemedicina',
+                (bool) $attachment->filing_skipped => 'Sin caso de telemedicina',
+                default => null,
+            },
+        ];
     }
 
     /**
      * @return array{id: string, text: string, time: string, author: string, role: string, status: string, delivery: string, read_time: ?string, delivered_time: ?string, document: bool, at: ?int, day: ?string, quote: ?array<string, mixed>}
      */
-    private static function attentionItem(CrmHandoffMessage $message): array
+    private static function attentionItem(CrmHandoffMessage $message, ?CrmHandoffAttachment $attachment = null): array
     {
         $kind = (string) ($message->kind ?: 'message');
         $direction = (string) ($message->direction ?: 'in');
@@ -245,6 +285,7 @@ final class CrmInboxCase
             'at' => $message->received_at?->getTimestamp(),
             'day' => $message->received_at?->timezone('America/Caracas')->toDateString(),
             'quote' => $kind === 'quote' && is_array($message->meta) ? $message->meta : null,
+            'media' => $kind === CrmHandoffMedia::MESSAGE_KIND && $attachment !== null ? self::mediaItem($attachment) : null,
         ];
     }
 
