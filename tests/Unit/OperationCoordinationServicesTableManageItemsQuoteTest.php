@@ -11,13 +11,11 @@ it('el formulario de gestión de ítems define paso de cotización para ítems n
         ->toContain('shouldShowManageQuoteStep')
         ->toContain('manage_service_non_covered_items_notice')
         ->toContain('manage_quote_line_items')
-        ->toContain('unit_price_usd')
-        ->toContain('unit_price_ves')
+        ->toContain("QuoteLineItemsTable::make(")
+        ->toContain("'../../manage_quote_bcv_rate'")
         ->toContain('syncMedicationInventoryState')
         ->toContain('syncManageQuoteAggregates')
         ->toContain('manageQuoteSummaryPanel')
-        ->toContain('Precios unitarios por ítem')
-        ->toContain('MedicationQuoteLineStock::hint')
         ->toContain('manage_quote_supplier_id')
         ->toContain('manage_quote_supplier_address')
         ->toContain('manage_quote_supplier_phone')
@@ -32,6 +30,16 @@ it('el formulario de gestión de ítems define paso de cotización para ítems n
         ->not->toContain('Hacer Pedido al Proveedor')
         ->not->toContain('reorderMedicationFromSupplier')
         ->not->toContain('FarmadocMedicationOrder');
+
+    expect(file_get_contents(dirname(__DIR__, 2).'/app/Support/Operations/QuoteLineItemsTable.php'))
+        ->toContain('Precios unitarios por ítem')
+        ->toContain('->table([')
+        ->toContain("TableColumn::make('Cantidad')")
+        ->toContain('QuoteLinePricing::QUANTITY_KEY')
+        ->toContain('unit_price_usd')
+        ->toContain('unit_price_ves')
+        ->not->toContain('MedicationQuoteLineStock::hint')
+        ->toContain('QuoteLineProfitField::make()');
 });
 
 it('permite crear un proveedor nuevo desde parámetros de cotización y seleccionarlo', function (): void {

@@ -349,8 +349,9 @@ final class CaseMedicationReportBuilder
                     continue;
                 }
 
-                $cost = is_numeric($item['unit_price_usd'] ?? null) ? round((float) $item['unit_price_usd'], 2) : null;
-                $sale = $cost === null ? null : QuoteLinePricing::salePrice($cost, $item['profit_percentage'] ?? null);
+                // Montos de la línea completa: precio unitario × cantidad cotizada (1 en cotizaciones anteriores).
+                $cost = QuoteLinePricing::lineCost($item);
+                $sale = $cost === null ? null : QuoteLinePricing::lineSalePrice($item);
 
                 if ($cost === null && $sale === null) {
                     continue;

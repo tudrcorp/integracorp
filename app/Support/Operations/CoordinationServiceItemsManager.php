@@ -589,14 +589,14 @@ final class CoordinationServiceItemsManager
         $hasPrice = false;
 
         foreach ($lineItems as $lineItem) {
-            $unitUsd = OperationCoordinationServicesTable::decimalOrNull($lineItem['unit_price_usd'] ?? null);
+            $lineCost = is_array($lineItem) ? QuoteLinePricing::lineCost($lineItem) : null;
 
-            if ($unitUsd === null) {
+            if ($lineCost === null) {
                 continue;
             }
 
             $hasPrice = true;
-            $sum += $unitUsd;
+            $sum += $lineCost;
         }
 
         if (! $hasPrice) {
@@ -615,16 +615,14 @@ final class CoordinationServiceItemsManager
         $hasPrice = false;
 
         foreach ($items as $item) {
-            $unitUsd = OperationCoordinationServicesTable::decimalOrNull(
-                is_array($item) ? ($item['unit_price_usd'] ?? null) : null
-            );
+            $lineCost = is_array($item) ? QuoteLinePricing::lineCost($item) : null;
 
-            if ($unitUsd === null) {
+            if ($lineCost === null) {
                 continue;
             }
 
             $hasPrice = true;
-            $sum += $unitUsd;
+            $sum += $lineCost;
         }
 
         return $hasPrice ? round($sum, 2) : null;
@@ -661,6 +659,10 @@ final class CoordinationServiceItemsManager
                     'category' => $item['category'],
                     'label' => $item['label'],
                     'detail' => $item['detail'],
+                    // La cantidad la escribe el analista (solo medicamentos): nunca se precarga.
+                    QuoteLinePricing::QUANTITY_KEY => QuoteLinePricing::quantityApplies($item['key'])
+                        ? QuoteLinePricing::parseQuantity($existing[QuoteLinePricing::QUANTITY_KEY] ?? null)
+                        : 1,
                     'unit_price_usd' => $unitUsd,
                     'unit_price_ves' => OperationCoordinationServicesTable::decimalOrNull($existing['unit_price_ves'] ?? null),
                     // El analista puede vaciar el % a propósito: solo se precarga en una fila nueva.
@@ -2064,6 +2066,18 @@ final class CoordinationServiceItemsManager
                 $data['manage_quote_line_items'] = $lineItems;
             }
 
+            $lineError = QuoteLinePricing::validationMessage($lineItems);
+
+            if ($lineError !== null) {
+                Notification::make()
+                    ->title('Cotización')
+                    ->body($lineError)
+                    ->warning()
+                    ->send();
+
+                return null;
+            }
+
             $costoUsd = self::manageQuoteSubtotalFromLineItems($lineItems)
                 ?? OperationCoordinationServicesTable::decimalOrNull($data['manage_quote_costo_dolares'] ?? null);
 
@@ -2085,18 +2099,6 @@ final class CoordinationServiceItemsManager
                 Notification::make()
                     ->title('Cotización')
                     ->body('No fue posible obtener una tasa BCV válida. Intente nuevamente.')
-                    ->warning()
-                    ->send();
-
-                return null;
-            }
-
-            $percentageError = QuoteLinePricing::validationMessage($lineItems);
-
-            if ($percentageError !== null) {
-                Notification::make()
-                    ->title('Cotización')
-                    ->body($percentageError)
                     ->warning()
                     ->send();
 
@@ -2150,6 +2152,18 @@ final class CoordinationServiceItemsManager
             }
 
             $coveredQuoteItemsPayload = self::buildManageQuoteItemsPayload($record, $coveredKeys, $lineItems);
+            $coveredLineError = QuoteLinePricing::validationMessage($coveredQuoteItemsPayload);
+
+            if ($coveredLineError !== null) {
+                Notification::make()
+                    ->title('Cotización')
+                    ->body($coveredLineError)
+                    ->warning()
+                    ->send();
+
+                return null;
+            }
+
             $coveredCostoUsd = self::sumItemsUnitPriceUsd($coveredQuoteItemsPayload);
 
             if ($coveredCostoUsd === null || $coveredCostoUsd <= 0) {
@@ -2650,6 +2664,10 @@ final class CoordinationServiceItemsManager
                     'coverage_label' => $item['coverage_label'],
                     'status' => $item['status'],
                     'is_courtesy' => CoordinationServiceCourtesy::itemIsCourtesy($item['courtesy_status'] ?? null),
+                    QuoteLinePricing::QUANTITY_KEY => QuoteLinePricing::storedQuantity([
+                        'key' => $item['key'],
+                        QuoteLinePricing::QUANTITY_KEY => is_array($line) ? ($line[QuoteLinePricing::QUANTITY_KEY] ?? null) : null,
+                    ]),
                     'unit_price_usd' => OperationCoordinationServicesTable::decimalOrNull($line['unit_price_usd'] ?? null),
                     'unit_price_ves' => OperationCoordinationServicesTable::decimalOrNull($line['unit_price_ves'] ?? null),
                     'profit_percentage' => QuoteLinePricing::percentage($line['profit_percentage'] ?? null),

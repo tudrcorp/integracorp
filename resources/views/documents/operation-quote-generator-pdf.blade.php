@@ -64,6 +64,7 @@
             vertical-align: top;
         }
         .items-table th { background: #f8fafc; text-align: left; }
+        .items-table th.num, .items-table td.num { text-align: right; white-space: nowrap; }
         .section-title--observations {
             margin-top: 22px;
         }
@@ -206,21 +207,29 @@
                 <th>Ítem</th>
                 <th>Detalle</th>
                 <th>Cobertura</th>
-                <th>P. unit. (USD)</th>
+                <th class="num">Cant.</th>
+                <th class="num">P. unit. (USD)</th>
+                <th class="num">Total (USD)</th>
             </tr>
         </thead>
         <tbody>
             @forelse($items as $item)
+                @php
+                    $itemQuantity = \App\Support\Operations\QuoteLinePricing::quantity($item) ?? 1;
+                    $itemUnitUsd = round((float) ($item['unit_price_usd'] ?? 0), 2);
+                @endphp
                 <tr>
                     <td>{{ $item['category'] ?? '—' }}</td>
                     <td>{{ $item['label'] ?? '—' }}</td>
                     <td>{{ $item['detail'] ?? '—' }}</td>
                     <td>{{ $item['coverage_label'] ?? '—' }}</td>
-                    <td>US$ {{ number_format((float) ($item['unit_price_usd'] ?? 0), 2, ',', '.') }}</td>
+                    <td class="num">{{ number_format($itemQuantity, 0, ',', '.') }}</td>
+                    <td class="num">US$ {{ number_format($itemUnitUsd, 2, ',', '.') }}</td>
+                    <td class="num">US$ {{ number_format(round($itemUnitUsd * $itemQuantity, 2), 2, ',', '.') }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="5">Sin ítems registrados.</td>
+                    <td colspan="7">Sin ítems registrados.</td>
                 </tr>
             @endforelse
         </tbody>
