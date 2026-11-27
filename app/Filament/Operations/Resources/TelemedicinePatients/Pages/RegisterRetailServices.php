@@ -39,6 +39,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\HtmlString;
@@ -182,7 +183,7 @@ class RegisterRetailServices extends Page
             ->key('mainServices')
             ->description('Marque uno o varios. Debajo aparece el selector de proveedor de cada servicio marcado.')
             ->icon(Heroicon::OutlinedSquares2x2)
-            ->afterHeader([$this->addMainServiceAction(), $this->removeMainServiceAction()])
+            ->afterHeader([$this->addMainServiceAction(), $this->removeMainServiceAction(), $this->mainServicesHistoryAction()])
             ->columnSpanFull()
             ->schema([
                 CheckboxList::make('services')
@@ -419,12 +420,20 @@ class RegisterRetailServices extends Page
                     ->minLength(RetailMainServiceCatalog::LABEL_MIN)
                     ->maxLength(RetailMainServiceCatalog::LABEL_MAX)
                     ->autofocus(),
+                Textarea::make('note')
+                    ->label('Motivo')
+                    ->placeholder('Ej.: Lo solicitó la coordinación médica para los casos de rehabilitación.')
+                    ->helperText('Obligatorio. Queda en el historial con su nombre y la fecha.')
+                    ->required()
+                    ->minLength(RetailMainServiceCatalog::NOTE_MIN)
+                    ->maxLength(RetailMainServiceCatalog::NOTE_MAX)
+                    ->rows(3),
             ])
             ->action(function (array $data, Action $action): void {
                 abort_unless(self::canManageMainServices(), 403);
 
                 $user = Auth::user();
-                $result = RetailMainServiceCatalog::add((string) ($data['label'] ?? ''), $user instanceof User ? $user : null);
+                $result = RetailMainServiceCatalog::add((string) ($data['label'] ?? ''), (string) ($data['note'] ?? ''), $user instanceof User ? $user : null);
 
                 if ($result['ok'] !== true) {
                     Notification::make()->title('No se agregó el servicio')->body($result['message'])->danger()->send();
@@ -438,6 +447,26 @@ class RegisterRetailServices extends Page
                     ->body('«'.$result['label'].'» ya aparece en Servicios principales.')
                     ->success()
                     ->send();
+            });
+    }
+
+    private function mainServicesHistoryAction(): Action
+    {
+        return Action::make('mainServicesHistory')
+            ->label('Ver historial')
+            ->icon(Heroicon::OutlinedClock)
+            ->color('gray')
+            ->link()
+            ->visible(fn (): bool => self::canManageMainServices())
+            ->modalHeading('Historial de servicios principales')
+            ->modalDescription('Quién agregó o quitó cada servicio, cuándo y por qué. Últimos '.RetailMainServiceCatalog::HISTORY_LIMIT.' cambios.')
+            ->modalWidth('4xl')
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cerrar')
+            ->modalContent(function (): View {
+                abort_unless(self::canManageMainServices(), 403);
+
+                return view('filament.operations.telemedicine-patients.retail-main-services-history', ['rows' => RetailMainServiceCatalog::history()]);
             });
     }
 
@@ -459,12 +488,20 @@ class RegisterRetailServices extends Page
                     ->options(fn (): array => RetailMainServiceCatalog::removable())
                     ->required()
                     ->native(false),
+                Textarea::make('note')
+                    ->label('Motivo')
+                    ->placeholder('Ej.: El proveedor dejó de prestar el servicio.')
+                    ->helperText('Obligatorio. Queda en el historial con su nombre y la fecha.')
+                    ->required()
+                    ->minLength(RetailMainServiceCatalog::NOTE_MIN)
+                    ->maxLength(RetailMainServiceCatalog::NOTE_MAX)
+                    ->rows(3),
             ])
             ->action(function (array $data, Action $action): void {
                 abort_unless(self::canManageMainServices(), 403);
 
                 $user = Auth::user();
-                $result = RetailMainServiceCatalog::remove((int) ($data['service_id'] ?? 0), $user instanceof User ? $user : null);
+                $result = RetailMainServiceCatalog::remove((int) ($data['service_id'] ?? 0), (string) ($data['note'] ?? ''), $user instanceof User ? $user : null);
 
                 if ($result['ok'] !== true) {
                     Notification::make()->title('No se quitó el servicio')->body($result['message'])->danger()->send();
