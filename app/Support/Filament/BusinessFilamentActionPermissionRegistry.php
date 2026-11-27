@@ -48,6 +48,8 @@ final class BusinessFilamentActionPermissionRegistry
 
     public const REGISTER_DIRECT_MEDICAL_SERVICE = 'registrar-servicio-medico-directo';
 
+    public const MANAGE_RETAIL_MAIN_SERVICES = 'gestionar-servicios-principales-retail';
+
     public const MANAGE_SUPPLIER_INTEGRACORP_PROCESSES = 'gestionar-procesos-integracorp-proveedores';
 
     public const FINALIZE_OPERATION_SERVICE_ORDER = 'finalizar-ordenes-servicio';
@@ -300,6 +302,11 @@ final class BusinessFilamentActionPermissionRegistry
             ],
             self::REGISTER_DIRECT_MEDICAL_SERVICE => [
                 'name' => 'Registrar servicio médico directo',
+                'group' => 'COORDINACIÓN DE SERVICIOS',
+                'modules' => ['OPERACIONES'],
+            ],
+            self::MANAGE_RETAIL_MAIN_SERVICES => [
+                'name' => 'Registro RETAIL: agregar o quitar servicios principales',
                 'group' => 'COORDINACIÓN DE SERVICIOS',
                 'modules' => ['OPERACIONES'],
             ],
