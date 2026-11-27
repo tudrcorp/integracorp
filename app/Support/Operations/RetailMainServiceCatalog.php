@@ -6,6 +6,7 @@ namespace App\Support\Operations;
 
 use App\Filament\Operations\Resources\TelemedicinePatients\Actions\RegisterTpaRetailServicesAction;
 use App\Models\RetailMainService;
+use App\Models\RetailMainServiceLog;
 use App\Models\User;
 use App\Support\SecurityAudit;
 use Illuminate\Support\Facades\Cache;
@@ -25,6 +26,12 @@ final class RetailMainServiceCatalog
     public const LABEL_MIN = 3;
 
     public const LABEL_MAX = 60;
+
+    public const NOTE_MIN = 10;
+
+    public const NOTE_MAX = 500;
+
+    public const HISTORY_LIMIT = 100;
 
     private const CACHE_KEY = 'operations:retail-main-services:v1';
 
@@ -94,8 +101,15 @@ final class RetailMainServiceCatalog
      *
      * @return array{ok: true, reactivated: bool, label: string}|array{ok: false, message: string}
      */
-    public static function add(string $label, ?User $user): array
+    public static function add(string $label, string $note, ?User $user): array
     {
+        $note = Str::squish($note);
+        $noteError = self::noteError($note);
+
+        if ($noteError !== null) {
+            return ['ok' => false, 'message' => $noteError];
+        }
+
         $label = Str::squish($label);
         $length = mb_strlen($label);
 
@@ -110,7 +124,7 @@ final class RetailMainServiceCatalog
         $key = self::keyFor($label);
         $actor = self::actor($user);
 
-        $result = DB::transaction(function () use ($key, $label, $actor): array {
+        $result = DB::transaction(function () use ($key, $label, $actor, $note, $user): array {
             $existing = RetailMainService::query()->where('name', $key)->lockForUpdate()->first();
 
             if ($existing !== null && $existing->is_active) {
@@ -119,11 +133,12 @@ final class RetailMainServiceCatalog
 
             if ($existing !== null) {
                 $existing->forceFill(['is_active' => true, 'label' => $label, 'updated_by' => $actor])->save();
+                self::log($existing, RetailMainServiceLog::ACTION_REACTIVATED, $note, $user, $actor);
 
                 return ['ok' => true, 'reactivated' => true, 'label' => $label];
             }
 
-            RetailMainService::query()->create([
+            $service = RetailMainService::query()->create([
                 'name' => $key,
                 'label' => $label,
                 'is_active' => true,
@@ -132,12 +147,13 @@ final class RetailMainServiceCatalog
                 'created_by' => $actor,
                 'updated_by' => $actor,
             ]);
+            self::log($service, RetailMainServiceLog::ACTION_ADDED, $note, $user, $actor);
 
             return ['ok' => true, 'reactivated' => false, 'label' => $label];
         });
 
         if ($result['ok']) {
-            SecurityAudit::log('AUDIT_RETAIL_MAIN_SERVICE_ADDED', 'operations.retail-main-services.add', ['service' => $key, 'reactivated' => $result['reactivated']], $user);
+            SecurityAudit::log('AUDIT_RETAIL_MAIN_SERVICE_ADDED', 'operations.retail-main-services.add', ['service' => $key, 'reactivated' => $result['reactivated'], 'note' => $note], $user);
         }
 
         return $result;
@@ -148,11 +164,18 @@ final class RetailMainServiceCatalog
      *
      * @return array{ok: true, label: string}|array{ok: false, message: string}
      */
-    public static function remove(int $id, ?User $user): array
+    public static function remove(int $id, string $note, ?User $user): array
     {
+        $note = Str::squish($note);
+        $noteError = self::noteError($note);
+
+        if ($noteError !== null) {
+            return ['ok' => false, 'message' => $noteError];
+        }
+
         $actor = self::actor($user);
 
-        $result = DB::transaction(function () use ($id, $actor): array {
+        $result = DB::transaction(function () use ($id, $actor, $note, $user): array {
             $service = RetailMainService::query()->whereKey($id)->lockForUpdate()->first();
 
             if ($service === null || ! $service->is_active) {
@@ -164,16 +187,75 @@ final class RetailMainServiceCatalog
             }
 
             $service->forceFill(['is_active' => false, 'updated_by' => $actor])->save();
+            self::log($service, RetailMainServiceLog::ACTION_REMOVED, $note, $user, $actor);
 
             return ['ok' => true, 'label' => (string) $service->label, 'name' => (string) $service->name];
         });
 
         if ($result['ok']) {
-            SecurityAudit::log('AUDIT_RETAIL_MAIN_SERVICE_REMOVED', 'operations.retail-main-services.remove', ['service' => $result['name']], $user);
+            SecurityAudit::log('AUDIT_RETAIL_MAIN_SERVICE_REMOVED', 'operations.retail-main-services.remove', ['service' => $result['name'], 'note' => $note], $user);
             unset($result['name']);
         }
 
         return $result;
+    }
+
+    /**
+     * Motivo inválido o null si sirve. Pide al menos NOTE_MIN caracteres y tres letras: «ok», «.» o «1111111111»
+     * no dejan traza de nada.
+     */
+    public static function noteError(string $note): ?string
+    {
+        $length = mb_strlen($note);
+
+        if ($length < self::NOTE_MIN) {
+            return 'Escriba el motivo (mínimo '.self::NOTE_MIN.' caracteres): queda en la bitácora del servicio.';
+        }
+
+        if ($length > self::NOTE_MAX) {
+            return 'El motivo admite hasta '.self::NOTE_MAX.' caracteres.';
+        }
+
+        if (preg_match_all('/\p{L}/u', $note) < 3 || count(array_unique(mb_str_split(mb_strtolower(preg_replace('/\s+/u', '', $note) ?? '')))) < 3) {
+            return 'Explique con palabras por qué se hace el cambio.';
+        }
+
+        return null;
+    }
+
+    /**
+     * Últimos cambios de la lista, del más reciente al más viejo.
+     *
+     * @return list<array{date: string, user: string, action: string, action_key: string, service: string, note: string}>
+     */
+    public static function history(int $limit = self::HISTORY_LIMIT): array
+    {
+        return RetailMainServiceLog::query()
+            ->orderByDesc('id')
+            ->limit(max(1, min($limit, 500)))
+            ->get()
+            ->map(fn (RetailMainServiceLog $log): array => [
+                'date' => $log->created_at?->timezone('America/Caracas')->format('d/m/Y h:i a') ?? '',
+                'user' => (string) $log->user_name,
+                'action' => $log->actionLabel(),
+                'action_key' => (string) $log->action,
+                'service' => (string) $log->service_label,
+                'note' => (string) $log->note,
+            ])
+            ->all();
+    }
+
+    private static function log(RetailMainService $service, string $action, string $note, ?User $user, string $actor): void
+    {
+        RetailMainServiceLog::query()->create([
+            'retail_main_service_id' => $service->id,
+            'service_name' => (string) $service->name,
+            'service_label' => (string) $service->label,
+            'action' => $action,
+            'note' => $note,
+            'user_id' => $user?->id,
+            'user_name' => $actor,
+        ]);
     }
 
     public static function flush(): void
